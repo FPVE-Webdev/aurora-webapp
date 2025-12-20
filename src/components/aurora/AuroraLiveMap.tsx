@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Cloud, Thermometer, Wind, ChevronDown, Play, Pause, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { OBSERVATION_SPOTS } from '@/lib/constants';
+import { ObservationSpot } from '@/types/aurora';
 
 // Dynamically import map to avoid SSR issues with Leaflet
 const AuroraMapFullscreen = dynamic(
@@ -19,12 +21,7 @@ const AuroraMapFullscreen = dynamic(
 );
 
 interface SpotForecast {
-  spot: {
-    id: string;
-    name: string;
-    latitude: number;
-    longitude: number;
-  };
+  spot: ObservationSpot;
   currentProbability: number;
   kp: number;
   weather: {
@@ -34,15 +31,6 @@ interface SpotForecast {
     symbolCode: string;
   };
 }
-
-// Tromsø and nearby spots
-const OBSERVATION_SPOTS = [
-  { id: 'tromso', name: 'Tromsø', latitude: 69.6492, longitude: 18.9553 },
-  { id: 'sommaroy', name: 'Sommarøy', latitude: 69.6300, longitude: 17.9700 },
-  { id: 'lyngen', name: 'Lyngen', latitude: 69.5800, longitude: 20.2200 },
-  { id: 'alta', name: 'Alta', latitude: 69.9689, longitude: 23.2717 },
-  { id: 'svolvaer', name: 'Svolvær', latitude: 68.2344, longitude: 14.5684 },
-];
 
 export function AuroraLiveMap() {
   const [forecasts, setForecasts] = useState<SpotForecast[]>([]);

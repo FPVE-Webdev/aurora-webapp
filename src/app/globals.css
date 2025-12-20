@@ -13,6 +13,17 @@
   --aurora-excellent: 142 71% 45%;
   --aurora-good: 250 63% 63%;
   --aurora-moderate: 25 95% 53%;
+  --aurora-poor: 215 16% 47%;
+
+  /* Aurora gradients */
+  --gradient-excellent: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 76% 36%));
+  --gradient-good: linear-gradient(135deg, hsl(271 81% 56%), hsl(271 91% 46%));
+  --gradient-moderate: linear-gradient(135deg, hsl(25 95% 53%), hsl(21 90% 48%));
+  --gradient-poor: linear-gradient(135deg, hsl(215 16% 47%), hsl(215 19% 35%));
+
+  /* Shadow glows */
+  --shadow-glow-green: 0 0 40px hsl(142 71% 45% / 0.4);
+  --shadow-glow-purple: 0 0 40px hsl(271 81% 56% / 0.4);
 }
 
 body {
@@ -47,4 +58,68 @@ body {
 
 .text-primary {
   color: hsl(var(--primary));
+}
+
+/* Aurora probability gauge */
+.gauge-excellent {
+  background: var(--gradient-excellent);
+  box-shadow: var(--shadow-glow-green);
+}
+
+.gauge-good {
+  background: var(--gradient-good);
+  box-shadow: var(--shadow-glow-purple);
+}
+
+.gauge-moderate {
+  background: var(--gradient-moderate);
+  box-shadow: 0 0 40px hsl(25 95% 53% / 0.4);
+}
+
+.gauge-poor {
+  background: var(--gradient-poor);
+  box-shadow: 0 0 20px hsl(215 16% 47% / 0.3);
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.5s ease-out;
+}
+
+@keyframes auroraPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.01);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.card-aurora {
+  backdrop-filter: blur(10px);
 }
