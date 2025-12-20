@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 10 10 14;
+  --foreground: 240 10% 98%;
+  --primary: 168 76% 59%;
+  --primary-foreground: 0 0% 100%;
+  --arctic-900: 220 25% 4%;
+  --arctic-800: 220 20% 8%;
+  --arctic-700: 220 15% 12%;
+  --aurora-excellent: 142 71% 45%;
+  --aurora-good: 250 63% 63%;
+  --aurora-moderate: 25 95% 53%;
+}
+
+body {
+  background-color: hsl(var(--arctic-900));
+  color: hsl(var(--foreground));
+  font-family: var(--font-syne), system-ui, sans-serif;
+}
+
+.bg-arctic-900 {
+  background-color: hsl(var(--arctic-900));
+}
+
+.bg-arctic-800 {
+  background-color: hsl(var(--arctic-800));
+}
+
+.bg-arctic-700 {
+  background-color: hsl(var(--arctic-700));
+}
+
+.bg-aurora-excellent {
+  background-color: hsl(var(--aurora-excellent));
+}
+
+.bg-aurora-good {
+  background-color: hsl(var(--aurora-good));
+}
+
+.bg-aurora-moderate {
+  background-color: hsl(var(--aurora-moderate));
+}
+
+.text-primary {
+  color: hsl(var(--primary));
+}
