@@ -47,6 +47,22 @@ export async function middleware(request: NextRequest) {
     // Extract API key from header
     const apiKey = request.headers.get('X-API-Key');
 
+    // Check if request is from same origin (browser client)
+    const origin = request.headers.get('origin');
+    const referer = request.headers.get('referer');
+    const host = request.headers.get('host');
+
+    // Allow requests from same origin (our own web app)
+    const isSameOrigin =
+      (origin && origin.includes(host || '')) ||
+      (referer && referer.includes(host || '')) ||
+      (!origin && !referer); // Server-side requests
+
+    // If same origin and in development, allow without API key
+    if (isSameOrigin && (process.env.NODE_ENV === 'development' || origin?.includes('localhost'))) {
+      return NextResponse.next();
+    }
+
     // Check if API key is provided
     if (!apiKey) {
       logAuthEvent({
