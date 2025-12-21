@@ -2,11 +2,12 @@
  * Next.js Middleware - API Key Authentication & Security
  *
  * This middleware runs on EVERY request to /api/aurora/* endpoints.
- * It validates API keys and will later add rate limiting.
+ * It validates API keys and enforces rate limiting.
  */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { checkRateLimit } from './lib/rateLimiter';
 
 // Temporary in-memory API key storage
 // TODO Phase 3: Move to Supabase database
@@ -24,7 +25,7 @@ const VALID_API_KEYS = new Set([
 /**
  * Middleware function - runs before API routes
  */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Only protect /api/aurora/* routes
@@ -72,8 +73,35 @@ export function middleware(request: NextRequest) {
     // Log successful authentication (basic logging for now)
     console.log(`[AUTH] ✅ ${apiKey.substring(0, 15)}... → ${pathname}`);
 
-    // Continue to API route
-    return NextResponse.next();
+    // Check rate limit
+    const rateLimitResult = await checkRateLimit(apiKey);
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        {
+          error: 'Too Many Requests',
+          message: 'Rate limit exceeded. Please try again later.',
+          limit: rateLimitResult.limit,
+          reset: new Date(rateLimitResult.reset).toISOString(),
+        },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(rateLimitResult.limit),
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.reset),
+          },
+        }
+      );
+    }
+
+    // Add rate limit headers to successful response
+    const response = NextResponse.next();
+    response.headers.set('X-RateLimit-Limit', String(rateLimitResult.limit));
+    response.headers.set('X-RateLimit-Remaining', String(rateLimitResult.remaining));
+    response.headers.set('X-RateLimit-Reset', String(rateLimitResult.reset));
+
+    return response;
   }
 
   // For all other routes, continue without authentication
