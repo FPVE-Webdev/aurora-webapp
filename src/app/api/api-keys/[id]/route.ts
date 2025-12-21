@@ -7,21 +7,26 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { getSupabaseClient } from '@/lib/supabase';
 
 /**
  * GET /api/api-keys/[id]
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Database not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
+    const { id } = await params;
     const { data, error } = await supabase
       .from('api_keys')
       .select(`
@@ -29,7 +34,7 @@ export async function GET(
         organization:organizations(name, slug, status),
         created_by_user:users!created_by(name, email)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error || !data) {
@@ -63,9 +68,19 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Database not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
+    const { id } = await params;
     const body = await request.json();
     const allowedFields = [
       'name',
@@ -93,7 +108,7 @@ export async function PATCH(
     const { data, error } = await supabase
       .from('api_keys')
       .update(updates)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -128,14 +143,24 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Database not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
+    const { id } = await params;
     // Get API key to get organization_id for notification
     const { data: apiKey, error: fetchError } = await supabase
       .from('api_keys')
       .select('id, name, organization_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (fetchError || !apiKey) {
@@ -149,7 +174,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('api_keys')
       .update({ status: 'revoked' })
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (error) {
       return NextResponse.json(
