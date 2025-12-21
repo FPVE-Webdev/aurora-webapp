@@ -7,7 +7,8 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { checkRateLimit } from './lib/rateLimiter';
+import { checkRateLimit, getRateLimitInfo } from './lib/rateLimiter';
+import { logAuthEvent, logRateLimitEvent } from './lib/edgeLogger';
 
 // Temporary in-memory API key storage
 // TODO Phase 3: Move to Supabase database
@@ -48,6 +49,12 @@ export async function middleware(request: NextRequest) {
 
     // Check if API key is provided
     if (!apiKey) {
+      logAuthEvent({
+        path: pathname,
+        success: false,
+        reason: 'missing_api_key',
+      });
+
       return NextResponse.json(
         {
           error: 'Unauthorized',
@@ -60,6 +67,13 @@ export async function middleware(request: NextRequest) {
 
     // Validate API key
     if (!VALID_API_KEYS.has(apiKey)) {
+      logAuthEvent({
+        path: pathname,
+        apiKey,
+        success: false,
+        reason: 'invalid_api_key',
+      });
+
       return NextResponse.json(
         {
           error: 'Forbidden',
@@ -70,11 +84,25 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    // Log successful authentication (basic logging for now)
-    console.log(`[AUTH] ✅ ${apiKey.substring(0, 15)}... → ${pathname}`);
+    // Log successful authentication
+    logAuthEvent({
+      path: pathname,
+      apiKey,
+      success: true,
+    });
 
     // Check rate limit
     const rateLimitResult = await checkRateLimit(apiKey);
+    const tierInfo = getRateLimitInfo(apiKey);
+
+    // Log rate limit check
+    logRateLimitEvent({
+      apiKey,
+      path: pathname,
+      exceeded: !rateLimitResult.success,
+      remaining: rateLimitResult.remaining,
+      limit: rateLimitResult.limit,
+    });
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
