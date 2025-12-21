@@ -16,9 +16,15 @@ Aurora.tromso.ai serves three main purposes:
 
 ## 📚 Documentation
 
+### Setup & Deployment
+- **[SUPABASE_QUICKSTART.md](./SUPABASE_QUICKSTART.md)** - ⚡ 5-minute Supabase setup
+- **[SUPABASE_SETUP_GUIDE.md](./SUPABASE_SETUP_GUIDE.md)** - Complete Supabase configuration guide
+- **[DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)** - Deployment checklist and status
+- **[PRE_DEPLOY_CHECKLIST.md](./PRE_DEPLOY_CHECKLIST.md)** - Pre-deployment verification
+
+### Architecture & Planning
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System architecture and data flow
 - **[WIDGET_INTEGRATION.md](./WIDGET_INTEGRATION.md)** - Widget SDK and B2B SaaS plan
-- **[PRE_DEPLOY_CHECKLIST.md](./PRE_DEPLOY_CHECKLIST.md)** - Deployment checklist
 - **[MIGRATION_PLAN.md](./MIGRATION_PLAN.md)** - Feature migration plan
 
 ## 🚀 Quick Start
