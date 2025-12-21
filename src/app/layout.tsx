@@ -7,6 +7,7 @@ import { LanguageProvider } from '@/contexts/LanguageContext';
 import { TemperatureProvider } from '@/contexts/TemperatureContext';
 import { PremiumProvider } from '@/contexts/PremiumContext';
 import { DevModeProvider } from '@/contexts/DevModeContext';
+import { AdminLink } from '@/components/shared/AdminLink';
 import './globals.css';
 import { useState } from 'react';
 
@@ -38,6 +39,7 @@ export default function RootLayout({
               <DevModeProvider>
                 <PremiumProvider>
                   {children}
+                  <AdminLink />
                   <Toaster
                     position="top-right"
                     theme="dark"
