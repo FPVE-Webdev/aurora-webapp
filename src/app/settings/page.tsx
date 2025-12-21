@@ -2,13 +2,15 @@
 
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTemperature } from '@/contexts/TemperatureContext';
-import { ArrowLeft, Languages, Thermometer, Palette, Info } from 'lucide-react';
+import { usePremium } from '@/contexts/PremiumContext';
+import { ArrowLeft, Languages, Thermometer, Palette, Info, Crown } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
   const { language, setLanguage } = useLanguage();
   const { unit, setUnit } = useTemperature();
+  const { isPremium, setIsPremium } = usePremium();
 
   const handleLanguageChange = (newLang: 'no' | 'en') => {
     setLanguage(newLang);
@@ -18,6 +20,16 @@ export default function SettingsPage() {
   const handleUnitChange = (newUnit: 'C' | 'F') => {
     setUnit(newUnit);
     toast.success(`Temperatureenhet endret til °${newUnit}`);
+  };
+
+  const handlePremiumToggle = () => {
+    const newValue = !isPremium;
+    setIsPremium(newValue);
+    toast.success(
+      newValue
+        ? '👑 Premium aktivert (Dev Mode)'
+        : 'Premium deaktivert'
+    );
   };
 
   return (
@@ -121,6 +133,59 @@ export default function SettingsPage() {
                 <div className="text-xs text-white/60">Grader Fahrenheit</div>
               </button>
             </div>
+          </div>
+
+          {/* Premium / Developer Mode */}
+          <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-lg bg-yellow-500/20">
+                <Crown className="w-5 h-5 text-yellow-500" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-white">Premium Features</h2>
+                <p className="text-sm text-white/60">
+                  {isPremium ? 'Premium aktivert (Dev Mode)' : 'Aktiver premium-funksjoner for testing'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handlePremiumToggle}
+              className={`w-full p-4 rounded-lg border-2 transition-all ${
+                isPremium
+                  ? 'border-yellow-500 bg-yellow-500/10 text-white'
+                  : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Crown className={`w-6 h-6 ${isPremium ? 'text-yellow-500' : 'text-white/50'}`} />
+                  <div className="text-left">
+                    <div className="font-semibold">
+                      {isPremium ? 'Premium Aktivert' : 'Aktiver Premium'}
+                    </div>
+                    <div className="text-xs text-white/60">
+                      {isPremium ? 'Klikk for å deaktivere' : 'Developer/Test Mode'}
+                    </div>
+                  </div>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  isPremium
+                    ? 'bg-yellow-500/20 text-yellow-500'
+                    : 'bg-white/10 text-white/50'
+                }`}>
+                  {isPremium ? 'ON' : 'OFF'}
+                </div>
+              </div>
+            </button>
+
+            {isPremium && (
+              <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <p className="text-sm text-yellow-500/90">
+                  ⚠️ Dette er developer mode. I produksjon vil premium-status hentes fra Stripe/backend.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Theme (Coming Soon) */}
