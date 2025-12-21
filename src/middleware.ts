@@ -29,6 +29,19 @@ export function middleware(request: NextRequest) {
 
   // Only protect /api/aurora/* routes
   if (pathname.startsWith('/api/aurora')) {
+    // Allow OPTIONS requests (CORS preflight) without authentication
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET,OPTIONS,HEAD',
+          'Access-Control-Allow-Headers': 'X-API-Key, Content-Type, Authorization',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+
     // Extract API key from header
     const apiKey = request.headers.get('X-API-Key');
 
