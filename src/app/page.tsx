@@ -7,9 +7,13 @@ import { QuickStats } from '@/components/aurora/QuickStats';
 import { HourlyForecast } from '@/components/aurora/HourlyForecast';
 import { DarkHoursInfo } from '@/components/aurora/DarkHoursInfo';
 import { FunfactPanel } from '@/components/aurora/FunfactPanel';
+import { GoNowAlert } from '@/components/home/GoNowAlert';
+import { PremiumCTA } from '@/components/shared/PremiumCTA';
 import { Loader2, MapIcon } from 'lucide-react';
 import Link from 'next/link';
 import { FUNFACTS } from '@/lib/funfactEngine';
+import { shouldShowGoNow } from '@/lib/auroraCalculations';
+import { usePremium } from '@/contexts/PremiumContext';
 
 export default function HomePage() {
   const {
@@ -20,9 +24,13 @@ export default function HomePage() {
     lastUpdate,
     error
   } = useAuroraData();
+  const { isPremium } = usePremium();
 
   // Get current spot forecast
   const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
+  
+  // Check if we should show "Go Now" alert
+  const showGoNow = currentForecast && shouldShowGoNow(currentForecast.currentProbability, selectedSpot.latitude);
 
   if (isLoading && spotForecasts.length === 0) {
     return (
@@ -71,7 +79,7 @@ export default function HomePage() {
           </div>
 
           {/* Main Probability Gauge */}
-          <div className="flex justify-center mb-12">
+          <div className="flex justify-center mb-8">
             {currentForecast && (
               <ProbabilityGauge
                 probability={currentForecast.currentProbability}
@@ -79,6 +87,16 @@ export default function HomePage() {
               />
             )}
           </div>
+
+          {/* Go Now Alert */}
+          {showGoNow && currentForecast && (
+            <div className="max-w-4xl mx-auto mb-8">
+              <GoNowAlert 
+                probability={currentForecast.currentProbability} 
+                locationName={selectedSpot.name} 
+              />
+            </div>
+          )}
 
           {/* Aurora Status Card */}
           <div className="max-w-4xl mx-auto mb-8">
@@ -127,6 +145,13 @@ export default function HomePage() {
             {/* Fun Facts */}
             <FunfactPanel funfacts={FUNFACTS.slice(0, 3)} />
           </div>
+
+          {/* Premium CTA (only for free users) */}
+          {!isPremium && (
+            <div className="max-w-4xl mx-auto mb-8">
+              <PremiumCTA />
+            </div>
+          )}
 
           {/* CTA to Live Map */}
           <div className="max-w-4xl mx-auto text-center">

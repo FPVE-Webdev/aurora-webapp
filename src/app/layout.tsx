@@ -1,11 +1,12 @@
 'use client';
 
-import type { Metadata } from 'next';
 import { Syne } from 'next/font/google';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { TemperatureProvider } from '@/contexts/TemperatureContext';
+import { PremiumProvider } from '@/contexts/PremiumContext';
+import { DevModeProvider } from '@/contexts/DevModeContext';
 import './globals.css';
 import { useState } from 'react';
 
@@ -34,18 +35,22 @@ export default function RootLayout({
         <QueryClientProvider client={queryClient}>
           <LanguageProvider>
             <TemperatureProvider>
-              {children}
-              <Toaster
-                position="top-right"
-                theme="dark"
-                toastOptions={{
-                  style: {
-                    background: 'rgb(15, 17, 24)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: 'white',
-                  },
-                }}
-              />
+              <DevModeProvider>
+                <PremiumProvider>
+                  {children}
+                  <Toaster
+                    position="top-right"
+                    theme="dark"
+                    toastOptions={{
+                      style: {
+                        background: 'rgb(15, 17, 24)',
+                        border: '1px solid rgba(255, 255, 255, 0:1)',
+                        color: 'white',
+                      },
+                    }}
+                  />
+                </PremiumProvider>
+              </DevModeProvider>
             </TemperatureProvider>
           </LanguageProvider>
         </QueryClientProvider>

@@ -50,8 +50,8 @@ export function AuroraLiveMap() {
       setIsLoading(true);
 
       // Fetch current aurora conditions from main API
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://tromso.ai';
-      const response = await fetch(`${apiUrl}/api/aurora/now?lang=no`);
+      // Always use local API endpoints (relative URL)
+      const response = await fetch('/api/aurora/now?lang=no');
       const data = await response.json();
 
       setCurrentKp(data.kp_index || 3);

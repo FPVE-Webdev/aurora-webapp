@@ -13,10 +13,9 @@ import {
   CurrentConditionsResponse
 } from '@/types/tromsoAI';
 
-// Use environment variable or fallback to production URL
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api/aurora`
-  : 'https://tromso.ai/api/aurora';
+// Use local API endpoints (which connect to Supabase or use fallback)
+// Always use our own API endpoints, never call external APIs directly from client
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/aurora';
 
 class TromsøAIService {
   private async fetchJSON<T>(url: string): Promise<T> {
