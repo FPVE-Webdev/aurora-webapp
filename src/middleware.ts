@@ -58,8 +58,13 @@ export async function middleware(request: NextRequest) {
       (referer && referer.includes(host || '')) ||
       (!origin && !referer); // Server-side requests
 
-    // If same origin and in development, allow without API key
-    if (isSameOrigin && (process.env.NODE_ENV === 'development' || origin?.includes('localhost'))) {
+    // Allow same-origin requests in development mode
+    if (process.env.NODE_ENV === 'development') {
+      return NextResponse.next();
+    }
+
+    // In production, allow requests from our own domain (same-origin or our production URL)
+    if (isSameOrigin) {
       return NextResponse.next();
     }
 
