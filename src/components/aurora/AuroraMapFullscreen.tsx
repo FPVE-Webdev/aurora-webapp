@@ -52,15 +52,52 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
   // Fetch aurora oval data from Tromsø.AI
   const fetchAuroraData = useCallback(async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://tromso.ai';
-      const response = await fetch(`${apiUrl}/api/aurora/aurora-oval?resolution=medium`);
+      // Use local API endpoint which will route correctly based on data mode
+      const url = '/api/aurora/oval?resolution=medium';
+
+      console.log('📡 Fetching aurora oval from:', url);
+
+      const response = await fetch(url);
+
+      // Check HTTP status
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // Check that response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        const text = await response.text();
+        console.error('❌ Invalid content-type:', contentType);
+        console.error('Response text:', text.substring(0, 200));
+        throw new Error(`Invalid content-type: ${contentType}. Expected JSON.`);
+      }
+
       const data = await response.json();
 
-      if (data && data.coordinates && data.coordinates.length > 0) {
+      console.log('✅ Aurora oval data loaded:', data);
+
+      // Handle GeoJSON format from API
+      if (data && data.features && data.features.length > 0) {
+        const feature = data.features[0];
+        if (feature.geometry && feature.geometry.coordinates) {
+          // Convert GeoJSON polygon coordinates to AuroraPoint format
+          const coordinates = feature.geometry.coordinates[0];
+          const auroraPoints: AuroraPoint[] = coordinates.map(([lon, lat]: [number, number]) => ({
+            lat,
+            lon,
+            probability: 70 // Use default or extract from properties if available
+          }));
+          setAuroraData(auroraPoints);
+        }
+      } else if (data && data.coordinates && data.coordinates.length > 0) {
+        // Fallback: handle old format if API returns it
         setAuroraData(data.coordinates);
       }
     } catch (error) {
-      console.error('Failed to fetch aurora oval:', error);
+      console.error('❌ Failed to fetch aurora oval:', error);
+      // Don't throw error - let component work without aurora oval
+      setAuroraData([]);
     }
   }, []);
 
