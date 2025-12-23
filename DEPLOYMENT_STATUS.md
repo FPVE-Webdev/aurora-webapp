@@ -41,7 +41,7 @@ TROMSO_AI_API_KEY=<get-from-admin>
 
 #### Supabase (Optional - B2B features only)
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://byvcabgcjkykwptzmwsl.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<get-from-supabase>
 SUPABASE_SERVICE_ROLE_KEY=<get-from-supabase>
 ```
