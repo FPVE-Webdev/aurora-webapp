@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { lat: string; lon: string } }
+  { params }: { params: Promise<{ lat: string; lon: string }> }
 ) {
   try {
-    const lat = parseFloat(params.lat);
-    const lon = parseFloat(params.lon);
+    const { lat: latStr, lon: lonStr } = await params;
+    const lat = parseFloat(latStr);
+    const lon = parseFloat(lonStr);
 
     if (isNaN(lat) || isNaN(lon)) {
       return NextResponse.json(
