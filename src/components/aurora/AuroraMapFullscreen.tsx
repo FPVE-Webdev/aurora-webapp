@@ -35,10 +35,20 @@ interface Props {
 }
 
 function getMarkerColor(probability: number): string {
-  if (probability >= 50) return '#22c55e';
-  if (probability >= 30) return '#8b5cf6';
-  if (probability >= 15) return '#f97316';
-  return '#64748b';
+  if (probability >= 70) return '#34f5c5'; // Primary cyan - Excellent
+  if (probability >= 50) return '#22c55e'; // Green - Good
+  if (probability >= 30) return '#8b5cf6'; // Purple - Moderate
+  if (probability >= 15) return '#f97316'; // Orange - Fair
+  return '#64748b'; // Gray - Poor
+}
+
+function calculateProbabilityFromOvalPosition(latitude: number): number {
+  // Higher latitude = higher probability (closer to pole)
+  if (latitude > 75) return 95;
+  if (latitude > 72) return 85;
+  if (latitude > 68) return 70;
+  if (latitude > 65) return 50;
+  return 30;
 }
 
 export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelectSpot, kpIndex }: Props) {
@@ -270,6 +280,57 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
       markersRef.current.push(marker);
     });
   }, [forecasts, onSelectSpot]);
+
+  // Add dynamic halo badges along aurora oval
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || auroraData.length === 0 || !showOverlay) return;
+
+    console.log('🎯 Rendering aurora halo badges along oval');
+
+    // Sample every 5th point from aurora oval for badges
+    const badgePoints = auroraData.filter((_, i) => i % 5 === 0);
+
+    badgePoints.forEach((point, index) => {
+      const probability = calculateProbabilityFromOvalPosition(point.lat);
+      const color = getMarkerColor(probability);
+
+      const badge = L.divIcon({
+        className: 'aurora-halo-badge',
+        html: `
+          <div style="
+            background: ${color};
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            border: 1.5px solid rgba(255,255,255,0.8);
+          ">
+            ${Math.round(probability)}%
+          </div>
+        `,
+        iconSize: [40, 20],
+        iconAnchor: [20, 10],
+      });
+
+      const marker = L.marker([point.lat, point.lon], { icon: badge })
+        .addTo(map)
+        .bindPopup(`
+          <div style="text-align: center; padding: 4px;">
+            <p style="font-weight: bold; margin: 0 0 4px 0;">Aurora Oval</p>
+            <p style="font-size: 16px; font-weight: bold; margin: 0; color: ${color};">${Math.round(probability)}%</p>
+            <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">Lat: ${point.lat.toFixed(2)}°</p>
+          </div>
+        `);
+
+      markersRef.current.push(marker);
+    });
+
+    console.log(`✅ Rendered ${badgePoints.length} halo badges along aurora oval`);
+  }, [auroraData, showOverlay]);
 
   return (
     <div className="relative w-full h-full">
