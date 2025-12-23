@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, Key, Activity, TrendingUp, Loader2 } from 'lucide-react';
+import { Building2, Key, Activity, TrendingUp, Loader2, Settings } from 'lucide-react';
 import Link from 'next/link';
 
 interface DashboardStats {
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
       {/* Quick Actions */}
       <div className="bg-arctic-800 border border-white/10 rounded-lg p-6">
         <h2 className="text-xl font-semibold text-white mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link
             href="/admin/organizations"
             className="flex items-center gap-3 p-4 bg-arctic-900 rounded-lg hover:bg-arctic-700 transition-colors border border-white/5"
@@ -200,6 +200,17 @@ export default function AdminDashboard() {
             <div>
               <p className="text-white font-medium">View Analytics</p>
               <p className="text-white/60 text-sm">Track usage and performance</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/admin/settings"
+            className="flex items-center gap-3 p-4 bg-arctic-900 rounded-lg hover:bg-arctic-700 transition-colors border border-white/5"
+          >
+            <Settings className="w-5 h-5 text-purple-400" />
+            <div>
+              <p className="text-white font-medium">App Settings</p>
+              <p className="text-white/60 text-sm">Configure features and modes</p>
             </div>
           </Link>
         </div>

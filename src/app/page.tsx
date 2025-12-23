@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { FUNFACTS } from '@/lib/funfactEngine';
 import { shouldShowGoNow } from '@/lib/auroraCalculations';
 import { usePremium } from '@/contexts/PremiumContext';
+import { useAppSettings } from '@/hooks/useAppSettings';
 
 export default function HomePage() {
   const {
@@ -25,6 +26,7 @@ export default function HomePage() {
     error
   } = useAuroraData();
   const { isPremium } = usePremium();
+  const { settings } = useAppSettings();
 
   // Get current spot forecast
   const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
@@ -67,9 +69,16 @@ export default function HomePage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Header */}
           <div className="text-center mb-12 space-y-4">
-            <h1 className="text-5xl md:text-6xl font-display font-bold text-white">
-              Nordlys i Tromsø
-            </h1>
+            <div className="flex items-center justify-center gap-4">
+              <h1 className="text-5xl md:text-6xl font-display font-bold text-white">
+                Nordlys i Tromsø
+              </h1>
+              {settings.showBetaBadge && (
+                <span className="px-3 py-1.5 rounded-full text-sm font-semibold bg-primary/20 text-primary border border-primary/30 animate-pulse">
+                  BETA
+                </span>
+              )}
+            </div>
             <p className="text-lg text-white/70 max-w-2xl mx-auto">
               Live nordlysvarsel for Nord-Norge basert på solaktivitet, værmeldinger og geografisk plassering
             </p>

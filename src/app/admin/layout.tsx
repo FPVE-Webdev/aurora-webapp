@@ -45,6 +45,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <BarChart3 className="w-4 h-4" />
                   Analytics
                 </Link>
+                <Link
+                  href="/admin/settings"
+                  className="text-white/70 hover:text-white transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </Link>
               </nav>
             </div>
             <Link
