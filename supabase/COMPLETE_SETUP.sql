@@ -130,19 +130,8 @@ CREATE INDEX idx_users_organization_id ON users(organization_id);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_auth_id ON users(auth_id);
 
--- Enable Row Level Security
+-- Enable Row Level Security (policies added in later migration)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy: Users can view users in their organization
-CREATE POLICY "Users can view their organization's users"
-  ON users FOR SELECT
-  USING (
-    organization_id IN (
-      SELECT organization_id
-      FROM users
-      WHERE auth_id = auth.uid()
-    )
-  );
 
 -- Trigger for updated_at
 CREATE TRIGGER update_users_updated_at
@@ -213,31 +202,8 @@ CREATE INDEX idx_api_keys_key_hash ON api_keys(key_hash);
 CREATE INDEX idx_api_keys_status ON api_keys(status) WHERE status = 'active';
 CREATE INDEX idx_api_keys_last_used_at ON api_keys(last_used_at DESC);
 
--- Enable Row Level Security
+-- Enable Row Level Security (policies added in later migration)
 ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy: Users can view their organization's API keys
-CREATE POLICY "Users can view their organization's API keys"
-  ON api_keys FOR SELECT
-  USING (
-    organization_id IN (
-      SELECT organization_id
-      FROM users
-      WHERE auth_id = auth.uid()
-    )
-  );
-
--- RLS Policy: Admins/owners can create API keys
-CREATE POLICY "Admins can create API keys"
-  ON api_keys FOR INSERT
-  WITH CHECK (
-    organization_id IN (
-      SELECT organization_id
-      FROM users
-      WHERE auth_id = auth.uid()
-        AND role IN ('owner', 'admin')
-    )
-  );
 
 -- Trigger for updated_at
 CREATE TRIGGER update_api_keys_updated_at
@@ -399,19 +365,8 @@ CREATE INDEX idx_usage_analytics_widget_type
   ON usage_analytics(widget_type)
   WHERE widget_type IS NOT NULL;
 
--- Enable Row Level Security
+-- Enable Row Level Security (policies added in later migration)
 ALTER TABLE usage_analytics ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy: Users can view their organization's usage
-CREATE POLICY "Users can view their organization's usage"
-  ON usage_analytics FOR SELECT
-  USING (
-    organization_id IN (
-      SELECT organization_id
-      FROM users
-      WHERE auth_id = auth.uid()
-    )
-  );
 
 -- Function: Track API Usage
 CREATE OR REPLACE FUNCTION track_usage(
@@ -576,19 +531,8 @@ CREATE INDEX idx_subscriptions_status ON subscriptions(status);
 CREATE INDEX idx_subscriptions_current_period_end ON subscriptions(current_period_end);
 CREATE INDEX idx_subscriptions_stripe_customer_id ON subscriptions(stripe_customer_id);
 
--- Enable Row Level Security
+-- Enable Row Level Security (policies added in later migration)
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy: Users can view their organization's subscription
-CREATE POLICY "Users can view their organization's subscription"
-  ON subscriptions FOR SELECT
-  USING (
-    organization_id IN (
-      SELECT organization_id
-      FROM users
-      WHERE auth_id = auth.uid()
-    )
-  );
 
 -- Trigger for updated_at
 CREATE TRIGGER update_subscriptions_updated_at
@@ -807,19 +751,8 @@ CREATE INDEX idx_invoices_status ON invoices(status);
 CREATE INDEX idx_invoices_due_date ON invoices(due_date);
 CREATE INDEX idx_invoices_created_at ON invoices(created_at DESC);
 
--- Enable Row Level Security
+-- Enable Row Level Security (policies added in later migration)
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy: Users can view their organization's invoices
-CREATE POLICY "Users can view their organization's invoices"
-  ON invoices FOR SELECT
-  USING (
-    organization_id IN (
-      SELECT organization_id
-      FROM users
-      WHERE auth_id = auth.uid()
-    )
-  );
 
 -- Trigger for updated_at
 CREATE TRIGGER update_invoices_updated_at
@@ -1028,19 +961,8 @@ CREATE INDEX idx_widget_instances_widget_type ON widget_instances(widget_type);
 CREATE INDEX idx_widget_instances_last_seen_at ON widget_instances(last_seen_at DESC);
 CREATE INDEX idx_widget_instances_origin ON widget_instances(origin);
 
--- Enable Row Level Security
+-- Enable Row Level Security (policies added in later migration)
 ALTER TABLE widget_instances ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy: Users can view their organization's widget instances
-CREATE POLICY "Users can view their organization's widget instances"
-  ON widget_instances FOR SELECT
-  USING (
-    organization_id IN (
-      SELECT organization_id
-      FROM users
-      WHERE auth_id = auth.uid()
-    )
-  );
 
 -- Trigger for updated_at
 CREATE TRIGGER update_widget_instances_updated_at
@@ -1208,18 +1130,8 @@ CREATE INDEX idx_notifications_read ON notifications(read) WHERE read = FALSE;
 CREATE INDEX idx_notifications_created_at ON notifications(created_at DESC);
 CREATE INDEX idx_notifications_priority ON notifications(priority) WHERE priority = 'critical';
 
--- Enable Row Level Security
+-- Enable Row Level Security (policies added in later migration)
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy: Users can view their own notifications
-CREATE POLICY "Users can view their own notifications"
-  ON notifications FOR SELECT
-  USING (user_id = (SELECT id FROM users WHERE auth_id = auth.uid() LIMIT 1));
-
--- RLS Policy: Users can mark their own notifications as read
-CREATE POLICY "Users can update their own notifications"
-  ON notifications FOR UPDATE
-  USING (user_id = (SELECT id FROM users WHERE auth_id = auth.uid() LIMIT 1));
 
 -- Function: Create Notification for Organization
 CREATE OR REPLACE FUNCTION create_notification_for_org(
@@ -1401,6 +1313,18 @@ CREATE POLICY "Service role has full access to api_keys"
   ON api_keys FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role');
 
+-- API Keys: Admins/owners can create API keys
+CREATE POLICY "Admins can create API keys"
+  ON api_keys FOR INSERT
+  WITH CHECK (
+    organization_id IN (
+      SELECT organization_id
+      FROM users
+      WHERE auth_id = auth.uid()
+        AND role IN ('owner', 'admin')
+    )
+  );
+
 -- Usage Analytics: Organization members can view their usage
 CREATE POLICY "Organization members can view their usage analytics"
   ON usage_analytics FOR SELECT
@@ -1475,6 +1399,11 @@ CREATE POLICY "Users can view their own notifications"
 CREATE POLICY "Service role has full access to notifications"
   ON notifications FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role');
+
+-- Notifications: Users can update their own notifications
+CREATE POLICY "Users can update their own notifications"
+  ON notifications FOR UPDATE
+  USING (user_id = (SELECT id FROM users WHERE auth_id = auth.uid() LIMIT 1));
 
 -- Comments
 COMMENT ON POLICY "Users can view their own organization" ON organizations IS
