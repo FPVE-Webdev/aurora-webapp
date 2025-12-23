@@ -27,20 +27,21 @@ export function scoreToKpIndex(score: number): number {
 /**
  * Map Tromsø.AI forecast to SpotForecast format
  *
- * Note: Some fields (cloud coverage, temperature) are not available
- * in the simplified API response. These will be set to reasonable defaults.
+ * Note: If weatherData is not provided, will use fallback defaults
  */
 export function mapTromsøForecastToSpotForecast(
   forecast: TromsøAuroraForecast,
-  spot: ObservationSpot
+  spot: ObservationSpot,
+  weatherData?: { cloudCoverage: number; temperature: number; windSpeed?: number }
 ): SpotForecast {
   const kpIndex = scoreToKpIndex(forecast.score);
 
-  // Generate random but realistic weather variations for each spot
-  const cloudCoverage = 20 + Math.random() * 60; // 20-80%
-  const temperature = -15 + Math.random() * 25; // -15 to +10°C
+  // Use provided weather data or generate realistic fallbacks
+  const cloudCoverage = weatherData?.cloudCoverage ?? (20 + Math.random() * 60);
+  const temperature = weatherData?.temperature ?? (-15 + Math.random() * 25);
+  const windSpeed = weatherData?.windSpeed ?? Math.round(Math.random() * 15);
 
-  // Calculate probability based on spot's latitude and weather
+  // Calculate probability based on spot's latitude and REAL weather
   const { probability } = calculateAuroraProbability({
     kpIndex,
     cloudCoverage,
@@ -81,7 +82,7 @@ export function mapTromsøForecastToSpotForecast(
     weather: {
       cloudCoverage: Math.round(cloudCoverage),
       temperature: Math.round(temperature),
-      windSpeed: Math.round(Math.random() * 15),
+      windSpeed: Math.round(windSpeed),
       precipitation: cloudCoverage > 70 ? Math.round(Math.random() * 5) : 0,
       symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night',
       timestamp: forecast.updated

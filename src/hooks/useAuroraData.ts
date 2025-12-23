@@ -153,11 +153,22 @@ export function useAuroraData() {
       // Convert to KP index for compatibility
       const kpIndex = scoreToKpIndex(forecast.score);
 
-      // Create spot forecasts for all spots (using same data for all)
-      // In reality, Tromsø.AI only provides data for Tromsø region
-      const spotForecasts: SpotForecast[] = OBSERVATION_SPOTS.map(spot =>
-        mapTromsøForecastToSpotForecast(forecast!, spot)
-      );
+      // Fetch weather data for all spots in parallel
+      const spotForecastsPromises = OBSERVATION_SPOTS.map(async (spot) => {
+        try {
+          // Fetch real weather for this spot
+          const weatherRes = await fetch(`/api/weather/${spot.latitude}/${spot.longitude}`);
+          const weatherData = weatherRes.ok ? await weatherRes.json() : null;
+
+          // Map forecast with real or fallback weather data
+          return mapTromsøForecastToSpotForecast(forecast!, spot, weatherData);
+        } catch (error) {
+          console.warn(`Failed to fetch weather for ${spot.name}, using fallback`);
+          return mapTromsøForecastToSpotForecast(forecast!, spot);
+        }
+      });
+
+      const spotForecasts: SpotForecast[] = await Promise.all(spotForecastsPromises);
 
       // Generate predictive hint based on score
       let predictiveHint: string | null = null;
