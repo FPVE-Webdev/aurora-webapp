@@ -52,19 +52,8 @@ CREATE INDEX idx_organizations_slug ON organizations(slug);
 CREATE INDEX idx_organizations_status ON organizations(status);
 CREATE INDEX idx_organizations_created_at ON organizations(created_at DESC);
 
--- Enable Row Level Security
+-- Enable Row Level Security (policies added in later migration)
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy: Users can only see their own organization
-CREATE POLICY "Users can view their own organization"
-  ON organizations FOR SELECT
-  USING (
-    id IN (
-      SELECT organization_id
-      FROM users
-      WHERE auth_id = auth.uid()
-    )
-  );
 
 -- Trigger for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
