@@ -42,53 +42,31 @@ notifications      - Systemvarsler
 
 ## ⏳ Neste Steg (For Deg)
 
-### 1. Opprett Supabase Prosjekt (5 min)
+### ✅ Steg 1 & 2: FERDIG! ✅
 
-**Følg SUPABASE_QUICKSTART.md:**
-
-```bash
-# 1. Gå til https://supabase.com → New Project
-# 2. Kopier API keys fra Settings → API
-# 3. Legg inn i .env.local:
-
-nano .env.local
-```
-
-Erstatt disse linjene:
-```env
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url-here
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
-```
-
-Med dine faktiske verdier fra Supabase.
+Du har allerede:
+- ✅ Opprettet Supabase prosjekt
+- ✅ Lagt inn API keys i `.env.local`
 
 ---
 
-### 2. Kjør Database Migrations (2 min)
+### 3. Kjør Database Setup (2 min)
 
-**Alternativ A - CLI (raskest):**
-```bash
-# Install Supabase CLI
-npm install -g supabase
+**Enkleste måte - Supabase SQL Editor:**
 
-# Login
-supabase login
+1. **Åpne:** https://supabase.com/dashboard/project/yoooexmshwfpsrhzisgu/sql
+2. **Klikk:** "New Query"
+3. **Kopier:** Hele innholdet fra `supabase/COMPLETE_SETUP.sql`
+4. **Lim inn** i SQL Editor
+5. **Klikk:** "Run" (eller Cmd+Enter)
 
-# Link til prosjekt (erstatt project-ref)
-supabase link --project-ref ditt-project-ref
+⏱️ **Tar 10 sekunder** - Ingen CLI nødvendig!
 
-# Push migrations
-supabase db push
-```
-
-**Alternativ B - Manuelt:**
-1. Gå til Supabase Dashboard → SQL Editor
-2. Kjør hver fil i `supabase/migrations/` i rekkefølge (001-009)
+📖 **Detaljert guide:** [supabase/RUN_THIS_IN_SUPABASE.md](./supabase/RUN_THIS_IN_SUPABASE.md)
 
 ---
 
-### 3. Verifiser Oppsett (1 min)
+### 4. Verifiser Oppsett (1 min)
 
 ```bash
 # Start dev server
