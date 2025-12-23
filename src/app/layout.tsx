@@ -8,13 +8,30 @@ import { TemperatureProvider } from '@/contexts/TemperatureContext';
 import { PremiumProvider } from '@/contexts/PremiumContext';
 import { DevModeProvider } from '@/contexts/DevModeContext';
 import { AdminLink } from '@/components/shared/AdminLink';
+import { Navigation } from '@/components/shared/Navigation';
 import './globals.css';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 const syne = Syne({
   subsets: ['latin'],
   variable: '--font-syne',
 });
+
+function LayoutContent({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith('/admin');
+
+  return (
+    <>
+      {!isAdminRoute && <Navigation />}
+      <div className={!isAdminRoute ? 'pt-16' : ''}>
+        {children}
+      </div>
+      <AdminLink />
+    </>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -38,8 +55,7 @@ export default function RootLayout({
             <TemperatureProvider>
               <DevModeProvider>
                 <PremiumProvider>
-                  {children}
-                  <AdminLink />
+                  <LayoutContent>{children}</LayoutContent>
                   <Toaster
                     position="top-right"
                     theme="dark"
