@@ -7,6 +7,7 @@ import { LanguageProvider } from '@/contexts/LanguageContext';
 import { TemperatureProvider } from '@/contexts/TemperatureContext';
 import { PremiumProvider } from '@/contexts/PremiumContext';
 import { DevModeProvider } from '@/contexts/DevModeContext';
+import { DataModeProvider } from '@/contexts/DataModeContext';
 import { AdminLink } from '@/components/shared/AdminLink';
 import { Navigation } from '@/components/shared/Navigation';
 import './globals.css';
@@ -54,20 +55,22 @@ export default function RootLayout({
           <LanguageProvider>
             <TemperatureProvider>
               <DevModeProvider>
-                <PremiumProvider>
-                  <LayoutContent>{children}</LayoutContent>
-                  <Toaster
-                    position="top-right"
-                    theme="dark"
-                    toastOptions={{
-                      style: {
-                        background: 'rgb(15, 17, 24)',
-                        border: '1px solid rgba(255, 255, 255, 0:1)',
-                        color: 'white',
-                      },
-                    }}
-                  />
-                </PremiumProvider>
+                <DataModeProvider>
+                  <PremiumProvider>
+                    <LayoutContent>{children}</LayoutContent>
+                    <Toaster
+                      position="top-right"
+                      theme="dark"
+                      toastOptions={{
+                        style: {
+                          background: 'rgb(15, 17, 24)',
+                          border: '1px solid rgba(255, 255, 255, 0:1)',
+                          color: 'white',
+                        },
+                      }}
+                    />
+                  </PremiumProvider>
+                </DataModeProvider>
               </DevModeProvider>
             </TemperatureProvider>
           </LanguageProvider>

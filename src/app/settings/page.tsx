@@ -3,6 +3,7 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTemperature } from '@/contexts/TemperatureContext';
 import { usePremium } from '@/contexts/PremiumContext';
+import { DataModeToggle } from '@/components/settings/DataModeToggle';
 import { ArrowLeft, Languages, Thermometer, Palette, Info, Crown } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -134,6 +135,9 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+
+          {/* Data Mode Toggle */}
+          <DataModeToggle />
 
           {/* Premium / Developer Mode */}
           <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-6">

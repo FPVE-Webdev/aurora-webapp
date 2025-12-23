@@ -15,11 +15,24 @@ import {
 
 // Use local API endpoints (which connect to Supabase or use fallback)
 // Always use our own API endpoints, never call external APIs directly from client
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/aurora';
+const getBaseURL = (): string => {
+  // Check data mode from localStorage
+  if (typeof window !== 'undefined') {
+    const dataMode = localStorage.getItem('aurora_data_mode');
+    if (dataMode === 'live') {
+      return process.env.NEXT_PUBLIC_API_URL || '/api/aurora';
+    }
+  }
+  // Default to demo mode (local API)
+  return '/api/aurora';
+};
 
 class TromsøAIService {
   private async fetchJSON<T>(url: string): Promise<T> {
-    const response = await fetch(url);
+    const baseURL = getBaseURL();
+    const fullURL = url.startsWith('http') ? url : `${baseURL}${url.startsWith('/') ? '' : '/'}${url.replace(getBaseURL(), '')}`;
+
+    const response = await fetch(fullURL);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -32,7 +45,7 @@ class TromsøAIService {
   async getNow(language: 'no' | 'en' = 'no'): Promise<TromsøAuroraForecast> {
     try {
       return await this.fetchJSON<TromsøAuroraForecast>(
-        `${BASE_URL}/now?lang=${language}`
+        `/now?lang=${language}`
       );
     } catch (error) {
       console.error('Error fetching aurora now:', error);
@@ -46,7 +59,7 @@ class TromsøAIService {
   async getTonight(language: 'no' | 'en' = 'no'): Promise<TromsøAuroraForecast> {
     try {
       return await this.fetchJSON<TromsøAuroraForecast>(
-        `${BASE_URL}/tonight?lang=${language}`
+        `/tonight?lang=${language}`
       );
     } catch (error) {
       console.error('Error fetching aurora tonight:', error);
@@ -60,7 +73,7 @@ class TromsøAIService {
   async getForecast(days: number = 1, language: 'no' | 'en' = 'no'): Promise<TromsøMultidayResponse> {
     try {
       return await this.fetchJSON<TromsøMultidayResponse>(
-        `${BASE_URL}/forecast?days=${days}&lang=${language}`
+        `/forecast?days=${days}&lang=${language}`
       );
     } catch (error) {
       console.error('Error fetching aurora forecast:', error);
@@ -84,7 +97,7 @@ class TromsøAIService {
   ): Promise<HourlyForecastResponse> {
     try {
       return await this.fetchJSON<HourlyForecastResponse>(
-        `${BASE_URL}/hourly-forecast?hours=${hours}&location=${location}&lang=${language}`
+        `/hourly?hours=${hours}&location=${location}&lang=${language}`
       );
     } catch (error) {
       console.error('Error fetching hourly forecast:', error);
@@ -104,7 +117,7 @@ class TromsøAIService {
   ): Promise<AuroraOvalResponse> {
     try {
       return await this.fetchJSON<AuroraOvalResponse>(
-        `${BASE_URL}/aurora-oval?resolution=${resolution}`
+        `/oval?resolution=${resolution}`
       );
     } catch (error) {
       console.error('Error fetching aurora oval:', error);
@@ -127,7 +140,7 @@ class TromsøAIService {
   ): Promise<CurrentConditionsResponse> {
     try {
       return await this.fetchJSON<CurrentConditionsResponse>(
-        `${BASE_URL}/current?location=${location}&lang=${language}`
+        `/current?location=${location}&lang=${language}`
       );
     } catch (error) {
       console.error('Error fetching current conditions:', error);
