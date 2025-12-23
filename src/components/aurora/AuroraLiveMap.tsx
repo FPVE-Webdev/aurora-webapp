@@ -6,6 +6,8 @@ import { Cloud, Thermometer, Wind, ChevronDown, Play, Pause, Loader2 } from 'luc
 import { cn } from '@/lib/utils';
 import { OBSERVATION_SPOTS } from '@/lib/constants';
 import { ObservationSpot } from '@/types/aurora';
+import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
+import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
 
 // Dynamically import map to avoid SSR issues with Leaflet
 const AuroraMapFullscreen = dynamic(
@@ -54,20 +56,67 @@ export function AuroraLiveMap() {
       const response = await fetch('/api/aurora/now?lang=no');
       const data = await response.json();
 
-      setCurrentKp(data.kp_index || 3);
+      const kpIndex = scoreToKpIndex(data.score || 50);
+      setCurrentKp(kpIndex);
 
-      // Create forecasts for each spot
-      const spotForecasts: SpotForecast[] = OBSERVATION_SPOTS.map(spot => ({
-        spot,
-        currentProbability: data.score || 0,
-        kp: data.kp_index || 3,
-        weather: {
-          cloudCoverage: Math.random() * 100, // TODO: Fetch real weather
-          temperature: -5 + Math.random() * 10,
-          windSpeed: Math.random() * 20,
-          symbolCode: 'clearsky_night'
+      // Fetch weather data for all spots in parallel (same as useAuroraData)
+      const spotForecastsPromises = OBSERVATION_SPOTS.map(async (spot) => {
+        try {
+          // Fetch real weather for this spot
+          const weatherRes = await fetch(`/api/weather/${spot.latitude}/${spot.longitude}`);
+          const weatherData = weatherRes.ok ? await weatherRes.json() : null;
+
+          // Use real weather or fallback
+          const cloudCoverage = weatherData?.cloudCoverage ?? (20 + Math.random() * 60);
+          const temperature = weatherData?.temperature ?? (-15 + Math.random() * 25);
+          const windSpeed = weatherData?.windSpeed ?? Math.round(Math.random() * 15);
+
+          // Calculate probability based on real conditions
+          const { probability } = calculateAuroraProbability({
+            kpIndex,
+            cloudCoverage,
+            temperature,
+            latitude: spot.latitude,
+          });
+
+          return {
+            spot,
+            currentProbability: probability,
+            kp: kpIndex,
+            weather: {
+              cloudCoverage: Math.round(cloudCoverage),
+              temperature: Math.round(temperature),
+              windSpeed: Math.round(windSpeed),
+              symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night'
+            }
+          };
+        } catch (error) {
+          console.warn(`Failed to fetch weather for ${spot.name}, using fallback`);
+          // Fallback with estimated values
+          const cloudCoverage = 20 + Math.random() * 60;
+          const temperature = -15 + Math.random() * 25;
+          const { probability } = calculateAuroraProbability({
+            kpIndex,
+            cloudCoverage,
+            temperature,
+            latitude: spot.latitude,
+          });
+
+          return {
+            spot,
+            currentProbability: probability,
+            kp: kpIndex,
+            weather: {
+              cloudCoverage: Math.round(cloudCoverage),
+              temperature: Math.round(temperature),
+              windSpeed: Math.round(Math.random() * 15),
+              symbolCode: 'clearsky_night'
+            }
+          };
         }
-      }));
+      });
+
+      const spotForecasts = await Promise.all(spotForecastsPromises);
 
       setForecasts(spotForecasts);
       setIsLoading(false);

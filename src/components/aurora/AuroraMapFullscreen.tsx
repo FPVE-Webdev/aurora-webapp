@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 
 interface SpotForecast {
   spot: {
@@ -42,13 +43,16 @@ function getMarkerColor(probability: number): string {
   return '#64748b'; // Gray - Poor
 }
 
-function calculateProbabilityFromOvalPosition(latitude: number): number {
-  // Higher latitude = higher probability (closer to pole)
-  if (latitude > 75) return 95;
-  if (latitude > 72) return 85;
-  if (latitude > 68) return 70;
-  if (latitude > 65) return 50;
-  return 30;
+function calculateProbabilityFromOvalPosition(latitude: number, kpIndex: number): number {
+  // Use real calculation based on latitude and KP index
+  // Assume moderate cloud coverage for aurora oval positions
+  const { probability } = calculateAuroraProbability({
+    kpIndex,
+    cloudCoverage: 30, // Assume good conditions along aurora oval
+    temperature: -10, // Typical northern temperature
+    latitude,
+  });
+  return probability;
 }
 
 export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelectSpot, kpIndex }: Props) {
@@ -292,7 +296,7 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
     const badgePoints = auroraData.filter((_, i) => i % 5 === 0);
 
     badgePoints.forEach((point, index) => {
-      const probability = calculateProbabilityFromOvalPosition(point.lat);
+      const probability = calculateProbabilityFromOvalPosition(point.lat, kpIndex);
       const color = getMarkerColor(probability);
 
       const badge = L.divIcon({
@@ -330,7 +334,7 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
     });
 
     console.log(`✅ Rendered ${badgePoints.length} halo badges along aurora oval`);
-  }, [auroraData, showOverlay]);
+  }, [auroraData, showOverlay, kpIndex]);
 
   return (
     <div className="relative w-full h-full">
