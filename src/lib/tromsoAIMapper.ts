@@ -49,7 +49,7 @@ export function mapTromsøForecastToSpotForecast(
     latitude: spot.latitude,
   });
 
-  // Create a simple hourly forecast with variations
+  // Create a simple hourly forecast with realistic variations
   const hourlyForecast: HourlyForecast[] = Array.from({ length: 24 }, (_, i) => {
     const hour = new Date();
     hour.setHours(hour.getHours() + i);
@@ -63,14 +63,27 @@ export function mapTromsøForecastToSpotForecast(
       probability + peakBonus + hourVariation
     ));
 
+    // Ensure cloudCoverage stays within 0-100 range
+    const hourCloudCoverage = Math.max(0, Math.min(100,
+      cloudCoverage + (Math.random() * 20 - 10)
+    ));
+
+    // Small temperature variation ±2°C
+    const hourTemperature = temperature + (Math.random() * 4 - 2);
+
+    // Keep KP index within valid range (0-9)
+    const hourKpIndex = Math.max(0, Math.min(9,
+      kpIndex + (Math.random() - 0.5)
+    ));
+
     return {
       time: hour.toISOString(),
       hour: hour.toTimeString().slice(0, 5),
       probability: Math.round(hourProbability),
-      cloudCoverage: Math.round(cloudCoverage + (Math.random() * 20 - 10)),
-      temperature: Math.round(temperature + (Math.random() * 4 - 2)),
-      kpIndex: kpIndex + (Math.random() - 0.5),
-      symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night',
+      cloudCoverage: Math.round(hourCloudCoverage),
+      temperature: Math.round(hourTemperature),
+      kpIndex: hourKpIndex,
+      symbolCode: hourCloudCoverage > 50 ? 'cloudy' : 'clearsky_night',
       twilightPhase: (timeOfDay >= 21 || timeOfDay <= 6) ? 'night' : 'day',
       canSeeAurora: (timeOfDay >= 21 || timeOfDay <= 6) && hourProbability > 20
     };

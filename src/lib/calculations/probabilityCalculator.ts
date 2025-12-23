@@ -30,15 +30,19 @@ export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityRes
   // 1. KP-Index faktor (40% vekt)
   const kpScore = Math.min(100, (inputs.kpIndex / 9) * 100);
 
-  // 2. Sky/Cloud cover faktor (30% vekt) - færre skyer = høyere sannsynlighet
-  const cloudScore = Math.max(0, 100 - inputs.cloudCoverage);
+  // 2. Sky/Cloud cover faktor (35% vekt) - færre skyer = høyere sannsynlighet
+  // Mer aggressiv straff for skyer siden det er avgjørende for å se nordlys
+  const cloudScore = inputs.cloudCoverage < 30 ? 100 :
+                     inputs.cloudCoverage < 50 ? 80 :
+                     inputs.cloudCoverage < 70 ? 40 :
+                     inputs.cloudCoverage < 90 ? 15 : 0;
 
   // 3. Temperatur faktor (10% vekt) - kaldere = bedre (less atmospheric activity)
   const tempScore = inputs.temperature < -10 ? 100 :
                     inputs.temperature < 0 ? 80 :
                     inputs.temperature < 10 ? 50 : 20;
 
-  // 4. Breddegrad faktor (15% vekt) - nordligere = bedre
+  // 4. Breddegrad faktor (10% vekt) - nordligere = bedre
   const latScore = inputs.latitude > 68 ? 100 :
                    inputs.latitude > 66 ? 80 :
                    inputs.latitude > 64 ? 60 : 40;
@@ -48,12 +52,12 @@ export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityRes
     ? (1 - Math.abs(inputs.moonPhase - 0.5) * 2) * 100
     : 50;
 
-  // Vektet gjennomsnitt
+  // Vektet gjennomsnitt (oppdatert: skyer viktigere)
   const weightedScore =
     (kpScore * 0.40) +
-    (cloudScore * 0.30) +
+    (cloudScore * 0.35) +
     (tempScore * 0.10) +
-    (latScore * 0.15) +
+    (latScore * 0.10) +
     (moonScore * 0.05);
 
   // Normaliser til 0-100
