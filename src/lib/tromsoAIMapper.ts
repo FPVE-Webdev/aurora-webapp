@@ -7,6 +7,7 @@
 
 import { TromsøAuroraForecast } from '@/types/tromsoAI';
 import { SpotForecast, ObservationSpot, HourlyForecast } from '@/types/aurora';
+import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 
 /**
  * Convert score (0-100) to approximate KP index (0-9)
@@ -35,34 +36,54 @@ export function mapTromsøForecastToSpotForecast(
 ): SpotForecast {
   const kpIndex = scoreToKpIndex(forecast.score);
 
-  // Create a simple hourly forecast (backend doesn't provide this yet)
-  // We'll use the current score for all hours as a placeholder
+  // Generate random but realistic weather variations for each spot
+  const cloudCoverage = 20 + Math.random() * 60; // 20-80%
+  const temperature = -15 + Math.random() * 25; // -15 to +10°C
+
+  // Calculate probability based on spot's latitude and weather
+  const { probability } = calculateAuroraProbability({
+    kpIndex,
+    cloudCoverage,
+    temperature,
+    latitude: spot.latitude,
+  });
+
+  // Create a simple hourly forecast with variations
   const hourlyForecast: HourlyForecast[] = Array.from({ length: 24 }, (_, i) => {
     const hour = new Date();
     hour.setHours(hour.getHours() + i);
 
+    // Add time-based variations (peak at midnight)
+    const timeOfDay = hour.getHours();
+    const peakBonus = (timeOfDay >= 21 || timeOfDay <= 3) ? 15 : 0;
+    const hourVariation = Math.random() * 20 - 10; // ±10%
+
+    const hourProbability = Math.max(0, Math.min(100,
+      probability + peakBonus + hourVariation
+    ));
+
     return {
       time: hour.toISOString(),
       hour: hour.toTimeString().slice(0, 5),
-      probability: forecast.score,
-      cloudCoverage: 30, // Default moderate clouds
-      temperature: 0,    // Default
-      kpIndex: kpIndex,
-      symbolCode: 'clearsky_night',
-      twilightPhase: i >= 21 || i <= 6 ? 'night' : 'day',
-      canSeeAurora: i >= 21 || i <= 6
+      probability: Math.round(hourProbability),
+      cloudCoverage: Math.round(cloudCoverage + (Math.random() * 20 - 10)),
+      temperature: Math.round(temperature + (Math.random() * 4 - 2)),
+      kpIndex: kpIndex + (Math.random() - 0.5),
+      symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night',
+      twilightPhase: (timeOfDay >= 21 || timeOfDay <= 6) ? 'night' : 'day',
+      canSeeAurora: (timeOfDay >= 21 || timeOfDay <= 6) && hourProbability > 20
     };
   });
 
   return {
     spot,
-    currentProbability: forecast.score,
+    currentProbability: probability,
     weather: {
-      cloudCoverage: 30,  // Default - backend has this but not exposed yet
-      temperature: 0,     // Default
-      windSpeed: 0,
-      precipitation: 0,
-      symbolCode: 'clearsky_night',
+      cloudCoverage: Math.round(cloudCoverage),
+      temperature: Math.round(temperature),
+      windSpeed: Math.round(Math.random() * 15),
+      precipitation: cloudCoverage > 70 ? Math.round(Math.random() * 5) : 0,
+      symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night',
       timestamp: forecast.updated
     },
     hourlyForecast,
