@@ -7,6 +7,55 @@
 
 ---
 
+## 🔄 GJENOPPRETTINGSPUNKT / ROLLBACK INFO
+
+**Git Tag:** `pre-noaa-integration`
+**Commit:** `d7e11abe167ff6499ce3bed51e7c2536853e442c`
+**Opprettet:** 2025-12-25T15:14:30Z
+
+### Hvordan rulle tilbake alle endringer:
+
+```bash
+# Se alle tags
+git tag -l
+
+# Rulle tilbake til før NOAA-integrasjon
+git reset --hard pre-noaa-integration
+
+# Eller rulle tilbake og beholde lokale endringer
+git reset --soft pre-noaa-integration
+
+# Fjern uønskede filer (hvis nødvendig)
+git clean -fd
+```
+
+### Delvis rollback (bare spesifikke filer):
+
+```bash
+# Gjenopprett én fil fra taggen
+git checkout pre-noaa-integration -- <file-path>
+
+# Eksempel: Gjenopprett API route
+git checkout pre-noaa-integration -- src/app/api/aurora/hourly/route.ts
+```
+
+### Verifiser rollback-punktet:
+
+```bash
+# Se hva som var i prosjektet ved dette punktet
+git show pre-noaa-integration
+
+# Sammenlign nåværende tilstand med rollback-punktet
+git diff pre-noaa-integration
+```
+
+**⚠️ VIKTIG:** Push taggen til remote for sikkerhet:
+```bash
+git push origin pre-noaa-integration
+```
+
+---
+
 ## TABLE OF CONTENTS
 
 1. [Overview](#overview)

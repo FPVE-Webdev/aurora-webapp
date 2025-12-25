@@ -9,13 +9,14 @@ import { seededRandom, timeSeed } from '@/lib/deterministicRandom';
 const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/hourly';
 const API_KEY = process.env.TROMSO_AI_API_KEY;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+const CACHE_DURATION = 60 * 60 * 1000; // 1 hour - values should be stable for entire hour
 
 if (!API_KEY) {
   console.warn('⚠️ TROMSO_AI_API_KEY is not set! API calls will fail.');
 }
 
-let cache: { data: any; timestamp: number; hours: number } | null = null;
+// Cache key includes current hour to ensure stability within the hour
+let cache: { data: any; timestamp: number; hours: number; cacheKey: string } | null = null;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -31,13 +32,18 @@ export async function GET(request: Request) {
     );
   }
 
-  // Check cache
-  if (cache && cache.hours === hours && (Date.now() - cache.timestamp < CACHE_DURATION)) {
+  // Create cache key based on current hour to ensure stability
+  const now = new Date();
+  const cacheKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}-${hours}`;
+
+  // Check cache with hour-based key
+  if (cache && cache.cacheKey === cacheKey && (Date.now() - cache.timestamp < CACHE_DURATION)) {
     return NextResponse.json({
       ...cache.data,
       meta: {
         cached: true,
-        cache_age: Math.floor((Date.now() - cache.timestamp) / 1000)
+        cache_age: Math.floor((Date.now() - cache.timestamp) / 1000),
+        cache_key: cacheKey
       }
     });
   }
@@ -66,18 +72,20 @@ export async function GET(request: Request) {
 
     if (response.ok) {
       const data = await response.json();
-      
+
       cache = {
         data,
         timestamp: Date.now(),
-        hours
+        hours,
+        cacheKey
       };
 
       return NextResponse.json({
         ...data,
         meta: {
           cached: false,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          cache_key: cacheKey
         }
       });
     }
@@ -90,13 +98,22 @@ export async function GET(request: Request) {
 
   // Fallback: Generate mock hourly data
   const mockData = generateMockHourly(hours, location);
-  
+
+  // Cache the mock data with hour-based key for stability
+  cache = {
+    data: mockData,
+    timestamp: Date.now(),
+    hours,
+    cacheKey
+  };
+
   return NextResponse.json({
     ...mockData,
     meta: {
       cached: false,
       fallback: true,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      cache_key: cacheKey
     }
   });
 }

@@ -47,14 +47,17 @@ export function DarkHoursInfo({ latitude, locationName }: DarkHoursInfoProps) {
   };
 
   return (
-    <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-4">
+    <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-4 hover:border-primary/30 transition-all duration-300 hover:scale-[1.02]">
       <div className="flex items-center gap-2 mb-3">
-        <Moon className="w-5 h-5 text-primary" />
+        <Moon className={cn(
+          "w-5 h-5",
+          twilight.canSeeAurora ? "text-primary animate-pulse" : "text-yellow-400"
+        )} />
         <h3 className="font-semibold text-white">
           Lysforhold
         </h3>
-        <span className="text-sm text-white/60">
-          ({locationName}, {latitude.toFixed(1)}°N)
+        <span className="text-xs text-white/60 bg-white/5 px-2 py-0.5 rounded-full">
+          {locationName}, {latitude.toFixed(1)}°N
         </span>
       </div>
 

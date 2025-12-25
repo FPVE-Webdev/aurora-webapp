@@ -38,6 +38,13 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
     return 'Dårlige forhold';
   };
 
+  const getProbabilityEmoji = (probability: number): string => {
+    if (probability >= 70) return '🌟';
+    if (probability >= 50) return '🟢';
+    if (probability >= 30) return '🟡';
+    return '❄️';
+  };
+
   // Dynamic glow strength based on probability
   const glowStrength =
     currentProbability >= 80 ? auroraGlows.strong :
@@ -75,14 +82,20 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
       >
         {/* Main probability display */}
         <div className="text-center mb-6">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Zap className="w-6 h-6 text-primary" />
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Zap className="w-6 h-6 text-primary animate-pulse" />
             <h2 className="text-lg font-display font-semibold text-white">Nordlyssannsynlighet</h2>
           </div>
-          <div className={`text-6xl font-display font-bold ${getProbabilityColor(currentProbability)}`}>
+
+          {/* Emoji Indicator */}
+          <div className="text-5xl mb-2 animate-bounce" style={{ animationDuration: '2s' }}>
+            {getProbabilityEmoji(currentProbability)}
+          </div>
+
+          <div className={`text-7xl font-display font-black ${getProbabilityColor(currentProbability)} mb-2`}>
             {currentProbability}%
           </div>
-          <p className="text-sm text-white/70 mt-1">
+          <p className="text-base font-semibold text-white/90 bg-white/10 px-4 py-2 rounded-full inline-block">
             {getProbabilityLabel(currentProbability)} i kveld
           </p>
         </div>
