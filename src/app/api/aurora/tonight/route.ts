@@ -13,7 +13,7 @@ const DEFAULT_LAT = 69.6492;
 const DEFAULT_LON = 18.9553;
 
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
-const CACHE_VERSION = 2; // Increment to invalidate old cache
+const CACHE_VERSION = 3; // Increment to invalidate old cache
 
 let cache: { data: any; timestamp: number; version: number } | null = null;
 
