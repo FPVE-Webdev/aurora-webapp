@@ -5,6 +5,34 @@
 export type AuroraLevel = 'low' | 'medium' | 'high';
 export type ConfidenceLevel = 'low' | 'medium' | 'high';
 
+export interface ExtendedMetrics {
+  solar_wind: {
+    speed: number;
+    unit: string;
+    status: string;
+    favorable: boolean;
+  };
+  bz_factor: {
+    value: number;
+    unit: string;
+    status: string;
+    favorable: boolean;
+  };
+  particle_density: {
+    value: number;
+    unit: string;
+    status: string;
+  };
+  updated: string;
+}
+
+export interface ViewingWindow {
+  start: string;
+  end: string;
+  peakTime: string;
+  confidence: 'low' | 'medium' | 'high';
+}
+
 export interface TromsøAuroraForecast {
   score: number;           // 0-100
   level: AuroraLevel;
@@ -16,6 +44,8 @@ export interface TromsøAuroraForecast {
   updated: string;         // ISO timestamp
   location?: string;
   kp?: number;             // KP index 0-9 (optional, derived from score if not provided)
+  extended_metrics?: ExtendedMetrics | null;  // Phase 2: Advanced solar wind metrics
+  viewing_window?: ViewingWindow;  // Phase 2: Best viewing window
 }
 
 export interface TromsøMultidayResponse {

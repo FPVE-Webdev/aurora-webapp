@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuroraData } from '@/hooks/useAuroraData';
 import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
 import { AuroraStatusCard } from '@/components/aurora/AuroraStatusCard';
@@ -9,12 +10,14 @@ import { DarkHoursInfo } from '@/components/aurora/DarkHoursInfo';
 import { FunfactPanel } from '@/components/aurora/FunfactPanel';
 import { GoNowAlert } from '@/components/home/GoNowAlert';
 import { PremiumCTA } from '@/components/shared/PremiumCTA';
+import { ExtendedMetrics } from '@/components/aurora/ExtendedMetrics';
 import { Loader2, MapIcon } from 'lucide-react';
 import Link from 'next/link';
 import { FUNFACTS } from '@/lib/funfactEngine';
 import { shouldShowGoNow } from '@/lib/auroraCalculations';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { ExtendedMetrics as ExtendedMetricsType } from '@/types/tromsoAI';
 
 export default function HomePage() {
   const {
@@ -27,10 +30,30 @@ export default function HomePage() {
   } = useAuroraData();
   const { isPremium } = usePremium();
   const { settings } = useAppSettings();
+  const [extendedMetrics, setExtendedMetrics] = useState<ExtendedMetricsType | null>(null);
+
+  // Fetch extended metrics (Phase 2 feature)
+  useEffect(() => {
+    async function fetchExtendedMetrics() {
+      try {
+        const response = await fetch('/api/aurora/tonight?lang=no');
+        const data = await response.json();
+        if (data.extended_metrics) {
+          setExtendedMetrics(data.extended_metrics);
+        }
+      } catch (error) {
+        console.error('Failed to fetch extended metrics:', error);
+      }
+    }
+
+    fetchExtendedMetrics();
+    const interval = setInterval(fetchExtendedMetrics, 5 * 60 * 1000); // Update every 5 minutes
+    return () => clearInterval(interval);
+  }, []);
 
   // Get current spot forecast
   const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
-  
+
   // Check if we should show "Go Now" alert
   const showGoNow = currentForecast && shouldShowGoNow(currentForecast.currentProbability, selectedSpot.latitude);
 
@@ -130,6 +153,13 @@ export default function HomePage() {
               />
             )}
           </div>
+
+          {/* Extended Metrics (Phase 2 - Solar Wind Data) */}
+          {extendedMetrics && (
+            <div className="max-w-4xl mx-auto mb-8">
+              <ExtendedMetrics data={extendedMetrics} lang="no" />
+            </div>
+          )}
 
           {/* Hourly Forecast */}
           <div className="max-w-4xl mx-auto mb-8">
