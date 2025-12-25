@@ -7,8 +7,8 @@
 
 const NOAA_OVATION_URL = 'https://services.swpc.noaa.gov/json/ovation_aurora_latest.json';
 const NOAA_KP_URL = 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json';
-const NOAA_ACE_MAG_URL = 'https://services.swpc.noaa.gov/json/ace/mag/ace_mag_1m.json';
-const NOAA_ACE_SWEPAM_URL = 'https://services.swpc.noaa.gov/json/ace/swepam/ace_swepam_1m.json';
+const NOAA_SOLAR_WIND_MAG_URL = 'https://services.swpc.noaa.gov/products/solar-wind/mag-2-hour.json';
+const NOAA_SOLAR_WIND_PLASMA_URL = 'https://services.swpc.noaa.gov/products/solar-wind/plasma-2-hour.json';
 const TIMEOUT_MS = 8000;
 const USER_AGENT = 'Aurora.Tromso.ai/1.0 (support@tromso.ai)';
 
@@ -173,22 +173,23 @@ export async function fetchPlanetaryKp(): Promise<number> {
 }
 
 /**
- * Fetch solar wind data from NOAA ACE satellite
+ * Fetch solar wind data from NOAA
  * Includes Bz factor (critical for aurora prediction)
+ * Data format: Array format [time_tag, ...values]
  */
 export async function fetchSolarWind(): Promise<NOAASolarWindData | null> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    // Fetch both magnetometer (Bz) and SWEPAM (speed, density) data
-    const [magResponse, swepamResponse] = await Promise.all([
-      fetch(NOAA_ACE_MAG_URL, {
+    // Fetch both magnetometer (Bz) and plasma (speed, density) data
+    const [magResponse, plasmaResponse] = await Promise.all([
+      fetch(NOAA_SOLAR_WIND_MAG_URL, {
         signal: controller.signal,
         headers: { 'User-Agent': USER_AGENT },
         next: { revalidate: 180 }, // 3 minutes
       }),
-      fetch(NOAA_ACE_SWEPAM_URL, {
+      fetch(NOAA_SOLAR_WIND_PLASMA_URL, {
         signal: controller.signal,
         headers: { 'User-Agent': USER_AGENT },
         next: { revalidate: 180 },
@@ -197,33 +198,39 @@ export async function fetchSolarWind(): Promise<NOAASolarWindData | null> {
 
     clearTimeout(timeoutId);
 
-    if (!magResponse.ok || !swepamResponse.ok) {
-      throw new Error('NOAA ACE API returned error');
+    if (!magResponse.ok || !plasmaResponse.ok) {
+      throw new Error('NOAA solar wind API returned error');
     }
 
     const magData = await magResponse.json();
-    const swepamData = await swepamResponse.json();
+    const plasmaData = await plasmaResponse.json();
 
-    // Get latest reading (last element in array)
+    // Data format: Array of arrays
+    // First row is header: ["time_tag", "bx_gsm", "by_gsm", "bz_gsm", "lon_gsm", "lat_gsm", "bt"]
+    // Mag indices: 0=time_tag, 3=bz_gsm, 6=bt
+    // Plasma format: ["time_tag", "density", "speed", "temperature"]
+    // Plasma indices: 0=time_tag, 1=density, 2=speed, 3=temperature
+
+    // Get latest reading (last row, skip header at index 0)
     const latestMag = magData[magData.length - 1];
-    const latestSwepam = swepamData[swepamData.length - 1];
+    const latestPlasma = plasmaData[plasmaData.length - 1];
 
-    if (!latestMag || !latestSwepam) {
-      throw new Error('No ACE data available');
+    if (!latestMag || !latestPlasma || !Array.isArray(latestMag) || !Array.isArray(latestPlasma)) {
+      throw new Error('No solar wind data available');
     }
 
     return {
-      time_tag: latestMag.time_tag,
-      bz_gsm: parseFloat(latestMag.bz_gsm) || 0,
-      bt: parseFloat(latestMag.bt) || 0,
-      speed: parseFloat(latestSwepam.speed) || 400,
-      density: parseFloat(latestSwepam.density) || 1,
-      temperature: parseFloat(latestSwepam.temperature) || 0,
+      time_tag: latestMag[0],
+      bz_gsm: parseFloat(latestMag[3]) || 0,
+      bt: parseFloat(latestMag[6]) || 0,
+      speed: parseFloat(latestPlasma[2]) || 400,
+      density: parseFloat(latestPlasma[1]) || 1,
+      temperature: parseFloat(latestPlasma[3]) || 0,
     };
   } catch (error) {
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
-        console.error('⏱️ NOAA ACE fetch timeout');
+        console.error('⏱️ NOAA solar wind fetch timeout');
       } else {
         console.error('❌ Failed to fetch solar wind:', error.message);
       }
