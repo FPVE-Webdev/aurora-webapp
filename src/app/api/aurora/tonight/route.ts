@@ -1,25 +1,26 @@
 /**
  * Aurora API - Tonight Endpoint
- * Fetches data from Supabase Edge Function or returns cached/mock data
+ * Fetches REAL aurora forecast for tonight from NOAA SWPC and Met.no
+ * NO MOCK DATA in production
  */
 
 import { NextResponse } from 'next/server';
-import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
+import { fetchCurrentKp, calculateAuroraProbability, kpToLevel } from '@/lib/fetchers/noaa';
+import { fetchWeather } from '@/lib/fetchers/metno';
 
-const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/tonight';
-const API_KEY = process.env.TROMSO_AI_API_KEY;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Tromsø coordinates (default location)
+const DEFAULT_LAT = 69.6492;
+const DEFAULT_LON = 18.9553;
+
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
-
-if (!API_KEY) {
-  console.warn('⚠️ TROMSO_AI_API_KEY is not set! API calls will fail.');
-}
 
 let cache: { data: any; timestamp: number } | null = null;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const lang = searchParams.get('lang') || 'no';
+  const lat = parseFloat(searchParams.get('lat') || DEFAULT_LAT.toString());
+  const lon = parseFloat(searchParams.get('lon') || DEFAULT_LON.toString());
 
   // Check cache first
   if (cache && (Date.now() - cache.timestamp < CACHE_DURATION)) {
@@ -33,83 +34,109 @@ export async function GET(request: Request) {
     });
   }
 
-  // Check if API key is available
-  if (!API_KEY) {
-    console.error('❌ TROMSO_AI_API_KEY not configured, falling back to mock data');
-  } else {
-    // Try to fetch from Supabase Edge Function
-    try {
-      const headers: HeadersInit = {
-        'X-API-Key': API_KEY,
-        'Content-Type': 'application/json',
-      };
+  try {
+    // Fetch real data from NOAA and Met.no in parallel
+    const [kp, weather] = await Promise.all([
+      fetchCurrentKp(),
+      fetchWeather(lat, lon),
+    ]);
 
-      // Add Supabase anon key if available
-      if (SUPABASE_ANON_KEY) {
-        headers['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`;
+    // Calculate aurora probability
+    const probability = calculateAuroraProbability(kp, weather.cloudCoverage);
+    const score = Math.round((kp / 9) * 100); // Convert KP to 0-100 score
+    const level = kpToLevel(kp);
+
+    // Generate localized content for tonight
+    const forecast = {
+      score,
+      kp: Math.round(kp * 10) / 10,
+      probability,
+      level,
+      confidence: 'high' as const,
+      headline:
+        lang === 'no'
+          ? probability > 70
+            ? 'Utmerkede sjanser for nordlys i kveld!'
+            : probability > 40
+            ? 'Gode sjanser for nordlys i kveld'
+            : 'Moderate sjanser for nordlys i kveld'
+          : probability > 70
+          ? 'Excellent chances for northern lights tonight!'
+          : probability > 40
+          ? 'Good chances for northern lights tonight'
+          : 'Moderate chances for northern lights tonight',
+      summary:
+        lang === 'no'
+          ? probability > 70
+            ? `Meget sterk nordlysaktivitet forventet (KP ${kp.toFixed(1)}). ${weather.cloudCoverage < 30 ? 'Klar himmel perfekt for observasjon!' : `${weather.cloudCoverage}% skydekke kan redusere sikt.`}`
+            : probability > 40
+            ? `God nordlysaktivitet forventet (KP ${kp.toFixed(1)}). ${weather.cloudCoverage < 50 ? 'Gode værforhold.' : `${weather.cloudCoverage}% skydekke kan påvirke sikt.`}`
+            : `Moderat nordlysaktivitet (KP ${kp.toFixed(1)}). Sjekk himmelen regelmessig.`
+          : probability > 70
+          ? `Very strong aurora activity expected (KP ${kp.toFixed(1)}). ${weather.cloudCoverage < 30 ? 'Clear skies perfect for viewing!' : `${weather.cloudCoverage}% cloud cover may reduce visibility.`}`
+          : probability > 40
+          ? `Good aurora activity expected (KP ${kp.toFixed(1)}). ${weather.cloudCoverage < 50 ? 'Good weather conditions.' : `${weather.cloudCoverage}% cloud cover may affect visibility.`}`
+          : `Moderate aurora activity (KP ${kp.toFixed(1)}). Check the sky regularly.`,
+      best_time:
+        lang === 'no' ? 'Mellom 21:00 og 02:00' : 'Between 21:00 and 02:00',
+      tips:
+        lang === 'no'
+          ? [
+              'Finn et sted med lite lys',
+              'Kle deg varmt (temp: ' + weather.temperature.toFixed(1) + '°C)',
+              'Ha tålmodighet - nordlys kommer i bølger',
+            ]
+          : [
+              'Find a location with minimal light pollution',
+              'Dress warmly (temp: ' + weather.temperature.toFixed(1) + '°C)',
+              'Be patient - aurora comes in waves',
+            ],
+      updated: new Date().toISOString(),
+      weather: {
+        cloudCoverage: weather.cloudCoverage,
+        temperature: weather.temperature,
+        windSpeed: weather.windSpeed,
+        conditions: weather.conditions,
+      },
+      location: {
+        lat,
+        lon,
+        name: lat === DEFAULT_LAT && lon === DEFAULT_LON ? 'Tromsø' : 'Custom location',
+      },
+    };
+
+    // Cache the response
+    cache = {
+      data: forecast,
+      timestamp: Date.now()
+    };
+
+    console.log(`✅ Real aurora forecast: KP ${kp.toFixed(1)}, ${weather.cloudCoverage}% clouds, ${probability}% tonight`);
+
+    return NextResponse.json({
+      ...forecast,
+      meta: {
+        cached: false,
+        source: 'NOAA SWPC + Met.no',
+        timestamp: new Date().toISOString()
       }
+    });
+  } catch (error) {
+    console.error('❌ Failed to fetch real aurora forecast:', error);
 
-      const response = await fetch(`${SUPABASE_FUNCTION_URL}?lang=${lang}`, {
-        headers,
-        next: { revalidate: 900 } // 15 minutes
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Cache the response
-        cache = {
-          data,
-          timestamp: Date.now()
-        };
-
-        console.log('✅ Fetched fresh aurora forecast from Supabase');
-        return NextResponse.json({
-          ...data,
-          meta: {
-            cached: false,
-            timestamp: new Date().toISOString()
-          }
-        });
+    // CRITICAL: In production, return error instead of mock data
+    return NextResponse.json(
+      {
+        error: 'Aurora forecast temporarily unavailable',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        retry_after: 60,
+      },
+      {
+        status: 503,
+        headers: {
+          'Retry-After': '60',
+        },
       }
-
-      console.warn('⚠️ Supabase Edge Function returned error:', response.status);
-    } catch (error) {
-      console.error('❌ Failed to fetch from Supabase:', error);
-    }
+    );
   }
-
-  // Fallback to mock data if Supabase fails
-  console.log('⚠️ Using fallback mock data');
-  const score = 72;
-  const mockForecast = {
-    score,
-    kp: scoreToKpIndex(score), // Consistent KP mapping: 72 → 6
-    level: 'good' as const,
-    confidence: 'high' as const,
-    headline:
-      lang === 'no'
-        ? 'Gode sjanser for nordlys i kveld'
-        : 'Good chances for northern lights tonight',
-    summary:
-      lang === 'no'
-        ? 'Sterk solvind og lav skydekke gir gode forhold for nordlys. Best tid å se er mellom 21:00 og 02:00.'
-        : 'Strong solar wind and low cloud cover provide good conditions for aurora. Best viewing time is between 21:00 and 02:00.',
-    best_time:
-      lang === 'no'
-        ? 'Mellom 21:00 og 02:00'
-        : 'Between 21:00 and 02:00',
-    tips:
-      lang === 'no'
-        ? ['Finn et sted med lite lys', 'Kle deg varmt', 'Ha tålmodighet']
-        : ['Find a location with minimal light pollution', 'Dress warmly', 'Be patient'],
-    updated: new Date().toISOString(),
-  };
-
-  return NextResponse.json(mockForecast, {
-    headers: {
-      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
-      'Content-Type': 'application/json',
-    },
-  });
 }

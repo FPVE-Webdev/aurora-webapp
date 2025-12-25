@@ -1,25 +1,27 @@
 /**
  * Aurora API - Now Endpoint
- * Fetches current aurora data from Supabase Edge Function
+ * Fetches REAL current aurora data from NOAA SWPC and Met.no
+ * NO MOCK DATA in production
  */
 
 import { NextResponse } from 'next/server';
+import { fetchCurrentKp, calculateAuroraProbability, kpToLevel } from '@/lib/fetchers/noaa';
+import { fetchWeather } from '@/lib/fetchers/metno';
 import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
 
-const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/now';
-const API_KEY = process.env.TROMSO_AI_API_KEY;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (more frequent for "now" data)
+// Tromsø coordinates (default location)
+const DEFAULT_LAT = 69.6492;
+const DEFAULT_LON = 18.9553;
 
-if (!API_KEY) {
-  console.warn('⚠️ TROMSO_AI_API_KEY is not set! API calls will fail.');
-}
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (live data)
 
 let cache: { data: any; timestamp: number } | null = null;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const lang = searchParams.get('lang') || 'no';
+  const lat = parseFloat(searchParams.get('lat') || DEFAULT_LAT.toString());
+  const lon = parseFloat(searchParams.get('lon') || DEFAULT_LON.toString());
 
   // Check cache first
   if (cache && (Date.now() - cache.timestamp < CACHE_DURATION)) {
@@ -32,80 +34,100 @@ export async function GET(request: Request) {
     });
   }
 
-  // Check if API key is available
-  if (!API_KEY) {
-    console.error('❌ TROMSO_AI_API_KEY not configured, falling back to mock data');
-  } else {
-    // Try to fetch from Supabase Edge Function
-    try {
-      const headers: HeadersInit = {
-        'X-API-Key': API_KEY,
-        'Content-Type': 'application/json',
-      };
+  try {
+    // Fetch real data from NOAA and Met.no in parallel
+    const [kp, weather] = await Promise.all([
+      fetchCurrentKp(),
+      fetchWeather(lat, lon),
+    ]);
 
-      if (SUPABASE_ANON_KEY) {
-        headers['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`;
+    // Calculate aurora probability
+    const probability = calculateAuroraProbability(kp, weather.cloudCoverage);
+    const score = Math.round((kp / 9) * 100); // Convert KP to 0-100 score
+    const level = kpToLevel(kp);
+
+    // Generate localized content
+    const forecast = {
+      score,
+      kp: Math.round(kp * 10) / 10,
+      probability,
+      level,
+      confidence: 'high' as const,
+      headline:
+        lang === 'no'
+          ? probability > 70
+            ? 'Nordlys synlig akkurat nå!'
+            : probability > 40
+            ? 'Nordlys mulig nå'
+            : 'Lave sjanser for nordlys nå'
+          : probability > 70
+          ? 'Northern lights visible right now!'
+          : probability > 40
+          ? 'Northern lights possible now'
+          : 'Low chances for aurora now',
+      summary:
+        lang === 'no'
+          ? probability > 70
+            ? `Sterk nordlysaktivitet (KP ${kp.toFixed(1)}). Gå ut nå for beste sjanse!`
+            : probability > 40
+            ? `Moderat nordlysaktivitet (KP ${kp.toFixed(1)}). Sjekk himmelen regelmessig.`
+            : `Lav nordlysaktivitet (KP ${kp.toFixed(1)}). Vær tålmodig.`
+          : probability > 70
+          ? `Strong aurora activity (KP ${kp.toFixed(1)}). Go outside now for best chance!`
+          : probability > 40
+          ? `Moderate aurora activity (KP ${kp.toFixed(1)}). Check the sky regularly.`
+          : `Low aurora activity (KP ${kp.toFixed(1)}). Be patient.`,
+      best_time: lang === 'no' ? 'Akkurat nå' : 'Right now',
+      tips:
+        lang === 'no'
+          ? ['Gå bort fra bylys', 'La øynene tilpasse seg mørket (10 min)', 'Se mot nord']
+          : ['Move away from city lights', 'Let your eyes adjust to darkness (10 min)', 'Look north'],
+      updated: new Date().toISOString(),
+      weather: {
+        cloudCoverage: weather.cloudCoverage,
+        temperature: weather.temperature,
+        windSpeed: weather.windSpeed,
+        conditions: weather.conditions,
+      },
+      location: {
+        lat,
+        lon,
+        name: lat === DEFAULT_LAT && lon === DEFAULT_LON ? 'Tromsø' : 'Custom location',
+      },
+    };
+
+    // Cache the response
+    cache = {
+      data: forecast,
+      timestamp: Date.now()
+    };
+
+    console.log(`✅ Real aurora data: KP ${kp.toFixed(1)}, ${weather.cloudCoverage}% clouds, ${probability}% probability`);
+
+    return NextResponse.json({
+      ...forecast,
+      meta: {
+        cached: false,
+        source: 'NOAA SWPC + Met.no',
+        timestamp: new Date().toISOString()
       }
-
-    const response = await fetch(`${SUPABASE_FUNCTION_URL}?lang=${lang}`, {
-      headers,
-      next: { revalidate: 300 } // 5 minutes
     });
+  } catch (error) {
+    console.error('❌ Failed to fetch real aurora data:', error);
 
-    if (response.ok) {
-      const data = await response.json();
-      
-      cache = {
-        data,
-        timestamp: Date.now()
-      };
-
-      return NextResponse.json({
-        ...data,
-        meta: {
-          cached: false,
-          timestamp: new Date().toISOString()
-        }
-      });
-    }
-
-      console.warn('⚠️ Supabase Edge Function returned error:', response.status);
-    } catch (error) {
-      console.error('❌ Failed to fetch from Supabase:', error);
-    }
+    // CRITICAL: In production, return error instead of mock data
+    return NextResponse.json(
+      {
+        error: 'Aurora data temporarily unavailable',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        retry_after: 60,
+      },
+      {
+        status: 503,
+        headers: {
+          'Retry-After': '60',
+        },
+      }
+    );
   }
-
-  // Fallback to mock data
-  const score = 68;
-  const mockForecast = {
-    score,
-    kp: scoreToKpIndex(score), // Consistent KP mapping: 68 → 5
-    level: 'good' as const,
-    confidence: 'high' as const,
-    headline:
-      lang === 'no'
-        ? 'Nordlys synlig akkurat nå'
-        : 'Northern lights visible right now',
-    summary:
-      lang === 'no'
-        ? 'Moderate til sterk nordlysaktivitet observert. Gå ut nå for beste sjanse å se det!'
-        : 'Moderate to strong aurora activity observed. Go outside now for the best chance to see it!',
-    best_time:
-      lang === 'no'
-        ? 'Akkurat nå'
-        : 'Right now',
-    tips:
-      lang === 'no'
-        ? ['Gå bort fra bylys', 'La øynene tilpasse seg mørket', 'Se mot nord']
-        : ['Move away from city lights', 'Let your eyes adjust to darkness', 'Look north'],
-    updated: new Date().toISOString(),
-  };
-
-  return NextResponse.json(mockForecast, {
-    headers: {
-      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
-      'Content-Type': 'application/json',
-    },
-  });
 }
-
