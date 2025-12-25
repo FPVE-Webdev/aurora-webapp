@@ -37,10 +37,12 @@ export function mapTromsøForecastToSpotForecast(
   // Prioritize KP from API if available, otherwise derive from score
   const kpIndex = forecast.kp ?? scoreToKpIndex(forecast.score);
 
-  // Use provided weather data or generate realistic fallbacks
-  const cloudCoverage = weatherData?.cloudCoverage ?? (20 + Math.random() * 60);
-  const temperature = weatherData?.temperature ?? (-15 + Math.random() * 25);
-  const windSpeed = weatherData?.windSpeed ?? Math.round(Math.random() * 15);
+  // Use provided weather data or generate realistic fallbacks based on spot location
+  // Use spot ID hash for deterministic but varied fallbacks
+  const spotHash = spot.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const cloudCoverage = weatherData?.cloudCoverage ?? (30 + (spotHash % 50));
+  const temperature = weatherData?.temperature ?? (-10 + (spotHash % 20));
+  const windSpeed = weatherData?.windSpeed ?? Math.round(5 + (spotHash % 10));
 
   // Calculate probability based on spot's latitude and REAL weather
   const { probability } = calculateAuroraProbability({
@@ -58,23 +60,28 @@ export function mapTromsøForecastToSpotForecast(
     // Add time-based variations (peak at midnight)
     const timeOfDay = hour.getHours();
     const peakBonus = (timeOfDay >= 21 || timeOfDay <= 3) ? 15 : 0;
-    const hourVariation = Math.random() * 20 - 10; // ±10%
+
+    // Deterministic variation based on hour index (sine wave for natural variation)
+    const hourVariation = Math.sin(i * 0.5) * 10; // ±10% variation based on hour
 
     const hourProbability = Math.max(0, Math.min(100,
       probability + peakBonus + hourVariation
     ));
 
-    // Ensure cloudCoverage stays within 0-100 range
+    // Deterministic cloud coverage variation (cosine wave offset from probability)
+    const cloudVariation = Math.cos(i * 0.7) * 10;
     const hourCloudCoverage = Math.max(0, Math.min(100,
-      cloudCoverage + (Math.random() * 20 - 10)
+      cloudCoverage + cloudVariation
     ));
 
-    // Small temperature variation ±2°C
-    const hourTemperature = temperature + (Math.random() * 4 - 2);
+    // Small temperature variation based on time of day (colder at night)
+    const tempVariation = Math.sin((i - 12) * 0.26) * 2; // ±2°C variation
+    const hourTemperature = temperature + tempVariation;
 
-    // Keep KP index within valid range (0-9)
+    // Keep KP index stable or slight deterministic variation
+    const kpVariation = Math.sin(i * 0.3) * 0.5;
     const hourKpIndex = Math.max(0, Math.min(9,
-      kpIndex + (Math.random() - 0.5)
+      kpIndex + kpVariation
     ));
 
     return {
@@ -97,7 +104,7 @@ export function mapTromsøForecastToSpotForecast(
       cloudCoverage: Math.round(cloudCoverage),
       temperature: Math.round(temperature),
       windSpeed: Math.round(windSpeed),
-      precipitation: cloudCoverage > 70 ? Math.round(Math.random() * 5) : 0,
+      precipitation: cloudCoverage > 70 ? Math.round((spotHash % 5)) : 0,
       symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night',
       timestamp: forecast.updated
     },
