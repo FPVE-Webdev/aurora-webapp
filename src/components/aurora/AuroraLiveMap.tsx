@@ -22,6 +22,20 @@ const AuroraMapFullscreen = dynamic(
   }
 );
 
+interface HourlyData {
+  time: string;
+  hour: number;
+  probability: number;
+  kp: number;
+  weather: {
+    cloudCoverage: number;
+    temperature: number;
+    windSpeed: number;
+    conditions: string;
+  };
+  visibility: string;
+}
+
 interface SpotForecast {
   spot: ObservationSpot;
   currentProbability: number;
@@ -32,6 +46,7 @@ interface SpotForecast {
     windSpeed: number;
     symbolCode: string;
   };
+  hourlyForecast?: HourlyData[];
 }
 
 export function AuroraLiveMap() {
@@ -52,16 +67,23 @@ export function AuroraLiveMap() {
       setIsLoading(true);
 
       // Fetch current aurora conditions from main API
-      // Always use local API endpoints (relative URL)
       const response = await fetch('/api/aurora/now?lang=no');
       const data = await response.json();
 
       const kpIndex = scoreToKpIndex(data.score || 50);
       setCurrentKp(kpIndex);
 
-      // Fetch weather data for all spots in parallel (same as useAuroraData)
+      // Fetch 12-hour forecast data for Tromsø location
+      const hourlyRes = await fetch('/api/aurora/hourly?hours=12&location=tromso');
+      const hourlyData = hourlyRes.ok ? await hourlyRes.json() : null;
+      const hourlyForecast = hourlyData?.hourly_forecast || [];
+
+      // Fetch weather data for all spots in parallel
       const spotForecastsPromises = OBSERVATION_SPOTS.map(async (spot) => {
         try {
+          // Use hourly forecast data for the current hour if available (for Tromsø)
+          const currentHourData = hourlyForecast.find((h: HourlyData) => h.hour === new Date().getHours());
+
           // Fetch real weather for this spot
           const weatherRes = await fetch(`/api/weather/${spot.latitude}/${spot.longitude}`);
           const weatherData = weatherRes.ok ? await weatherRes.json() : null;
@@ -88,11 +110,12 @@ export function AuroraLiveMap() {
               temperature: Math.round(temperature),
               windSpeed: Math.round(windSpeed),
               symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night'
-            }
+            },
+            // Add hourly forecast for animation (only for Tromsø for now)
+            hourlyForecast: spot.id === 'tromso' ? hourlyForecast : undefined
           };
         } catch (error) {
           console.warn(`Failed to fetch weather for ${spot.name}, using fallback`);
-          // Fallback with estimated values
           const cloudCoverage = 20 + Math.random() * 60;
           const temperature = -15 + Math.random() * 25;
           const { probability } = calculateAuroraProbability({
@@ -333,6 +356,7 @@ export function AuroraLiveMap() {
               selectedSpotId={selectedSpotId}
               onSelectSpot={setSelectedSpotId}
               kpIndex={currentKp}
+              animationHour={animationProgress}
             />
           )}
         </div>

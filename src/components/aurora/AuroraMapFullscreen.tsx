@@ -5,6 +5,20 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 
+interface HourlyData {
+  time: string;
+  hour: number;
+  probability: number;
+  kp: number;
+  weather: {
+    cloudCoverage: number;
+    temperature: number;
+    windSpeed: number;
+    conditions: string;
+  };
+  visibility: string;
+}
+
 interface SpotForecast {
   spot: {
     id: string;
@@ -20,6 +34,7 @@ interface SpotForecast {
     windSpeed: number;
     symbolCode: string;
   };
+  hourlyForecast?: HourlyData[];
 }
 
 interface AuroraPoint {
@@ -33,6 +48,7 @@ interface Props {
   selectedSpotId: string;
   onSelectSpot: (spotId: string) => void;
   kpIndex: number;
+  animationHour?: number; // Current hour in animation (0-12)
 }
 
 function getMarkerColor(probability: number): string {
@@ -55,7 +71,7 @@ function calculateProbabilityFromOvalPosition(latitude: number, kpIndex: number)
   return probability;
 }
 
-export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelectSpot, kpIndex }: Props) {
+export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelectSpot, kpIndex, animationHour = 0 }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
@@ -239,7 +255,28 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
 
     // Add markers for each forecast
     forecasts.forEach((forecast, index) => {
-      const color = getMarkerColor(forecast.currentProbability);
+      // Get probability for current animation hour if available
+      let displayProbability = forecast.currentProbability;
+      let displayKp = forecast.kp;
+      let displayWeather = forecast.weather;
+
+      if (forecast.hourlyForecast && forecast.hourlyForecast.length > 0) {
+        const hourIndex = Math.floor(animationHour);
+        const hourData = forecast.hourlyForecast[hourIndex];
+
+        if (hourData) {
+          displayProbability = hourData.probability;
+          displayKp = hourData.kp;
+          displayWeather = {
+            cloudCoverage: hourData.weather.cloudCoverage,
+            temperature: hourData.weather.temperature,
+            windSpeed: hourData.weather.windSpeed,
+            symbolCode: hourData.weather.conditions
+          };
+        }
+      }
+
+      const color = getMarkerColor(displayProbability);
 
       const icon = L.divIcon({
         className: 'aurora-marker',
@@ -258,7 +295,7 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
             cursor: pointer;
           "
           >
-            ${forecast.currentProbability}%
+            ${displayProbability}%
           </div>
         `,
         iconSize: [50, 24],
@@ -270,10 +307,13 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
         .bindPopup(`
           <div style="text-align: center; padding: 4px; min-width: 120px;">
             <p style="font-weight: bold; margin: 0 0 4px 0; font-size: 14px;">${forecast.spot.name}</p>
-            <p style="font-size: 20px; font-weight: bold; margin: 0 0 4px 0; color: ${color};">${forecast.currentProbability}%</p>
-            <p style="font-size: 11px; color: #666; margin: 0;">
-              ☁️ ${Math.round(forecast.weather.cloudCoverage)}% • ${Math.round(forecast.weather.temperature)}°C
+            <p style="font-size: 20px; font-weight: bold; margin: 0 0 4px 0; color: ${color};">${displayProbability}%</p>
+            <p style="font-size: 11px; color: #666; margin: 0 0 4px 0;">
+              ☁️ ${Math.round(displayWeather.cloudCoverage)}% • ${Math.round(displayWeather.temperature)}°C
             </p>
+            <a href="/forecast" style="display: inline-block; margin-top: 4px; padding: 4px 12px; background: ${color}; color: white; text-decoration: none; border-radius: 8px; font-size: 11px; font-weight: 600;">
+              Se 12t prognose →
+            </a>
           </div>
         `);
 
@@ -283,7 +323,7 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
 
       markersRef.current.push(marker);
     });
-  }, [forecasts, onSelectSpot]);
+  }, [forecasts, onSelectSpot, animationHour]);
 
   // Add dynamic halo badges along aurora oval
   useEffect(() => {
