@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { fetchCurrentKp, calculateAuroraProbability, kpToLevel } from '@/lib/fetchers/noaa';
+import { fetchCurrentKp, fetchSolarWind, calculateAuroraProbability, kpToLevel } from '@/lib/fetchers/noaa';
 import { fetchWeather } from '@/lib/fetchers/metno';
 import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
 
@@ -36,13 +36,20 @@ export async function GET(request: Request) {
 
   try {
     // Fetch real data from NOAA and Met.no in parallel
-    const [kp, weather] = await Promise.all([
+    const [kp, weather, solarWind] = await Promise.all([
       fetchCurrentKp(),
       fetchWeather(lat, lon),
+      fetchSolarWind(),
     ]);
 
-    // Calculate aurora probability
-    const probability = calculateAuroraProbability(kp, weather.cloudCoverage);
+    // Calculate aurora probability with enhanced factors
+    const probability = calculateAuroraProbability(
+      kp,
+      weather.cloudCoverage,
+      solarWind?.bz_gsm,
+      solarWind?.speed,
+      solarWind?.density
+    );
     const score = Math.round((kp / 9) * 100); // Convert KP to 0-100 score
     const level = kpToLevel(kp);
 

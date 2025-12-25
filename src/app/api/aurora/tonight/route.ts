@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { fetchCurrentKp, calculateAuroraProbability, kpToLevel } from '@/lib/fetchers/noaa';
+import { fetchCurrentKp, fetchSolarWind, calculateAuroraProbability, kpToLevel, calculateBestViewingWindow } from '@/lib/fetchers/noaa';
 import { fetchWeather } from '@/lib/fetchers/metno';
 
 // Tromsø coordinates (default location)
@@ -36,15 +36,25 @@ export async function GET(request: Request) {
 
   try {
     // Fetch real data from NOAA and Met.no in parallel
-    const [kp, weather] = await Promise.all([
+    const [kp, weather, solarWind] = await Promise.all([
       fetchCurrentKp(),
       fetchWeather(lat, lon),
+      fetchSolarWind(),
     ]);
 
-    // Calculate aurora probability
-    const probability = calculateAuroraProbability(kp, weather.cloudCoverage);
+    // Calculate aurora probability with enhanced factors
+    const probability = calculateAuroraProbability(
+      kp,
+      weather.cloudCoverage,
+      solarWind?.bz_gsm,
+      solarWind?.speed,
+      solarWind?.density
+    );
     const score = Math.round((kp / 9) * 100); // Convert KP to 0-100 score
     const level = kpToLevel(kp);
+
+    // Calculate best viewing window
+    const viewingWindow = calculateBestViewingWindow(kp, lat);
 
     // Generate localized content for tonight
     const forecast = {
@@ -68,17 +78,18 @@ export async function GET(request: Request) {
       summary:
         lang === 'no'
           ? probability > 70
-            ? `Meget sterk nordlysaktivitet forventet (KP ${kp.toFixed(1)}). ${weather.cloudCoverage < 30 ? 'Klar himmel perfekt for observasjon!' : `${weather.cloudCoverage}% skydekke kan redusere sikt.`}`
+            ? `Meget sterk nordlysaktivitet forventet (KP ${kp.toFixed(1)}). ${weather.cloudCoverage < 30 ? 'Klar himmel perfekt for observasjon!' : `${weather.cloudCoverage}% skydekke kan redusere sikt.`}${solarWind?.bz_gsm && solarWind.bz_gsm < -3 ? ' Solvindfaktor svært gunstig!' : ''}`
             : probability > 40
             ? `God nordlysaktivitet forventet (KP ${kp.toFixed(1)}). ${weather.cloudCoverage < 50 ? 'Gode værforhold.' : `${weather.cloudCoverage}% skydekke kan påvirke sikt.`}`
             : `Moderat nordlysaktivitet (KP ${kp.toFixed(1)}). Sjekk himmelen regelmessig.`
           : probability > 70
-          ? `Very strong aurora activity expected (KP ${kp.toFixed(1)}). ${weather.cloudCoverage < 30 ? 'Clear skies perfect for viewing!' : `${weather.cloudCoverage}% cloud cover may reduce visibility.`}`
+          ? `Very strong aurora activity expected (KP ${kp.toFixed(1)}). ${weather.cloudCoverage < 30 ? 'Clear skies perfect for viewing!' : `${weather.cloudCoverage}% cloud cover may reduce visibility.`}${solarWind?.bz_gsm && solarWind.bz_gsm < -3 ? ' Solar wind conditions excellent!' : ''}`
           : probability > 40
           ? `Good aurora activity expected (KP ${kp.toFixed(1)}). ${weather.cloudCoverage < 50 ? 'Good weather conditions.' : `${weather.cloudCoverage}% cloud cover may affect visibility.`}`
           : `Moderate aurora activity (KP ${kp.toFixed(1)}). Check the sky regularly.`,
       best_time:
-        lang === 'no' ? 'Mellom 21:00 og 02:00' : 'Between 21:00 and 02:00',
+        lang === 'no' ? `${viewingWindow.start} - ${viewingWindow.end} (topp: ${viewingWindow.peakTime})` : `${viewingWindow.start} - ${viewingWindow.end} (peak: ${viewingWindow.peakTime})`,
+      viewing_window: viewingWindow,
       tips:
         lang === 'no'
           ? [
