@@ -7,8 +7,8 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 
-const NOAA_SPEED_URL = 'https://services.swpc.noaa.gov/products/solar-wind/speed.json';
-const NOAA_MAG_URL = 'https://services.swpc.noaa.gov/products/solar-wind/mag-6-hour.json';
+const NOAA_PLASMA_URL = 'https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json';
+const NOAA_MAG_URL = 'https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json';
 const CACHE_TTL = 300000; // 5 minutes in milliseconds
 
 // In-memory cache
@@ -62,13 +62,13 @@ export async function GET(request: Request) {
       });
     }
 
-    // Fetch both speed and magnetic field data in parallel
-    const [speedResponse, magResponse] = await Promise.all([
-      axios.get<[string, number][]>(NOAA_SPEED_URL, {
+    // Fetch both plasma (speed) and magnetic field data in parallel
+    const [plasmaResponse, magResponse] = await Promise.all([
+      axios.get<any[]>(NOAA_PLASMA_URL, {
         timeout: 10000,
         headers: { 'User-Agent': 'aurora.tromso.ai/1.0' },
       }),
-      axios.get<[string, number][]>(NOAA_MAG_URL, {
+      axios.get<any[]>(NOAA_MAG_URL, {
         timeout: 10000,
         headers: { 'User-Agent': 'aurora.tromso.ai/1.0' },
       }),
@@ -76,35 +76,45 @@ export async function GET(request: Request) {
 
     // Validate responses
     if (
-      !speedResponse.data ||
-      !Array.isArray(speedResponse.data) ||
-      speedResponse.data.length === 0
+      !plasmaResponse.data ||
+      !Array.isArray(plasmaResponse.data) ||
+      plasmaResponse.data.length < 2
     ) {
-      throw new Error('Invalid speed data from NOAA');
+      throw new Error('Invalid plasma data from NOAA');
     }
 
     if (
       !magResponse.data ||
       !Array.isArray(magResponse.data) ||
-      magResponse.data.length === 0
+      magResponse.data.length < 2
     ) {
       throw new Error('Invalid magnetic field data from NOAA');
     }
 
-    // Extract latest values
-    // NOAA format: [["2025-12-25 13:00", 450.2], ...]
-    const speedData = speedResponse.data.slice(1); // Skip header row
+    // NOAA format: [["time_tag","density","speed","temperature"], ["2025-12-25 13:00", "2.10", "629.7", "556641"], ...]
+    const plasmaData = plasmaResponse.data.slice(1); // Skip header row
     const magData = magResponse.data.slice(1); // Skip header row
 
-    const latestSpeed = speedData[speedData.length - 1][1];
-    const latestBz = magData[magData.length - 1][1];
+    // Get latest valid speed (filter out nulls)
+    const validPlasma = plasmaData.filter((entry) => entry[2] !== null && entry[2] !== undefined);
+    if (validPlasma.length === 0) {
+      throw new Error('No valid plasma data available');
+    }
+    const latestSpeed = parseFloat(validPlasma[validPlasma.length - 1][2]);
 
-    // Build 24-hour history (NOAA speed data is 10-min intervals, keep last 144 points)
-    const history: SolarWindHistoryEntry[] = speedData
+    // Get latest valid Bz (third column in mag data)
+    const validMag = magData.filter((entry) => entry[2] !== null && entry[2] !== undefined);
+    if (validMag.length === 0) {
+      throw new Error('No valid magnetic field data available');
+    }
+    const latestBz = parseFloat(validMag[validMag.length - 1][2]);
+
+    // Build 24-hour history (keep last 144 points for ~24h at 10-min intervals)
+    const history: SolarWindHistoryEntry[] = validPlasma
       .slice(-144)
       .map((entry) => ({
         time: entry[0],
-        speed: entry[1],
+        speed: parseFloat(entry[2]),
       }));
 
     const status = getAuroraStatus(latestSpeed, latestBz);

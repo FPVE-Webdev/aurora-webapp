@@ -93,12 +93,14 @@ export async function GET(request: Request) {
       throw new Error('Invalid response from NOAA API');
     }
 
-    // Transform NOAA format to our format
+    // NOAA returns data as array of arrays: [["time_tag","Kp",...], ["2025-12-25 12:00", "2.33", ...], ...]
+    // Skip first row (header) and transform to our format
     const history: KpHistoryEntry[] = response.data
-      .filter((entry) => entry.kp !== null && entry.kp !== undefined)
-      .map((entry) => ({
-        time: entry.time_tag,
-        value: parseFloat(entry.kp),
+      .slice(1) // Skip header row
+      .filter((entry: any) => entry[1] !== null && entry[1] !== undefined)
+      .map((entry: any) => ({
+        time: entry[0], // time_tag is first column
+        value: parseFloat(entry[1]), // Kp is second column
       }))
       .slice(-24); // Keep last 24 hours
 
