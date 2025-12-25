@@ -1,24 +1,14 @@
 'use client';
 
-import { Building2, Key, BarChart3, Settings, LogOut } from 'lucide-react';
+import { Building2, Key, BarChart3, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    // Clear the auth cookie by calling logout API
-    await fetch('/api/admin/logout', { method: 'POST' });
-    // Force browser to forget credentials
-    router.push('/');
-    router.refresh();
-  };
 
   return (
     <div className="min-h-screen bg-arctic-900">
@@ -74,14 +64,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               >
                 Back to App
               </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-sm"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
             </div>
           </div>
         </div>

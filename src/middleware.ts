@@ -23,53 +23,14 @@ const VALID_API_KEYS = new Set([
   ...(process.env.NODE_ENV === 'development' ? ['dev_test_key'] : []),
 ]);
 
-// Admin credentials
-const ADMIN_CREDENTIALS = {
-  email: 'oystein@fpvexperience.no',
-  password: 'fvp2025Tromso%',
-};
-
 /**
  * Middleware function - runs before API routes and admin routes
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protect /admin routes with basic auth
+  // Admin routes are now public - no authentication required
   if (pathname.startsWith('/admin')) {
-    // Check for auth cookie
-    const authCookie = request.cookies.get('admin-auth');
-
-    if (!authCookie || authCookie.value !== 'authenticated') {
-      // Check for Authorization header (basic auth)
-      const authHeader = request.headers.get('authorization');
-
-      if (authHeader) {
-        const auth = authHeader.split(' ')[1];
-        const [email, password] = Buffer.from(auth, 'base64').toString().split(':');
-
-        if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
-          // Set auth cookie and continue
-          const response = NextResponse.next();
-          response.cookies.set('admin-auth', 'authenticated', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 60 * 60 * 24, // 24 hours
-          });
-          return response;
-        }
-      }
-
-      // Return 401 with WWW-Authenticate header
-      return new NextResponse('Authentication required', {
-        status: 401,
-        headers: {
-          'WWW-Authenticate': 'Basic realm="Admin Area"',
-        },
-      });
-    }
-
     return NextResponse.next();
   }
 
