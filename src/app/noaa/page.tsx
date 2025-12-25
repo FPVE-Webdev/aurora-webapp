@@ -1,10 +1,12 @@
 import KpIndexChart from '@/components/noaa/KpIndexChart';
 import SolarWindGauge from '@/components/noaa/SolarWindGauge';
 import ThreeDayForecast from '@/components/noaa/ThreeDayForecast';
+import HistoricalChart from '@/components/noaa/HistoricalChart';
+import AuroraPrediction from '@/components/noaa/AuroraPrediction';
 
 export const metadata = {
   title: 'NOAA Space Weather Data | Aurora Tromsø',
-  description: 'Real-time space weather data from NOAA SWPC - Kp index, solar wind conditions, and 3-day geomagnetic forecast',
+  description: 'Real-time space weather data from NOAA SWPC with ML predictions and historical trends',
 };
 
 export default function NoaaPage() {
@@ -23,14 +25,20 @@ export default function NoaaPage() {
 
         {/* Main Grid */}
         <div className="space-y-6">
-          {/* Row 1: Kp Index and Solar Wind side by side */}
+          {/* Row 1: ML Prediction (highlighted) */}
+          <AuroraPrediction />
+
+          {/* Row 2: Kp Index and Solar Wind side by side */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <KpIndexChart />
             <SolarWindGauge />
           </div>
 
-          {/* Row 2: 3-Day Forecast full width */}
+          {/* Row 3: 3-Day Forecast full width */}
           <ThreeDayForecast />
+
+          {/* Row 4: Historical Trends */}
+          <HistoricalChart />
 
           {/* Info Panel */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
