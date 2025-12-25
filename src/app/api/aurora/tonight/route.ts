@@ -57,6 +57,22 @@ export async function GET(request: Request) {
     // Calculate best viewing window
     const viewingWindow = calculateBestViewingWindow(kp, lat);
 
+    // Classify metrics for user-friendly display
+    const classifySolarWind = (speed: number) => {
+      if (speed > 600) return 'Very High';
+      if (speed > 450) return 'High';
+      if (speed > 350) return 'Normal';
+      return 'Low';
+    };
+
+    const classifyBz = (bz: number) => {
+      if (bz < -3) return 'Excellent';
+      if (bz < -1.5) return 'Very Good';
+      if (bz < 0) return 'Good';
+      if (bz < 1.5) return 'Neutral';
+      return 'Unfavorable';
+    };
+
     // Generate localized content for tonight
     const forecast = {
       score,
@@ -64,6 +80,28 @@ export async function GET(request: Request) {
       probability,
       level,
       confidence: 'high' as const,
+
+      // Extended metrics (Phase 2)
+      extended_metrics: solarWind ? {
+        solar_wind: {
+          speed: Math.round(solarWind.speed),
+          unit: 'km/s',
+          status: classifySolarWind(solarWind.speed),
+          favorable: solarWind.speed > 450
+        },
+        bz_factor: {
+          value: Math.round(solarWind.bz_gsm * 10) / 10,
+          unit: 'nT',
+          status: classifyBz(solarWind.bz_gsm),
+          favorable: solarWind.bz_gsm < 0
+        },
+        particle_density: {
+          value: Math.round(solarWind.density * 10) / 10,
+          unit: 'p/cm³',
+          status: solarWind.density > 5 ? 'High' : solarWind.density > 2 ? 'Normal' : 'Low'
+        },
+        updated: solarWind.time_tag
+      } : null,
       headline:
         lang === 'no'
           ? probability > 70
