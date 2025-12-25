@@ -33,9 +33,30 @@ export async function GET(request: Request) {
       fetchCurrentKp(),
     ]);
 
-    // Filter coordinates based on resolution
+    // Filter coordinates based on resolution AND geographic region
+    // Focus on Scandinavia/Northern Europe region
     const step = resolution === 'high' ? 1 : resolution === 'low' ? 4 : 2;
-    const filteredCoords = ovalData.coordinates.filter((_, i) => i % step === 0);
+
+    // Geographic bounds for Scandinavia/Northern Norway region
+    const MIN_LAT = 55;  // Southern Sweden
+    const MAX_LAT = 85;  // Arctic
+    const MIN_LON = -10; // Iceland/West Norway
+    const MAX_LON = 40;  // Eastern Finland/Russia
+
+    const filteredCoords = ovalData.coordinates.filter((coord, i) => {
+      if (i % step !== 0) return false;
+
+      const [lon, lat, aurora] = coord;
+
+      // Filter by geographic bounds and aurora intensity
+      return (
+        lat >= MIN_LAT &&
+        lat <= MAX_LAT &&
+        lon >= MIN_LON &&
+        lon <= MAX_LON &&
+        aurora >= 10 // 10% visibility threshold
+      );
+    });
 
     // Convert NOAA coordinates to GeoJSON polygon
     // Group by latitude bands to create aurora oval ring
@@ -44,15 +65,11 @@ export async function GET(request: Request) {
     filteredCoords.forEach((coord) => {
       // Coord format: [lon, lat, aurora]
       const [lon, lat, aurora] = coord;
-      // Aurora visibility threshold: only include points with significant aurora
-      if (aurora >= 10) {
-        // 10% threshold
-        const latBand = Math.round(lat / 2) * 2; // Group by 2-degree bands
-        if (!latBands[latBand]) {
-          latBands[latBand] = [];
-        }
-        latBands[latBand].push(coord);
+      const latBand = Math.round(lat / 2) * 2; // Group by 2-degree bands
+      if (!latBands[latBand]) {
+        latBands[latBand] = [];
       }
+      latBands[latBand].push(coord);
     });
 
     // Create oval polygon from lat bands (simplified oval ring)

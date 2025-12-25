@@ -175,57 +175,57 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
       return;
     }
 
-    // Find the aurora belt
+    // Find the aurora belt - data is already filtered by API for Scandinavia region
     const beltPoints = auroraData
-      .filter(p => p.probability >= 2 && p.lat >= 55 && p.lat <= 85)
+      .filter(p => p.probability >= 10) // Match API threshold
       .sort((a, b) => a.lon - b.lon);
 
-    if (beltPoints.length < 10) return;
-
-    // Group by longitude
-    const lonGroups = new Map<number, AuroraPoint[]>();
-    beltPoints.forEach(p => {
-      const lonBucket = Math.floor(p.lon / 10) * 10;
-      const group = lonGroups.get(lonBucket) || [];
-      group.push(p);
-      lonGroups.set(lonBucket, group);
-    });
-
-    // Create centerline
-    const centerlinePoints: L.LatLngExpression[] = [];
-    const sortedLons = Array.from(lonGroups.keys()).sort((a, b) => a - b);
-
-    sortedLons.forEach(lon => {
-      const group = lonGroups.get(lon);
-      if (group && group.length > 0) {
-        const maxPoint = group.reduce((max, p) => p.probability > max.probability ? p : max);
-        centerlinePoints.push([maxPoint.lat, maxPoint.lon]);
-      }
-    });
-
-    if (centerlinePoints.length > 3) {
-      // Draw aurora belt
-      const belt = L.polyline(centerlinePoints, {
-        color: 'rgba(34, 197, 94, 0.4)',
-        weight: 80,
-        opacity: 0.3,
-        smoothFactor: 3,
-        lineCap: 'round',
-        lineJoin: 'round',
-        interactive: false
-      });
-      ovalLayerRef.current.addLayer(belt);
-
-      // Add centerline
-      const centerline = L.polyline(centerlinePoints, {
-        color: '#22c55e',
-        weight: 2,
-        opacity: 0.6,
-        smoothFactor: 3,
-        interactive: false
-      });
-      ovalLayerRef.current.addLayer(centerline);
+    if (beltPoints.length < 5) {
+      console.log('⚠️ Not enough aurora oval points:', beltPoints.length);
+      return;
     }
+
+    console.log(`✅ Rendering aurora oval with ${beltPoints.length} points`);
+
+    // Create polygon coordinates from aurora data points
+    const polygonCoords: L.LatLngExpression[] = beltPoints.map(p => [p.lat, p.lon]);
+
+    // Close the polygon if needed
+    if (polygonCoords.length > 0) {
+      const first = polygonCoords[0];
+      const last = polygonCoords[polygonCoords.length - 1];
+      if (first !== last) {
+        polygonCoords.push(first);
+      }
+    }
+
+    // Calculate average intensity for color
+    const avgProbability = beltPoints.reduce((sum, p) => sum + p.probability, 0) / beltPoints.length;
+    const ovalColor = avgProbability >= 70 ? '#22c55e' : avgProbability >= 50 ? '#34d399' : '#10b981';
+    const ovalOpacity = Math.min(0.5, avgProbability / 100);
+
+    // Draw aurora oval as filled polygon
+    const ovalPolygon = L.polygon(polygonCoords, {
+      color: ovalColor,
+      fillColor: ovalColor,
+      fillOpacity: ovalOpacity * 0.4,
+      weight: 3,
+      opacity: ovalOpacity,
+      smoothFactor: 2,
+      interactive: false
+    });
+    ovalLayerRef.current.addLayer(ovalPolygon);
+
+    // Add glow effect with larger polygon
+    const glowPolygon = L.polygon(polygonCoords, {
+      color: ovalColor,
+      fillColor: 'transparent',
+      weight: 15,
+      opacity: ovalOpacity * 0.2,
+      smoothFactor: 2,
+      interactive: false
+    });
+    ovalLayerRef.current.addLayer(glowPolygon);
   }, [auroraData, showOverlay]);
 
   // Add markers for forecasts
