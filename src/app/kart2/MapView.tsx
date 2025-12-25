@@ -36,13 +36,13 @@ export default function MapView() {
 
   useEffect(() => {
     // Prevent double initialization in React StrictMode
-    if (mapInitializedRef.current || !mapboxgl || !mapContainerRef.current) return;
+    if (mapInitializedRef.current || !mapboxgl) return;
+    if (!mapContainerRef.current) return;
     mapInitializedRef.current = true;
 
     // Check if Mapbox token is configured
     if (!MAP_CONFIG.mapboxToken) {
       console.error('NEXT_PUBLIC_MAPBOX_TOKEN is not configured');
-      setMapReady(true); // Allow render to show error state
       return;
     }
 
@@ -82,19 +82,6 @@ export default function MapView() {
     };
   }, []);
 
-  // Loading state
-  if (isLoading || !mapReady) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-          <p className="text-white/70">Laster nordlyskart...</p>
-          <p className="text-xs text-white/50">Eksperimentell versjon</p>
-        </div>
-      </div>
-    );
-  }
-
   // Error state
   if (error) {
     return (
@@ -108,7 +95,7 @@ export default function MapView() {
   }
 
   // Check if Mapbox token is missing
-  if (mapReady && !MAP_CONFIG.mapboxToken) {
+  if (!MAP_CONFIG.mapboxToken) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-arctic-900">
         <div className="text-center space-y-4 max-w-md px-4">
@@ -125,6 +112,16 @@ export default function MapView() {
     <div className="relative w-full h-full bg-arctic-900">
       {/* Mapbox map container */}
       <div ref={mapContainerRef} className="w-full h-full" />
+
+      {/* Loading overlay */}
+      {(isLoading || !mapReady) && (
+        <div className="absolute inset-0 flex items-center justify-center bg-arctic-900">
+          <div className="text-center space-y-4">
+            <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
+            <p className="text-white/70">Laster nordlyskart...</p>
+          </div>
+        </div>
+      )}
 
       {/* Header overlay - floating on top of map */}
       <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none">
