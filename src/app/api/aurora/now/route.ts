@@ -14,8 +14,9 @@ const DEFAULT_LAT = 69.6492;
 const DEFAULT_LON = 18.9553;
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (live data)
+const CACHE_VERSION = 2; // Increment to invalidate old cache
 
-let cache: { data: any; timestamp: number } | null = null;
+let cache: { data: any; timestamp: number; version: number } | null = null;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -23,8 +24,8 @@ export async function GET(request: Request) {
   const lat = parseFloat(searchParams.get('lat') || DEFAULT_LAT.toString());
   const lon = parseFloat(searchParams.get('lon') || DEFAULT_LON.toString());
 
-  // Check cache first
-  if (cache && (Date.now() - cache.timestamp < CACHE_DURATION)) {
+  // Check cache first (with version validation)
+  if (cache && cache.version === CACHE_VERSION && (Date.now() - cache.timestamp < CACHE_DURATION)) {
     return NextResponse.json({
       ...cache.data,
       meta: {
@@ -106,7 +107,8 @@ export async function GET(request: Request) {
     // Cache the response
     cache = {
       data: forecast,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      version: CACHE_VERSION
     };
 
     console.log(`✅ Real aurora data: KP ${kp.toFixed(1)}, ${weather.cloudCoverage}% clouds, ${probability}% probability`);
