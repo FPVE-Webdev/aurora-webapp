@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
 
 const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/forecast';
 const API_KEY = process.env.TROMSO_AI_API_KEY;
@@ -108,18 +109,18 @@ function generateMockForecast(days: number, lang: string) {
   for (let i = 0; i < days; i++) {
     const date = new Date(baseDate);
     date.setDate(date.getDate() + i);
-    
-    // Simulate varying conditions
+
+    // Simulate varying conditions with consistent score→KP mapping
     const score = 50 + Math.floor(Math.random() * 40); // 50-90
-    const kp = 3 + Math.random() * 4; // 3-7
+    const kp = scoreToKpIndex(score); // Use consistent mapping instead of random
     const cloudCoverage = Math.floor(Math.random() * 60); // 0-60%
-    
+
     forecasts.push({
       date: date.toISOString().split('T')[0],
       score,
       level: score > 75 ? 'excellent' : score > 60 ? 'good' : 'moderate',
       confidence: score > 70 ? 'high' : 'medium',
-      kp: parseFloat(kp.toFixed(1)),
+      kp,
       weather: {
         cloudCoverage,
         temperature: Math.floor(Math.random() * 10) - 5,

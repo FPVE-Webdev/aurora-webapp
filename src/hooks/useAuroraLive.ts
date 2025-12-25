@@ -92,8 +92,9 @@ function calculateIntensityMultiplier(kp: number) {
 function generateMockAuroraData(kp: number): AuroraDataPoint[] {
   const points: AuroraDataPoint[] = [];
 
-  // Higher KP = aurora extends further south (lower lat)
-  const baseLat = 70 - kp * 1.5;
+  // KP-based geolocation (consistent with oval route)
+  // KP 3: ~72°N, KP 5: ~67°N, KP 7: ~62°N, KP 9: ~57°N
+  const baseLat = 72 - (kp - 3) * 2.5;
 
   // 2 bands: main + weaker north
   for (let lon = -180; lon <= 180; lon += 2) {

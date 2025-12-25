@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { seededRandom, timeSeed } from '@/lib/deterministicRandom';
 
 const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/hourly';
 const API_KEY = process.env.TROMSO_AI_API_KEY;
@@ -103,19 +104,23 @@ export async function GET(request: Request) {
 function generateMockHourly(hours: number, location: string) {
   const hourlyData = [];
   const baseDate = new Date();
-  const baseKp = 5 + Math.random() * 2; // Base KP around 5-7
+
+  // Deterministic base KP: same for entire day
+  const todaySeed = timeSeed(baseDate);
+  const baseKp = 5 + seededRandom(todaySeed) * 2; // Consistent 5-7 for today
 
   for (let i = 0; i < hours; i++) {
     const date = new Date(baseDate);
     date.setHours(date.getHours() + i);
-    
-    // Simulate natural variation
-    const kpVariation = (Math.sin(i / 4) + Math.random() - 0.5) * 1.5;
+
+    // Deterministic variation based on hour seed
+    const hourSeed = timeSeed(date);
+    const kpVariation = (Math.sin(i / 4) + seededRandom(hourSeed + 1) - 0.5) * 1.5;
     const kp = Math.max(0, Math.min(9, baseKp + kpVariation));
-    
-    const cloudVariation = (Math.sin(i / 6) + Math.random()) * 30;
+
+    const cloudVariation = (Math.sin(i / 6) + seededRandom(hourSeed + 2)) * 30;
     const cloudCoverage = Math.max(0, Math.min(100, 30 + cloudVariation));
-    
+
     const probability = Math.floor(
       Math.max(0, Math.min(100, (kp / 9) * 100 * (1 - cloudCoverage / 150)))
     );
@@ -127,8 +132,8 @@ function generateMockHourly(hours: number, location: string) {
       kp: parseFloat(kp.toFixed(1)),
       weather: {
         cloudCoverage: Math.floor(cloudCoverage),
-        temperature: Math.floor(Math.random() * 10) - 5,
-        windSpeed: Math.floor(Math.random() * 15) + 5,
+        temperature: Math.floor(seededRandom(hourSeed + 3) * 10) - 5,
+        windSpeed: Math.floor(seededRandom(hourSeed + 4) * 15) + 5,
         conditions: cloudCoverage < 30 ? 'clear' : cloudCoverage < 60 ? 'partly_cloudy' : 'cloudy'
       },
       visibility: cloudCoverage < 30 ? 'excellent' : cloudCoverage < 60 ? 'good' : 'poor'

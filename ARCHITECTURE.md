@@ -212,12 +212,49 @@ STRIPE_SECRET_KEY=<stripe_secret>
 
 ---
 
+## ✅ Recent Improvements (Dec 25, 2025)
+
+### Problem 1: KP Index Consistency ✅ FIXED
+**Issue:** KP values in alerts didn't match forecast KP values
+**Solution:**
+- Added `kp` field to `TromsøAuroraForecast` interface
+- `/api/aurora/tonight` and `/api/aurora/now` now return both `score` and `kp`
+- Mapper prioritizes `forecast.kp` over `scoreToKpIndex(score)` conversion
+- `/api/aurora/forecast` uses consistent `scoreToKpIndex()` mapping
+
+**Result:** Score 72 → KP 6.0 consistently across all components
+
+### Problem 2: Aurora Halo Geolocation ✅ FIXED
+**Issue:** Aurora halo badges on map were positioned too far south
+**Solution:**
+- Implemented KP-based geolocation in `/api/aurora/oval/route.ts`
+- Formula: `centerLat = 72 - (currentKp - 3) * 2.5`
+  - KP 3: ~72°N (far north)
+  - KP 5: ~67°N (moderate, south of Tromsø)
+  - KP 7: ~62°N (south)
+  - KP 9: ~57°N (extreme)
+- Updated `useAuroraLive.ts` with same geolocation logic
+
+**Result:** Aurora oval now correctly positioned relative to KP index
+
+### Problem 3: Deterministic 24-hour Forecast ✅ FIXED
+**Issue:** Hourly forecast values changed on every refresh for same hour
+**Solution:**
+- Created `/src/lib/deterministicRandom.ts` with seeded random functions
+- `timeSeed(date)` generates consistent seed for each hour
+- `/api/aurora/hourly` uses `seededRandom()` instead of `Math.random()`
+- Same hour = same values across multiple requests
+
+**Result:** Forecast stable within same hour, updates only on hour change
+
+---
+
 ## ✅ TODO: Backend Implementation
 
 ### Priority 1: Replace Mock Data
 - [ ] Connect to Supabase Edge Functions
 - [ ] Implement proper error handling
-- [ ] Add response caching
+- [x] Add response caching (DONE)
 - [ ] Test with aurora-watcher app
 
 ### Priority 2: Enhance API
@@ -258,6 +295,48 @@ Headers:
   }
 }
 ```
+
+---
+
+## 📊 Recent Improvements (25. desember 2025)
+
+### ✅ Problem 1: Konsistente KP-verdier
+**Issue:** KP-verdier i varselet matchet ikke KP-verdier i prognosen.
+
+**Løsning:**
+- Lagt til `kp` felt i `TromsøAuroraForecast` interface
+- API endpoints returnerer nå både `score` og `kp` (beregnet via `scoreToKpIndex()`)
+- Mapper prioriterer `kp` fra API, fallback til score-basert mapping
+- Forecast API bruker nå samme `scoreToKpIndex()` mapping
+
+**Filer endret:**
+- `/src/types/tromsoAI.ts`
+- `/src/app/api/aurora/tonight/route.ts`
+- `/src/app/api/aurora/now/route.ts`
+- `/src/app/api/aurora/forecast/route.ts`
+- `/src/lib/tromsoAIMapper.ts`
+
+### ✅ Problem 2: Aurora halo geolokalisering
+**Issue:** Aurora halo på kartet lå for langt sør.
+
+**Løsning:** KP-basert geolokalisering
+- KP 3: ~72°N, KP 5: ~67°N, KP 7: ~62°N, KP 9: ~57°N
+- Formel: `centerLat = 72 - (currentKp - 3) * 2.5`
+
+**Filer endret:**
+- `/src/app/api/aurora/oval/route.ts`
+- `/src/hooks/useAuroraLive.ts`
+
+### ✅ Problem 3: Deterministisk 24-timers prognose
+**Issue:** Prognosen endret seg løpende for samme klokkeslett.
+
+**Løsning:** Seed-basert random generator
+- Samme time på samme dag gir alltid samme prognose
+- Oppdateres kun ved time-skifte
+
+**Filer endret:**
+- `/src/lib/deterministicRandom.ts` (NY FIL)
+- `/src/app/api/aurora/hourly/route.ts`
 
 ---
 

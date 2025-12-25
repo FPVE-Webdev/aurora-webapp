@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
 
 const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/tonight';
 const API_KEY = process.env.TROMSO_AI_API_KEY;
@@ -80,10 +81,12 @@ export async function GET(request: Request) {
 
   // Fallback to mock data if Supabase fails
   console.log('⚠️ Using fallback mock data');
+  const score = 72;
   const mockForecast = {
-    score: 72,
-    level: 'good',
-    confidence: 'high',
+    score,
+    kp: scoreToKpIndex(score), // Consistent KP mapping: 72 → 6
+    level: 'good' as const,
+    confidence: 'high' as const,
     headline:
       lang === 'no'
         ? 'Gode sjanser for nordlys i kveld'

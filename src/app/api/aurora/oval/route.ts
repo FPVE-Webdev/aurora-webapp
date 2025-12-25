@@ -92,22 +92,31 @@ export async function GET(request: Request) {
 function generateMockAuroraOval() {
   // Generate a simplified aurora oval centered around magnetic north pole
   // In reality, this would be GeoJSON from NOAA Ovation model
-  
-  const centerLat = 70; // Approximate aurora zone latitude
-  const currentKp = 5 + Math.random() * 2; // Simulate current KP
-  
-  // Generate oval points (simplified circular approximation)
+
+  const currentKp = 5 + Math.random() * 2; // Simulate current KP (5-7)
+
+  // KP-based geolocation: Higher KP = aurora extends further south
+  // KP 3: ~72°N (far north), KP 5: ~67°N (moderate), KP 7: ~62°N (south), KP 9: ~57°N (extreme)
+  const centerLat = 72 - (currentKp - 3) * 2.5;
+
+  // Oval width (north-south spread): wider at higher KP
+  const ovalWidth = 8 + currentKp * 0.5;
+
+  // Generate oval points
   const ovalPoints = [];
-  const radius = 10 + (9 - currentKp) * 2; // Smaller oval at high KP
-  
-  for (let angle = 0; angle < 360; angle += 15) {
+  for (let angle = 0; angle < 360; angle += 10) {
     const rad = (angle * Math.PI) / 180;
-    const lat = centerLat + radius * Math.cos(rad);
-    const lon = angle - 180; // Wrap around globe
-    
+
+    // Latitude variation: sinusoidal pattern north-south
+    const latVariation = ovalWidth * Math.cos(rad);
+    const lat = centerLat + latVariation;
+
+    // Longitude: wrap around globe
+    const lon = angle - 180;
+
     ovalPoints.push([lon, lat]);
   }
-  
+
   // Close the oval
   ovalPoints.push(ovalPoints[0]);
 

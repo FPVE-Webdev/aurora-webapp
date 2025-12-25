@@ -15,6 +15,7 @@ export interface TromsøAuroraForecast {
   tips: string[];
   updated: string;         // ISO timestamp
   location?: string;
+  kp?: number;             // KP index 0-9 (optional, derived from score if not provided)
 }
 
 export interface TromsøMultidayResponse {

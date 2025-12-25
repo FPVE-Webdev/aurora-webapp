@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
 
 const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/now';
 const API_KEY = process.env.TROMSO_AI_API_KEY;
@@ -75,10 +76,12 @@ export async function GET(request: Request) {
   }
 
   // Fallback to mock data
+  const score = 68;
   const mockForecast = {
-    score: 68,
-    level: 'good',
-    confidence: 'high',
+    score,
+    kp: scoreToKpIndex(score), // Consistent KP mapping: 68 → 5
+    level: 'good' as const,
+    confidence: 'high' as const,
     headline:
       lang === 'no'
         ? 'Nordlys synlig akkurat nå'

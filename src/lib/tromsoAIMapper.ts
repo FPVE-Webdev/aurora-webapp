@@ -34,7 +34,8 @@ export function mapTromsøForecastToSpotForecast(
   spot: ObservationSpot,
   weatherData?: { cloudCoverage: number; temperature: number; windSpeed?: number }
 ): SpotForecast {
-  const kpIndex = scoreToKpIndex(forecast.score);
+  // Prioritize KP from API if available, otherwise derive from score
+  const kpIndex = forecast.kp ?? scoreToKpIndex(forecast.score);
 
   // Use provided weather data or generate realistic fallbacks
   const cloudCoverage = weatherData?.cloudCoverage ?? (20 + Math.random() * 60);
