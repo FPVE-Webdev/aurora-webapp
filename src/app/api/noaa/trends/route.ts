@@ -7,12 +7,21 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+  : null;
 
 export async function GET(request: Request) {
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Database not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const hours = parseInt(searchParams.get('hours') || '24', 10);

@@ -6,10 +6,13 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+// Only create client if credentials are available
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+  : null;
 
 interface Features {
   kp: number;
@@ -99,6 +102,11 @@ async function getHistoricalContext(): Promise<{
   kpTrend?: number;
   bzNegativeDuration?: number;
 }> {
+  if (!supabase) {
+    console.warn('Supabase client not configured, using minimal context');
+    return {};
+  }
+
   const threeHoursAgo = new Date();
   threeHoursAgo.setHours(threeHoursAgo.getHours() - 3);
 

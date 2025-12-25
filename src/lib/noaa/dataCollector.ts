@@ -7,10 +7,13 @@
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+// Only create client if credentials are available
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+  : null;
 
 interface CollectionResult {
   success: boolean;
@@ -174,6 +177,11 @@ function calculateAuroraProbability(
  * Store collected data in Supabase
  */
 async function storeData(data: NOAAData): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase client not configured, skipping data storage');
+    return false;
+  }
+
   try {
     const auroraProbability = data.kpIndex && data.solarWindSpeed && data.bzComponent
       ? calculateAuroraProbability(data.kpIndex, data.solarWindSpeed, data.bzComponent)
@@ -220,6 +228,11 @@ async function logDataQuality(
   durations: { kp?: number; solarWind?: number },
   recordsStored: number
 ): Promise<void> {
+  if (!supabase) {
+    console.warn('Supabase client not configured, skipping data quality logging');
+    return;
+  }
+
   try {
     await supabase.from('noaa_data_quality').insert({
       kp_data_available: kpAvailable,
@@ -323,6 +336,11 @@ export async function collectNOAAData(): Promise<CollectionResult> {
  * Cleanup old data (called daily)
  */
 export async function cleanupOldData(): Promise<number> {
+  if (!supabase) {
+    console.warn('Supabase client not configured, skipping cleanup');
+    return 0;
+  }
+
   try {
     const { data, error } = await supabase.rpc('cleanup_old_noaa_data');
 
