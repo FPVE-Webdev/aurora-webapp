@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { seededRandom, timeSeed } from '@/lib/deterministicRandom';
+import { generateTromsoForecast, generateSimpleForecast } from '@/lib/noaa/locationForecast';
 
 const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/hourly';
 const API_KEY = process.env.TROMSO_AI_API_KEY;
@@ -96,19 +97,86 @@ export async function GET(request: Request) {
     }
   }
 
-  // Fallback: Generate mock hourly data
-  const mockData = generateMockHourly(hours, location);
+  // Fallback: Try NOAA-based forecast for Tromsø, then simple forecast
+  let fallbackData;
 
-  // Cache the mock data with hour-based key for stability
+  if (location === 'tromso') {
+    try {
+      // Generate NOAA-based forecast for Tromsø
+      const noaaForecast = await generateTromsoForecast();
+
+      // Convert to hourly API format
+      fallbackData = {
+        status: 'success',
+        location,
+        hours: noaaForecast.length,
+        hourly_forecast: noaaForecast.map(f => {
+          const [hour] = f.hour.split(':');
+          const forecastDate = new Date();
+          forecastDate.setHours(parseInt(hour), 0, 0, 0);
+
+          return {
+            time: forecastDate.toISOString(),
+            hour: parseInt(hour),
+            probability: f.probability,
+            kp: f.kp,
+            weather: {
+              cloudCoverage: f.cloudCoverage,
+              temperature: f.temperature,
+              windSpeed: 10, // Default, not provided by NOAA forecast
+              conditions: f.cloudCoverage < 30 ? 'clear' : f.cloudCoverage < 60 ? 'partly_cloudy' : 'cloudy'
+            },
+            visibility: f.visibility
+          };
+        }),
+        generated_at: new Date().toISOString()
+      };
+    } catch (error) {
+      console.warn('⚠️ NOAA-based forecast failed, using simple forecast:', error);
+
+      // Fallback to simple forecast
+      const simpleForecast = generateSimpleForecast();
+      fallbackData = {
+        status: 'success',
+        location,
+        hours: simpleForecast.length,
+        hourly_forecast: simpleForecast.map(f => {
+          const [hour] = f.hour.split(':');
+          const forecastDate = new Date();
+          forecastDate.setHours(parseInt(hour), 0, 0, 0);
+
+          return {
+            time: forecastDate.toISOString(),
+            hour: parseInt(hour),
+            probability: f.probability,
+            kp: f.kp,
+            weather: {
+              cloudCoverage: f.cloudCoverage,
+              temperature: f.temperature,
+              windSpeed: 10,
+              conditions: f.cloudCoverage < 30 ? 'clear' : f.cloudCoverage < 60 ? 'partly_cloudy' : 'cloudy'
+            },
+            visibility: f.visibility
+          };
+        }),
+        generated_at: new Date().toISOString()
+      };
+    }
+  } else {
+    // For non-Tromsø locations, use mock data
+    fallbackData = generateMockHourly(hours, location);
+  }
+
+  // Cache the fallback data with hour-based key for stability
   cache = {
-    data: mockData,
+    data: fallbackData,
     timestamp: Date.now(),
     hours,
     cacheKey
   };
 
   return NextResponse.json({
-    ...mockData,
+    ...fallbackData,
     meta: {
       cached: false,
       fallback: true,
