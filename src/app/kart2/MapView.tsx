@@ -6,15 +6,17 @@
  * - Client component (uses hooks and browser APIs)
  * - Isolated from professional map logic
  *
- * STATUS: SCAFFOLDING ONLY
- * - Basic structure with placeholder content
- * - No real map rendering yet
- * - Ready for FASE 1 implementation
+ * STATUS: FASE 0 - SCAFFOLDING
+ * - Placeholder UI only
+ * - No map initialization yet
+ *
+ * ISOLATION: This component is completely independent from /live map.
+ * Can be deleted without affecting professional users.
  */
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuroraData } from './useAuroraData';
 import { MAP_CONFIG } from './map.config';
@@ -22,19 +24,62 @@ import { MAP_CONFIG } from './map.config';
 export default function MapView() {
   const { data, isLoading, error } = useAuroraData();
   const [mapReady, setMapReady] = useState(false);
+  const mapInitializedRef = useRef(false);
 
   useEffect(() => {
-    // TODO (FASE 1): Initialize Mapbox map
-    // TODO (FASE 1): Add aurora oval layer
+    // Prevent double initialization in React StrictMode
+    if (mapInitializedRef.current) return;
+    mapInitializedRef.current = true;
+
+    // TODO (FASE 1): Initialize Mapbox GL JS
+    //   - Import mapboxgl
+    //   - Create map instance
+    //   - Set initial bounds to Northern Norway
+    //   - Add dark style for aurora visibility
+    //
+    // TODO (FASE 1): Add aurora oval GeoJSON layer
+    //   - Fetch from /api/aurora/oval
+    //   - Update every 30 minutes
+    //   - Render as semi-transparent polygon
+    //
     // TODO (FASE 1): Add observation spot markers
-    // TODO (FASE 1): Add user location tracking
+    //   - Use OBSERVATION_SPOTS from @/lib/constants
+    //   - Show probability % on each marker
+    //   - Color-code by probability level
+    //
+    // TODO (FASE 2): Add timeline scrubber
+    //   - 12-hour forecast slider
+    //   - Update markers dynamically per hour
+    //   - Sync with hourly forecast data
+    //
+    // TODO (FASE 2): Add user geolocation
+    //   - Request browser location permission
+    //   - Show user marker on map
+    //   - Calculate distance to aurora oval
+    //
+    // TODO (FASE 3): Add cloud coverage overlay
+    //   - Fetch from weather API
+    //   - Render as semi-transparent layer
+    //   - Update every 15 minutes
+    //
+    // TODO (FASE 3): Add chase route planning
+    //   - Allow users to set waypoints
+    //   - Show driving time estimates
+    //   - Warn about road conditions
 
     // PLACEHOLDER: Simulate map loading
     const timer = setTimeout(() => {
       setMapReady(true);
     }, 1000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // TODO (FASE 1): Cleanup Mapbox instance
+      // if (mapInstance) {
+      //   mapInstance.remove();
+      //   mapInstance = null;
+      // }
+    };
   }, []);
 
   // Loading state
