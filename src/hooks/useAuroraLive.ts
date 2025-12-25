@@ -88,13 +88,20 @@ function calculateIntensityMultiplier(kp: number) {
 /**
  * Procedural-generated oval-ish band for wow/demo
  * Generates points globally (-180..180), but canvas overlay culls outside view
+ * Based on NOAA Ovation Model: Southern edge = 66° - (2° × Kp)
  */
 function generateMockAuroraData(kp: number): AuroraDataPoint[] {
   const points: AuroraDataPoint[] = [];
 
-  // KP-based geolocation (consistent with oval route)
-  // KP 3: ~72°N, KP 5: ~67°N, KP 7: ~62°N, KP 9: ~57°N
-  const baseLat = 72 - (kp - 3) * 2.5;
+  // NOAA formula: Southern edge of aurora oval
+  // At Kp=0: 66°N, moves 2° south per Kp level
+  const southernEdge = 66 - (2 * kp);
+
+  // Aurora oval width: 10-15° band (from NOAA Ovation data)
+  const ovalWidth = 12 + kp * 0.4; // 12-14.8° range
+
+  // Center latitude for procedural band
+  const baseLat = southernEdge + (ovalWidth / 2);
 
   // 2 bands: main + weaker north
   for (let lon = -180; lon <= 180; lon += 2) {
