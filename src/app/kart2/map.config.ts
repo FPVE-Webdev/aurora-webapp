@@ -39,10 +39,60 @@ export const MAP_CONFIG = {
     duration: 1000,              // ms
     easing: 'ease-in-out' as const,
   } as const,
+
+  // FASE 2: Chase Region auto-fit thresholds
+  chaseMode: {
+    // Trigger auto-expand when Tromsø cloud coverage exceeds this %
+    cloudThreshold: 70,
+    // Minimum visibility score to consider a zone "chase-worthy"
+    minVisibilityScore: 40,
+  } as const,
 } as const;
 
 // Type-safe config type
 export type MapConfig = typeof MAP_CONFIG;
+
+// FASE 2: Chase Region zones (static configuration)
+// These are alternative viewing locations when Tromsø is clouded
+export const CHASE_REGIONS = [
+  {
+    id: 'lyngen',
+    name: 'Lyngen Alps',
+    coordinates: [69.57, 20.22] as [number, number],
+    radius: 25, // km from center
+    priority: 1, // Higher = check first
+  },
+  {
+    id: 'skibotn',
+    name: 'Skibotn',
+    coordinates: [69.39, 20.28] as [number, number],
+    radius: 20,
+    priority: 2,
+  },
+  {
+    id: 'senja',
+    name: 'Senja',
+    coordinates: [69.35, 17.85] as [number, number],
+    radius: 30,
+    priority: 3,
+  },
+  {
+    id: 'nordreisa',
+    name: 'Nordreisa',
+    coordinates: [69.73, 21.00] as [number, number],
+    radius: 25,
+    priority: 4,
+  },
+  {
+    id: 'kvænangen',
+    name: 'Kvænangen',
+    coordinates: [69.95, 21.98] as [number, number],
+    radius: 20,
+    priority: 5,
+  },
+] as const;
+
+export type ChaseRegion = typeof CHASE_REGIONS[number];
 
 // TODO (FASE 1): Add aurora layer configuration
 // export const AURORA_LAYER_CONFIG = {

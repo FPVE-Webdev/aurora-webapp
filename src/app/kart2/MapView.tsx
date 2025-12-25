@@ -19,10 +19,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuroraData } from './useAuroraData';
+import { useChaseRegions } from './useChaseRegions';
 import { MAP_CONFIG } from './map.config';
 
 export default function MapView() {
   const { data, isLoading, error } = useAuroraData();
+  const chaseState = useChaseRegions();
   const [mapReady, setMapReady] = useState(false);
   const mapInitializedRef = useRef(false);
 
@@ -57,10 +59,27 @@ export default function MapView() {
     //   - Show user marker on map
     //   - Calculate distance to aurora oval
     //
+    // TODO (FASE 2): Implement chase region auto-fit
+    //   - Monitor chaseState.shouldExpandMap
+    //   - If true, auto-zoom out to include best chase region
+    //   - Highlight chase regions with reduced opacity based on cloud coverage
+    //   - Add subtle visual indicator (border glow) for best region
+    //
+    // TODO (FASE 2): Add chase region markers
+    //   - Render CHASE_REGIONS as semi-transparent circles
+    //   - Opacity = visibilityScore / 100
+    //   - Show cloud coverage % on hover
+    //   - Pulse animation for best region
+    //
     // TODO (FASE 3): Add cloud coverage overlay
     //   - Fetch from weather API
     //   - Render as semi-transparent layer
     //   - Update every 15 minutes
+    //
+    // TODO (FASE 3): Add AI-based chase recommendations
+    //   - Analyze road conditions + aurora forecast + cloud movement
+    //   - Suggest optimal departure time
+    //   - Show confidence scores
     //
     // TODO (FASE 3): Add chase route planning
     //   - Allow users to set waypoints
@@ -152,6 +171,18 @@ export default function MapView() {
             </p>
           </div>
 
+          {/* FASE 2: Chase Region indicator */}
+          {chaseState.shouldExpandMap && chaseState.bestRegion && (
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+              <p className="text-xs text-orange-200/90">
+                ⚠️ Tromsø: {chaseState.tromsoCloudCoverage}% sky
+              </p>
+              <p className="text-xs text-orange-200/60 mt-2">
+                Best view: {chaseState.bestRegion.region.name} ({chaseState.bestRegion.visibilityScore}% klar)
+              </p>
+            </div>
+          )}
+
           {/* Config info (for development) */}
           {process.env.NODE_ENV === 'development' && (
             <div className="text-left bg-black/30 rounded p-3 text-xs font-mono">
@@ -159,6 +190,10 @@ export default function MapView() {
               <p className="text-white/40">Center: {MAP_CONFIG.initialView.latitude}, {MAP_CONFIG.initialView.longitude}</p>
               <p className="text-white/40">Zoom: {MAP_CONFIG.initialView.zoom}</p>
               <p className="text-white/40">Token: {MAP_CONFIG.mapboxToken ? '✓ Set' : '✗ Missing'}</p>
+              <p className="text-white/40">Chase: {chaseState.shouldExpandMap ? '✓ Active' : '✗ Inactive'}</p>
+              {chaseState.bestRegion && (
+                <p className="text-white/40">Best: {chaseState.bestRegion.region.name}</p>
+              )}
             </div>
           )}
         </div>
