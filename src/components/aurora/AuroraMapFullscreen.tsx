@@ -117,7 +117,7 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
 
   useEffect(() => {
     fetchAuroraData();
-    const interval = setInterval(fetchAuroraData, 5 * 60 * 1000);
+    const interval = setInterval(fetchAuroraData, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchAuroraData]);
 

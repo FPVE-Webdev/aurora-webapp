@@ -236,8 +236,8 @@ export function useAuroraData() {
   useEffect(() => {
     fetchData();
 
-    // Auto-refresh every 10 minutes
-    const interval = setInterval(fetchData, 10 * 60 * 1000);
+    // Auto-refresh every 30 minutes (on the hour and half-hour)
+    const interval = setInterval(fetchData, 30 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [fetchData]);

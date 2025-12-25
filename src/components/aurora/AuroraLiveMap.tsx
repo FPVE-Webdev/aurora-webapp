@@ -128,7 +128,7 @@ export function AuroraLiveMap() {
 
   useEffect(() => {
     fetchAuroraData();
-    const interval = setInterval(fetchAuroraData, 5 * 60 * 1000); // Refresh every 5 min
+    const interval = setInterval(fetchAuroraData, 30 * 60 * 1000); // Refresh every 30 min
     return () => clearInterval(interval);
   }, [fetchAuroraData]);
 

@@ -47,7 +47,7 @@ export default function HomePage() {
     }
 
     fetchExtendedMetrics();
-    const interval = setInterval(fetchExtendedMetrics, 5 * 60 * 1000); // Update every 5 minutes
+    const interval = setInterval(fetchExtendedMetrics, 30 * 60 * 1000); // Update every 30 minutes
     return () => clearInterval(interval);
   }, []);
 
@@ -84,17 +84,19 @@ export default function HomePage() {
     <div className="min-h-screen bg-arctic-900">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        {/* Aurora glow effect */}
+        {/* Aurora glow effect with animation */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-gradient-to-b from-primary/20 to-transparent blur-3xl" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-gradient-to-b from-primary/20 via-primary/10 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+          <div className="absolute top-20 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+          <div className="absolute top-40 right-1/4 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '7s', animationDelay: '1s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Header */}
-          <div className="text-center mb-12 space-y-4">
+          <div className="text-center mb-12 space-y-6">
             <div className="flex items-center justify-center gap-4">
-              <h1 className="text-5xl md:text-6xl font-display font-bold text-white">
-                Nordlys i Tromsø
+              <h1 className="text-5xl md:text-7xl font-display font-black text-white drop-shadow-2xl">
+                🌌 Nordlys i Tromsø
               </h1>
               {settings.showBetaBadge && (
                 <span className="px-3 py-1.5 rounded-full text-sm font-semibold bg-primary/20 text-primary border border-primary/30 animate-pulse">
@@ -102,11 +104,32 @@ export default function HomePage() {
                 </span>
               )}
             </div>
-            <p className="text-lg text-white/70 max-w-2xl mx-auto">
+            <p className="text-xl text-white/80 max-w-2xl mx-auto font-medium">
               Live nordlysvarsel for Nord-Norge basert på solaktivitet, værmeldinger og geografisk plassering
             </p>
-            <div className="text-sm text-white/50">
-              Sist oppdatert: {new Date(lastUpdate).toLocaleTimeString('no')}
+
+            {/* Stats Row */}
+            <div className="flex flex-wrap items-center justify-center gap-6 pt-6 border-t border-white/10 max-w-3xl mx-auto">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-primary">21</div>
+                <div className="text-xs text-white/60">Observasjonspunkter</div>
+              </div>
+              <div className="h-8 w-px bg-white/20" />
+              <div className="text-center">
+                <div className="text-3xl font-bold text-primary">48t</div>
+                <div className="text-xs text-white/60">Værprognose</div>
+              </div>
+              <div className="h-8 w-px bg-white/20" />
+              <div className="text-center">
+                <div className="text-3xl font-bold text-primary">Live</div>
+                <div className="text-xs text-white/60">Sanntidsdata</div>
+              </div>
+              <div className="h-8 w-px bg-white/20" />
+              <div className="text-center">
+                <div className="text-xs text-white/50">
+                  Oppdatert: {new Date(lastUpdate).toLocaleTimeString('no', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
             </div>
           </div>
 
