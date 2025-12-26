@@ -1,5 +1,90 @@
 import { NextResponse } from 'next/server';
 
+type WeatherPayload = {
+  latitude: number;
+  longitude: number;
+  temperature: number;
+  cloudCoverage: number;
+  windSpeed: number;
+  humidity: number;
+  source: 'met.no' | 'fallback' | 'cache';
+  timestamp: string;
+};
+
+const METNO_FORECAST_URL = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
+const TIMEOUT_MS = 8000;
+const CACHE_TTL_MS = 15 * 60 * 1000;
+
+const cache = new Map<string, { data: WeatherPayload; timestamp: number }>();
+const inflight = new Map<string, Promise<WeatherPayload>>();
+
+function buildCacheKey(lat: number, lon: number) {
+  return `${lat.toFixed(4)},${lon.toFixed(4)}`;
+}
+
+function buildFallbackWeather(lat: number, lon: number): WeatherPayload {
+  // Deterministic, stable fallback data. Avoid randomness so the UI doesn't flicker.
+  const baseTemp = lat > 70 ? -12 : lat > 68 ? -8 : lat > 66 ? -5 : 0;
+
+  return {
+    latitude: lat,
+    longitude: lon,
+    temperature: Math.round(baseTemp * 10) / 10,
+    cloudCoverage: 60,
+    windSpeed: 6,
+    humidity: 70,
+    source: 'fallback',
+    timestamp: new Date().toISOString(),
+  };
+}
+
+async function fetchMetnoWeather(lat: number, lon: number): Promise<WeatherPayload> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  try {
+    const url = `${METNO_FORECAST_URL}?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`;
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        // Met.no requires a descriptive User-Agent
+        'User-Agent': 'AuroraTromso/1.0 (https://nordlystromso.app)',
+      },
+      next: { revalidate: 900 }, // 15 minutes
+    });
+
+    if (!response.ok) {
+      throw new Error(`Met.no API returned ${response.status}`);
+    }
+
+    const text = await response.text();
+    if (!text) {
+      throw new Error('Met.no response was empty');
+    }
+
+    const data = JSON.parse(text) as any;
+    const current = data?.properties?.timeseries?.[0]?.data?.instant?.details;
+
+    if (!current) {
+      throw new Error('Met.no response missing expected fields');
+    }
+
+    return {
+      latitude: lat,
+      longitude: lon,
+      temperature: typeof current.air_temperature === 'number' ? current.air_temperature : 0,
+      cloudCoverage: typeof current.cloud_area_fraction === 'number' ? current.cloud_area_fraction : 50,
+      windSpeed: typeof current.wind_speed === 'number' ? current.wind_speed : 0,
+      humidity: typeof current.relative_humidity === 'number' ? current.relative_humidity : 70,
+      source: 'met.no',
+      timestamp: new Date().toISOString(),
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ lat: string; lon: string }> }
@@ -9,66 +94,45 @@ export async function GET(
     const lat = parseFloat(latStr);
     const lon = parseFloat(lonStr);
 
-    if (isNaN(lat) || isNaN(lon)) {
+    if (Number.isNaN(lat) || Number.isNaN(lon)) {
+      return NextResponse.json({ error: 'Invalid coordinates' }, { status: 400 });
+    }
+
+    const key = buildCacheKey(lat, lon);
+    const cached = cache.get(key);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
       return NextResponse.json(
-        { error: 'Invalid coordinates' },
-        { status: 400 }
+        { ...cached.data, source: 'cache', timestamp: new Date().toISOString() },
+        { status: 200 }
       );
     }
 
-    // Try to fetch from MET.no API
-    const metUrl = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`;
-
-    try {
-      const response = await fetch(metUrl, {
-        headers: {
-          'User-Agent': 'AuroraTromso/1.0 (https://nordlystromso.app)'
-        },
-        next: { revalidate: 900 } // Cache for 15 minutes
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const current = data.properties.timeseries[0].data.instant.details;
-
-        return NextResponse.json({
-          latitude: lat,
-          longitude: lon,
-          temperature: current.air_temperature,
-          cloudCoverage: current.cloud_area_fraction,
-          windSpeed: current.wind_speed,
-          humidity: current.relative_humidity,
-          source: 'met.no',
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } catch (metError) {
-      console.warn('MET.no API error:', metError);
+    const existingInflight = inflight.get(key);
+    if (existingInflight) {
+      const data = await existingInflight;
+      return NextResponse.json(data, { status: 200 });
     }
 
-    // Fallback to realistic demo data based on location
-    // Northern locations are generally colder with more variation
-    const baseTemp = lat > 70 ? -12 : lat > 68 ? -8 : lat > 66 ? -5 : 0;
-    const temperature = baseTemp + (Math.random() * 10 - 5);
+    const promise = (async () => {
+      try {
+        const metno = await fetchMetnoWeather(lat, lon);
+        cache.set(key, { data: metno, timestamp: Date.now() });
+        return metno;
+      } catch (err) {
+        const fallback = buildFallbackWeather(lat, lon);
+        cache.set(key, { data: fallback, timestamp: Date.now() });
+        return fallback;
+      } finally {
+        inflight.delete(key);
+      }
+    })();
 
-    const cloudCoverage = 20 + Math.random() * 60; // 20-80%
-    const windSpeed = 2 + Math.random() * 12; // 2-14 m/s
+    inflight.set(key, promise);
 
-    return NextResponse.json({
-      latitude: lat,
-      longitude: lon,
-      temperature: Math.round(temperature * 10) / 10,
-      cloudCoverage: Math.round(cloudCoverage),
-      windSpeed: Math.round(windSpeed * 10) / 10,
-      humidity: 60 + Math.round(Math.random() * 30),
-      source: 'fallback',
-      timestamp: new Date().toISOString(),
-    });
+    const data = await promise;
+    return NextResponse.json(data, { status: 200 });
   } catch (error) {
     console.error('Weather API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch weather data' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch weather data' }, { status: 500 });
   }
 }

@@ -37,7 +37,17 @@ export default function HomePage() {
     async function fetchExtendedMetrics() {
       try {
         const response = await fetch('/api/aurora/tonight?lang=no');
-        const data = await response.json();
+
+        if (!response.ok) return;
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) return;
+
+        const text = await response.text();
+        if (!text) return;
+
+        const data = JSON.parse(text) as { extended_metrics?: ExtendedMetricsType };
+
         if (data.extended_metrics) {
           setExtendedMetrics(data.extended_metrics);
         }
