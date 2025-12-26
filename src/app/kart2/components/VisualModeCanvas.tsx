@@ -163,9 +163,9 @@ export default function VisualModeCanvas({
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    // Calculate aurora intensity (spec formula)
+    // Calculate aurora intensity (spec formula) - increased baseline from 0.6 to 0.8 for more responsive effect
     const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
-    const auroraIntensity = clamp01(kpIndex / 9) * 0.6 + clamp01(auroraProbability / 100) * 0.4;
+    const auroraIntensity = clamp01(kpIndex / 9) * 0.8 + clamp01(auroraProbability / 100) * 0.4;
 
     console.log('[VisualMode] Initialized', {
       kpIndex,
@@ -178,15 +178,28 @@ export default function VisualModeCanvas({
       displayHeight: canvas.clientHeight
     });
 
-    // Render loop with FPS capping (30 FPS) and monitoring
+    // Render loop with adaptive FPS capping (default 60 FPS, fallback to 30 FPS) and monitoring
+    let targetDeltaTime = 16; // 60 FPS default
+    let lowFpsCount = 0;
+
     const render = () => {
       if (!glRef.current || !programRef.current) return;
 
-      // FPS cap: only render every ~33ms (30 FPS)
       const now = Date.now();
       const deltaTime = now - lastFrameTimeRef.current;
 
-      if (deltaTime < 33) {
+      // Adaptive FPS: fallback to 30 FPS if performance is poor
+      if (fpsCounterRef.current.fps < 20) {
+        lowFpsCount++;
+        if (lowFpsCount > 5) {
+          targetDeltaTime = 33; // Switch to 30 FPS
+          console.warn('[VisualMode] Switched to adaptive 30 FPS mode');
+          lowFpsCount = 0;
+        }
+      }
+
+      // FPS cap: only render every ~16ms (60 FPS default) or ~33ms (30 FPS fallback)
+      if (deltaTime < targetDeltaTime) {
         // Too soon, skip this frame
         animationFrameRef.current = requestAnimationFrame(render);
         return;
@@ -206,8 +219,17 @@ export default function VisualModeCanvas({
 
         // Warn if below 15 FPS
         if (fps < 15) {
-          console.warn('[VisualMode] Low FPS detected:', fps.toFixed(1), '- consider disabling');
+          console.warn('[VisualMode] Low FPS detected:', fps.toFixed(1));
         }
+      }
+
+      // Early exit optimization: skip rendering if aurora is too dim to be visible
+      if (auroraIntensity < 0.05) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
       }
 
       gl.viewport(0, 0, canvas.width, canvas.height);
