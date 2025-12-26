@@ -44,7 +44,7 @@ export default function HomePage() {
         if (!contentType.includes('application/json')) return;
 
         const text = await response.text();
-        if (!text) return;
+        if (!text || !text.trim()) return;
 
         const data = JSON.parse(text) as { extended_metrics?: ExtendedMetricsType };
 
