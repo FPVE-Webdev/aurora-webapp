@@ -34,9 +34,18 @@ export default function HomePage() {
 
   // Fetch extended metrics (Phase 2 feature)
   useEffect(() => {
+    let isMounted = true;
+    let controller: AbortController | null = null;
+
     async function fetchExtendedMetrics() {
       try {
-        const response = await fetch('/api/aurora/tonight?lang=no');
+        // Cancel any in-flight request before starting a new one.
+        controller?.abort();
+        controller = new AbortController();
+
+        const response = await fetch('/api/aurora/tonight?lang=no', {
+          signal: controller.signal,
+        });
 
         if (!response.ok) return;
 
@@ -48,17 +57,27 @@ export default function HomePage() {
 
         const data = JSON.parse(text) as { extended_metrics?: ExtendedMetricsType };
 
-        if (data.extended_metrics) {
+        if (isMounted && data.extended_metrics) {
           setExtendedMetrics(data.extended_metrics);
         }
       } catch (error) {
-        console.error('Failed to fetch extended metrics:', error);
+        // Ignore expected transient failures (navigation, aborted requests, offline).
+        if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
+          return;
+        }
+
+        console.warn('Failed to fetch extended metrics');
       }
     }
 
     fetchExtendedMetrics();
     const interval = setInterval(fetchExtendedMetrics, 30 * 60 * 1000); // Update every 30 minutes
-    return () => clearInterval(interval);
+
+    return () => {
+      isMounted = false;
+      controller?.abort();
+      clearInterval(interval);
+    };
   }, []);
 
   // Get current spot forecast
