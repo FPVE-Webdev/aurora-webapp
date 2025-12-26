@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { toPng } from 'html-to-image';
 import { useAuroraData } from './useAuroraData';
 import { useChaseRegions } from './useChaseRegions';
 import { CHASE_REGIONS } from './map.config';
@@ -42,14 +41,17 @@ export default function MapView() {
   const handleSnapshot = async () => {
     // Task 1: Check ref lock
     if (!mapContainerRef.current || isSnapshottingRef.current) return;
-    
+
     try {
       isSnapshottingRef.current = true;
       setIsSnapshotting(true);
-      
+
+      // Dynamically import html-to-image only when snapshot is used
+      const { toPng } = await import('html-to-image');
+
       // Target the parent div to capture overlay + map
       const element = mapContainerRef.current.parentElement as HTMLElement;
-      
+
       const dataUrl = await toPng(element, {
         cacheBust: true,
         pixelRatio: 3, // High-DPI capture (Task 1)
