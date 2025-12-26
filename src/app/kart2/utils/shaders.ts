@@ -46,11 +46,15 @@ export const FRAGMENT_SHADER = `
     float noise1 = fastNoise(noiseCoord);
     float noise2 = fastNoise(noiseCoord * 2.0 + vec2(time * 0.5, 0.0));
 
-    // Combine noise layers
-    float auroraPattern = (noise1 * 0.6 + noise2 * 0.4) * 0.5 + 0.5;
+    // Combine noise layers with shimmer effect for organic wavering
+    float shimmer = sin(u_time * 0.003 + noiseCoord.x * 5.0) * 0.1 + 0.9;
+    float auroraPattern = ((noise1 * 0.6 + noise2 * 0.4) * 0.5 + 0.5) * shimmer;
+
+    // Radial expansion waves - creates moving bands radiating from Tromsø
+    float waves = sin((distToTromso * 10.0 - u_time * 0.0005)) * 0.1 + 0.9;
 
     // Radial falloff from Tromsø center (ensure visibility)
-    float radialFalloff = smoothstep(0.7, 0.0, distToTromso);
+    float radialFalloff = smoothstep(0.7, 0.0, distToTromso) * waves;
     // Minimum visibility guarantee near center
     radialFalloff = max(radialFalloff, 0.12);
 
@@ -60,35 +64,36 @@ export const FRAGMENT_SHADER = `
     // Aurora intensity
     float auroraValue = baseAuroraStrength * u_auroraIntensity * 4.0;
 
-    // VERY BRIGHT GREEN-CYAN COLORS (not dark)
+    // VIVID AURORA COLORS - deeper, more saturated green and pure cyan
     vec3 auroraColor = mix(
-      vec3(0.5, 1.0, 0.6),  // Bright green
-      vec3(0.3, 1.0, 1.0),  // Bright cyan
+      vec3(0.2, 1.0, 0.3),  // Deeper, more intense green
+      vec3(0.0, 1.0, 1.0),  // Pure bright cyan
       auroraPattern
     );
 
-    // Tromsø radial glow (focal point)
-    float tromsoGlow = exp(-distToTromso * 8.0) * u_auroraIntensity * 3.0;
+    // Tromsø radial glow - optimized with pow() instead of exp() for cheaper computation
+    // Creates a smooth, cheap focal point glow
+    float tromsoGlow = pow(1.0 - clamp(distToTromso, 0.0, 1.0), 2.0) * u_auroraIntensity * 4.5;
 
     // Pulsing effect (3-4 sec cycle)
     float pulse = sin(u_time * 0.002) * 0.15 + 0.85;
     tromsoGlow *= pulse;
 
-    // BRIGHT YELLOW (pure, not dark)
-    vec3 tromsoColor = vec3(1.0, 1.0, 0.2);
+    // WARMER TROMSØ GOLD - pure, warm focal point
+    vec3 tromsoColor = vec3(1.0, 0.8, 0.0);
 
     // Combine aurora + Tromsø glow
     vec3 finalColor = auroraColor * auroraValue + tromsoColor * tromsoGlow;
 
-    // Cloud coverage dims the effect (but doesn't kill it)
-    float cloudDim = 1.0 - (u_cloudCoverage * 0.4);
+    // Reduced cloud coverage penalty - aurora still visible even with high cloud cover
+    float cloudDim = 1.0 - (u_cloudCoverage * 0.2);
     finalColor *= cloudDim;
 
-    // Alpha based on combined effects (ensure visibility)
+    // Alpha based on combined effects (increased from 0.85 to 0.95 for more visibility)
     float alpha = clamp(
       auroraValue * 0.8 + tromsoGlow * 1.5,
       0.0,
-      0.85
+      0.95
     );
 
     gl_FragColor = vec4(finalColor, alpha);
