@@ -59,7 +59,6 @@ export default function VisualModeCanvas({
 
     const handleChange = () => {
       if (mediaQuery.matches) {
-        console.log('[VisualMode] Disabled due to prefers-reduced-motion');
         setShouldRender(false);
       } else {
         setShouldRender(true);
@@ -167,16 +166,7 @@ export default function VisualModeCanvas({
     const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
     const auroraIntensity = clamp01(kpIndex / 9) * 0.8 + clamp01(auroraProbability / 100) * 0.4;
 
-    console.log('[VisualMode] Initialized', {
-      kpIndex,
-      auroraProbability,
-      auroraIntensity,
-      cloudCoverage,
-      canvasWidth: canvas.width,
-      canvasHeight: canvas.height,
-      displayWidth: canvas.clientWidth,
-      displayHeight: canvas.clientHeight
-    });
+    // Silent initialization - only log if there's an issue
 
     // Render loop with adaptive FPS capping (default 60 FPS, fallback to 30 FPS) and monitoring
     let targetDeltaTime = 16; // 60 FPS default
