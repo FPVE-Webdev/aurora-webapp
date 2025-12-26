@@ -290,17 +290,19 @@ export default function MapView() {
 
       </div>
 
-      {/* Visual Mode Canvas Overlay */}
+      {/* Visual Mode Canvas Overlay - wrapped for proper z-index stacking */}
       {data && visualMode.isClient && mapRef.current && (
-        <VisualModeCanvas
-          isEnabled={visualMode.isEnabled}
-          kpIndex={data.kp}
-          auroraProbability={data.probability}
-          cloudCoverage={chaseState.tromsoCloudCoverage}
-          timestamp={data.timestamp}
-          tromsoCoords={[18.95, 69.65]}
-          mapInstance={mapRef.current}
-        />
+        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+          <VisualModeCanvas
+            isEnabled={visualMode.isEnabled}
+            kpIndex={data.kp}
+            auroraProbability={data.probability}
+            cloudCoverage={chaseState.tromsoCloudCoverage}
+            timestamp={data.timestamp}
+            tromsoCoords={[18.95, 69.65]}
+            mapInstance={mapRef.current}
+          />
+        </div>
       )}
 
       {/* Snapshot Button */}
