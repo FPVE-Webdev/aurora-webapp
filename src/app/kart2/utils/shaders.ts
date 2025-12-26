@@ -108,8 +108,24 @@ export function compileShader(
   source: string,
   type: number
 ): WebGLShader | null {
+  // Validate WebGL context
+  if (!gl) {
+    console.error('[Shader] WebGL context is invalid');
+    return null;
+  }
+
   const shader = gl.createShader(type);
-  if (!shader) return null;
+  if (!shader) {
+    console.error('[Shader] Failed to create shader');
+    return null;
+  }
+
+  // Validate source
+  if (!source || typeof source !== 'string') {
+    console.error('[Shader] Invalid shader source');
+    gl.deleteShader(shader);
+    return null;
+  }
 
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
@@ -117,7 +133,9 @@ export function compileShader(
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
     const error = gl.getShaderInfoLog(shader);
     const shaderType = type === gl.VERTEX_SHADER ? 'VERTEX' : 'FRAGMENT';
-    console.error(`[Shader] ${shaderType} Compilation Error:`, error);
+    const errorMsg = error || 'Unknown compilation error (no details available)';
+    console.error(`[Shader] ${shaderType} Compilation Error:`, errorMsg);
+    console.error(`[Shader] Source length: ${source.length} characters`);
     gl.deleteShader(shader);
     return null;
   }
