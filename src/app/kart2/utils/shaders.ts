@@ -48,40 +48,46 @@ export const FRAGMENT_SHADER = `
     // Vertical gradient (stronger at top/north)
     float verticalGradient = smoothstep(0.3, 1.0, uv.y);
 
-    // AGGRESSIVE: Aurora intensity MULTIPLIED
-    float auroraValue = auroraPattern * verticalGradient * u_auroraIntensity * 2.0;
+    // GUARANTEED MINIMUM: Never go below 0.2 (20% base strength)
+    float baseAuroraStrength = max(0.2, auroraPattern * verticalGradient);
 
-    // BRIGHT colors (not dark)
+    // Aurora intensity with minimum guarantee
+    float auroraValue = baseAuroraStrength * u_auroraIntensity * 2.5;
+
+    // VERY BRIGHT GREEN-CYAN COLORS (not dark)
     vec3 auroraColor = mix(
-      vec3(0.4, 1.0, 0.6),  // Bright green (not dark)
-      vec3(0.2, 1.0, 1.0),  // Bright cyan (not dark)
+      vec3(0.5, 1.0, 0.6),  // Bright green
+      vec3(0.3, 1.0, 1.0),  // Bright cyan
       auroraPattern
     );
 
     // Tromsø radial glow
     vec2 toTromso = uv - u_tromsoCenter;
     float distToTromso = length(toTromso);
-    float tromsoGlow = exp(-distToTromso * 8.0) * u_auroraIntensity * 0.8;
+
+    // STRONG GLOW: Never weak
+    float tromsoGlow = exp(-distToTromso * 8.0) * u_auroraIntensity * 2.5;
 
     // Pulsing effect (3-4 sec cycle)
     float pulse = sin(u_time * 0.002) * 0.15 + 0.85;
     tromsoGlow *= pulse;
 
-    // BRIGHT yellow for Tromsø (not dark)
-    vec3 tromsoColor = vec3(1.0, 1.0, 0.3);
+    // BRIGHT YELLOW (pure, not dark)
+    vec3 tromsoColor = vec3(1.0, 1.0, 0.2);
 
     // Combine aurora + Tromsø glow
     vec3 finalColor = auroraColor * auroraValue + tromsoColor * tromsoGlow;
 
-    // Cloud coverage dims the effect
-    float cloudDim = 1.0 - (u_cloudCoverage * 0.6);
+    // Cloud coverage dims the effect (but doesn't kill it)
+    float cloudDim = 1.0 - (u_cloudCoverage * 0.4);  // Reduced from 0.6 so clouds don't kill effect
     finalColor *= cloudDim;
 
-    // AGGRESSIVE: Alpha MUCH higher, cap at 1.0 (not 0.5)
+    // GUARANTEED VISIBLE ALPHA:
+    // Minimum 20% (always visible), Maximum 100% (full opacity)
     float alpha = clamp(
-      auroraValue * 1.5 + tromsoGlow * 3.0,  // Much higher multipliers
-      0.0,
-      1.0  // Full opacity (not 0.5!)
+      max(0.2, auroraValue * 0.8 + tromsoGlow * 1.5),
+      0.2,  // MINIMUM opacity (guarantee visibility)
+      1.0   // MAXIMUM opacity
     );
 
     gl_FragColor = vec4(finalColor, alpha);
