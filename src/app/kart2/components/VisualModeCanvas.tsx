@@ -247,7 +247,10 @@ export default function VisualModeCanvas({
     <canvas
       ref={canvasRef}
       className="absolute inset-0 pointer-events-none"
-      style={{ zIndex: 20 }}
+      style={{
+        zIndex: 10,
+        background: 'transparent'
+      }}
     />
   );
 }

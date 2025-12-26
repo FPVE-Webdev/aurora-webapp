@@ -90,10 +90,7 @@ export const FRAGMENT_SHADER = `
       1.0   // MAXIMUM opacity
     );
 
-    // DEBUG: Add red tint to verify canvas is rendering across entire viewport
-    vec3 debugColor = finalColor + vec3(0.1, 0.0, 0.0);  // Slight red tint for debugging
-
-    gl_FragColor = vec4(debugColor, alpha);
+    gl_FragColor = vec4(finalColor, alpha);
   }
 `;
 
