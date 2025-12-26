@@ -167,7 +167,9 @@ export default function VisualModeCanvas({
     // Compile shaders
     const program = createShaderProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER);
     if (!program) {
-      console.error('[VisualMode] Failed to create shader program');
+      if (!IS_PRODUCTION) {
+        console.error('[VisualMode] Failed to create shader program');
+      }
       return;
     }
 
