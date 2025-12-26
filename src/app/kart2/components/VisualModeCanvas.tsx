@@ -210,10 +210,13 @@ export default function VisualModeCanvas({
       if (!glRef.current || !programRef.current) return;
 
       // Guard against context loss
-      if (glRef.current.isContextLost && glRef.current.isContextLost()) {
-        console.warn('[VisualMode] WebGL context lost, stopping render');
-        return;
+    if (glRef.current.isContextLost && glRef.current.isContextLost()) {
+      // Call context loss handler if provided
+      if (handleContextLoss) {
+        handleContextLoss();
       }
+      return;
+    }
 
       const now = Date.now();
       const deltaTime = now - lastFrameTimeRef.current;
