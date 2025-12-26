@@ -20,8 +20,21 @@
 
 'use client';
 
-import MapView from './MapView';
+import dynamic from 'next/dynamic';
 import { useKart2Exposure } from './useKart2Exposure';
+
+// Dynamically import MapView to avoid SSR issues with Mapbox
+const MapView = dynamic(() => import('./MapView'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-screen h-screen flex items-center justify-center bg-gray-900">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-white/70">Laster kart...</p>
+      </div>
+    </div>
+  ),
+});
 
 // PRODUCTION LOCK:
 // This module is considered production-stable.
