@@ -247,9 +247,14 @@ export default function VisualModeCanvas({
         fpsCounterRef.current.frames = 0;
         fpsCounterRef.current.lastTime = now;
 
-        // Warn if below 15 FPS
-        if (fps < 15) {
-          console.warn('[VisualMode] Low FPS detected:', fps.toFixed(1));
+        // Check FPS health guardrail
+        if (checkFpsHealth) {
+          const shouldAutoDisable = checkFpsHealth(fps);
+          if (shouldAutoDisable) {
+            // Auto-disabled - stop rendering
+            animationFrameRef.current = requestAnimationFrame(render);
+            return;
+          }
         }
       }
 
