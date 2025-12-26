@@ -34,8 +34,7 @@ export function useAppSettings() {
           // API endpoint doesn't exist or returned error - use defaults
           console.log('Using default settings (API endpoint not available)');
         }
-      } catch (error) {
-        console.error('Failed to fetch app settings:', error);
+      } catch {
         // Silently fall back to default settings
       } finally {
         setIsLoading(false);
