@@ -6,6 +6,9 @@ import { useAuroraData } from './useAuroraData';
 import { useChaseRegions } from './useChaseRegions';
 import { CHASE_REGIONS } from './map.config';
 import AIInterpretation from './AIInterpretation';
+import VisualModeCanvas from './components/VisualModeCanvas';
+import VisualModeToggle from './components/VisualModeToggle';
+import { useVisualMode } from './hooks/useVisualMode';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 export default function MapView() {
@@ -17,6 +20,7 @@ export default function MapView() {
   const isSnapshottingRef = useRef(false); // Task 1: Snapshot Debounce Lock
   const { data, isLoading, error } = useAuroraData();
   const chaseState = useChaseRegions();
+  const visualMode = useVisualMode();
 
   // Task 2: Memoization Guards
   const aiInput = useMemo(() => {
@@ -241,6 +245,18 @@ export default function MapView() {
     <div className="fixed inset-0 bg-gray-900">
       <div ref={mapContainerRef} className="w-full h-full" />
 
+      {/* Visual Mode Canvas Overlay */}
+      {data && visualMode.isClient && (
+        <VisualModeCanvas
+          isEnabled={visualMode.isEnabled}
+          kpIndex={data.kp}
+          auroraProbability={data.probability}
+          cloudCoverage={chaseState.tromsoCloudCoverage}
+          timestamp={data.timestamp}
+          tromsoCoords={[18.95, 69.65]}
+        />
+      )}
+
       {/* Snapshot Button */}
       <div id="snapshot-button-container" className="absolute bottom-24 right-4 flex flex-col gap-2 z-50">
         <button
@@ -323,11 +339,19 @@ export default function MapView() {
 
         {/* AI Interpretation Layer */}
         {aiInput && (
-          <AIInterpretation 
-            kp={aiInput.kp} 
+          <AIInterpretation
+            kp={aiInput.kp}
             probability={aiInput.probability}
             tromsoCloud={aiInput.tromsoCloud}
             bestRegion={aiInput.bestRegion}
+          />
+        )}
+
+        {/* Visual Mode Toggle */}
+        {visualMode.isClient && (
+          <VisualModeToggle
+            isEnabled={visualMode.isEnabled}
+            onToggle={visualMode.toggle}
           />
         )}
 
