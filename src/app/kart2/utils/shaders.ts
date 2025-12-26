@@ -81,8 +81,8 @@ export const FRAGMENT_SHADER = `
     // Cloud coverage dims the effect (simplified)
     finalColor *= (1.0 - u_cloudCoverage * 0.6);
 
-    // Simple alpha (avoid expensive clamp)
-    float alpha = min(auroraValue * 0.4 + tromsoGlow * 0.6, 0.5);
+    // Boosted alpha for visibility (2-3x stronger than before)
+    float alpha = min(auroraValue * 1.0 + tromsoGlow * 2.0, 0.8);
 
     gl_FragColor = vec4(finalColor, alpha);
   }
