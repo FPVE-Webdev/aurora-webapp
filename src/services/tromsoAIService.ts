@@ -31,10 +31,14 @@ const joinURL = (base: string, path: string) => {
 };
 
 const isAbortError = (err: unknown): boolean => {
-  return (
-    (err instanceof DOMException && err.name === 'AbortError') ||
-    (err instanceof Error && err.name === 'AbortError')
-  );
+  if (err instanceof Error) {
+    return err.name === 'AbortError';
+  }
+  // Guard against DOMException not existing on server
+  if (typeof DOMException !== 'undefined' && err instanceof DOMException) {
+    return (err as Error).name === 'AbortError';
+  }
+  return false;
 };
 
 class TromsøAIService {
