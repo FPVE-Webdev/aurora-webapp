@@ -203,7 +203,7 @@ export default function MapView() {
       <div ref={mapContainerRef} className="w-full h-full" />
 
       {/* Snapshot Button */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2 z-50">
+      <div className="absolute bottom-24 right-4 flex flex-col gap-2 z-50">
         <button
           onClick={handleSnapshot}
           disabled={isSnapshotting}
