@@ -8,7 +8,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { tromsøAIService } from '@/services/tromsoAIService';
 import { mapTromsøForecastToSpotForecast, scoreToKpIndex } from '@/lib/tromsoAIMapper';
 import { OBSERVATION_SPOTS, FREE_OBSERVATION_SPOTS } from '@/lib/constants';
@@ -131,12 +131,12 @@ export function useAuroraData() {
     predictiveHint: null
   });
 
-  const [isFetching, setIsFetching] = useState(false);
+  const isFetchingRef = useRef(false);
 
   const fetchData = useCallback(async () => {
-    if (isFetching) return;
+    if (isFetchingRef.current) return;
 
-    setIsFetching(true);
+    isFetchingRef.current = true;
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -158,7 +158,14 @@ export function useAuroraData() {
         try {
           // Fetch real weather for this spot
           const weatherRes = await fetch(`/api/weather/${spot.latitude}/${spot.longitude}`);
-          const weatherData = weatherRes.ok ? await weatherRes.json() : null;
+
+          let weatherData: unknown = null;
+          if (weatherRes.ok) {
+            const weatherText = await weatherRes.text();
+            if (weatherText && weatherText.trim()) {
+              weatherData = JSON.parse(weatherText);
+            }
+          }
 
           // Map forecast with real or fallback weather data
           return mapTromsøForecastToSpotForecast(forecast!, spot, weatherData);
@@ -192,7 +199,15 @@ export function useAuroraData() {
         predictiveHint
       }));
     } catch (error) {
-      console.error('Error fetching aurora data:', error);
+      const message =
+        error instanceof Error
+          ? error.name === 'AbortError'
+            ? 'Request timed out'
+            : error.message
+          : 'Unknown error';
+
+      // Avoid noisy stack traces in the browser console for transient network failures.
+      console.warn(`Error fetching aurora data: ${message}`);
 
       // Try to use cached data on error
       const cached = getCachedForecast();
@@ -217,9 +232,9 @@ export function useAuroraData() {
         }));
       }
     } finally {
-      setIsFetching(false);
+      isFetchingRef.current = false;
     }
-  }, [isFetching]);
+  }, []);
 
   const selectSpot = useCallback((spot: ObservationSpot) => {
     setState(prev => ({ ...prev, selectedSpot: spot }));
