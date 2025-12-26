@@ -22,7 +22,8 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
+import { createShaderProgram, VERTEX_SHADER, FRAGMENT_SHADER } from '../utils/shaders';
 
 interface VisualModeCanvasProps {
   isEnabled: boolean;
@@ -43,7 +44,9 @@ export default function VisualModeCanvas({
 }: VisualModeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
+  const programRef = useRef<WebGLProgram | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     if (!isEnabled || !canvasRef.current) {
@@ -91,25 +94,96 @@ export default function VisualModeCanvas({
     resize();
     window.addEventListener('resize', resize);
 
-    // TODO: Shader compilation and rendering loop will be added in Phase 2
-    // For now, just render a simple test pattern
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    // Compile shaders
+    const program = createShaderProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER);
+    if (!program) {
+      console.error('[VisualMode] Failed to create shader program');
+      return;
+    }
 
-    console.log('[VisualMode] Canvas initialized', {
+    programRef.current = program;
+    gl.useProgram(program);
+
+    // Create fullscreen quad
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    const positions = new Float32Array([
+      -1, -1,
+       1, -1,
+      -1,  1,
+       1,  1,
+    ]);
+    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+    // Setup vertex attribute
+    const positionLocation = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(positionLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+    // Get uniform locations
+    const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
+    const timeLocation = gl.getUniformLocation(program, 'u_time');
+    const auroraIntensityLocation = gl.getUniformLocation(program, 'u_auroraIntensity');
+    const tromsoCenterLocation = gl.getUniformLocation(program, 'u_tromsoCenter');
+    const cloudCoverageLocation = gl.getUniformLocation(program, 'u_cloudCoverage');
+
+    // Enable alpha blending
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // Calculate aurora intensity (spec formula)
+    const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+    const auroraIntensity = clamp01(kpIndex / 9) * 0.6 + clamp01(auroraProbability / 100) * 0.4;
+
+    console.log('[VisualMode] Initialized', {
       kpIndex,
       auroraProbability,
-      cloudCoverage,
-      tromsoCoords
+      auroraIntensity,
+      cloudCoverage
     });
+
+    // Render loop
+    const render = () => {
+      if (!glRef.current || !programRef.current) return;
+
+      const currentTime = Date.now() - startTimeRef.current;
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      // Set uniforms
+      gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+      gl.uniform1f(timeLocation, currentTime);
+      gl.uniform1f(auroraIntensityLocation, auroraIntensity);
+      gl.uniform2f(tromsoCenterLocation, 0.5, 0.65); // Center-ish, slightly north
+      gl.uniform1f(cloudCoverageLocation, cloudCoverage / 100);
+
+      // Draw fullscreen quad
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      animationFrameRef.current = requestAnimationFrame(render);
+    };
+
+    render();
 
     return () => {
       window.removeEventListener('resize', resize);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      if (programRef.current && glRef.current) {
+        glRef.current.deleteProgram(programRef.current);
+        programRef.current = null;
+      }
+      if (positionBuffer && glRef.current) {
+        glRef.current.deleteBuffer(positionBuffer);
       }
       if (glRef.current) {
         glRef.current.getExtension('WEBGL_lose_context')?.loseContext();
+        glRef.current = null;
       }
     };
   }, [isEnabled, kpIndex, auroraProbability, cloudCoverage, timestamp, tromsoCoords]);
