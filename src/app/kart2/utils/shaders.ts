@@ -112,19 +112,25 @@ export function compileShader(
 ): WebGLShader | null {
   // Validate WebGL context
   if (!gl) {
-    console.error('[Shader] WebGL context is invalid');
+    if (!IS_PRODUCTION) {
+      console.error('[Shader] WebGL context is invalid');
+    }
     return null;
   }
 
   const shader = gl.createShader(type);
   if (!shader) {
-    console.error('[Shader] Failed to create shader');
+    if (!IS_PRODUCTION) {
+      console.error('[Shader] Failed to create shader');
+    }
     return null;
   }
 
   // Validate source
   if (!source || typeof source !== 'string') {
-    console.error('[Shader] Invalid shader source');
+    if (!IS_PRODUCTION) {
+      console.error('[Shader] Invalid shader source');
+    }
     gl.deleteShader(shader);
     return null;
   }
@@ -136,8 +142,10 @@ export function compileShader(
     const error = gl.getShaderInfoLog(shader);
     const shaderType = type === gl.VERTEX_SHADER ? 'VERTEX' : 'FRAGMENT';
     const errorMsg = error || 'Unknown compilation error (no details available)';
-    console.error(`[Shader] ${shaderType} Compilation Error:`, errorMsg);
-    console.error(`[Shader] Source length: ${source.length} characters`);
+    if (!IS_PRODUCTION) {
+      console.error(`[Shader] ${shaderType} Compilation Error:`, errorMsg);
+      console.error(`[Shader] Source length: ${source.length} characters`);
+    }
     gl.deleteShader(shader);
     return null;
   }
@@ -155,26 +163,34 @@ export function createShaderProgram(
 ): WebGLProgram | null {
   // Validate inputs
   if (!gl) {
-    console.error('[Shader] WebGL context is invalid');
+    if (!IS_PRODUCTION) {
+      console.error('[Shader] WebGL context is invalid');
+    }
     return null;
   }
 
   const vertexShader = compileShader(gl, vertexSource, gl.VERTEX_SHADER);
   if (!vertexShader) {
-    console.error('[Shader] Failed to compile vertex shader');
+    if (!IS_PRODUCTION) {
+      console.error('[Shader] Failed to compile vertex shader');
+    }
     return null;
   }
 
   const fragmentShader = compileShader(gl, fragmentSource, gl.FRAGMENT_SHADER);
   if (!fragmentShader) {
-    console.error('[Shader] Failed to compile fragment shader');
+    if (!IS_PRODUCTION) {
+      console.error('[Shader] Failed to compile fragment shader');
+    }
     gl.deleteShader(vertexShader);
     return null;
   }
 
   const program = gl.createProgram();
   if (!program) {
-    console.error('[Shader] Failed to create program');
+    if (!IS_PRODUCTION) {
+      console.error('[Shader] Failed to create program');
+    }
     gl.deleteShader(vertexShader);
     gl.deleteShader(fragmentShader);
     return null;
@@ -186,7 +202,9 @@ export function createShaderProgram(
 
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     const linkError = gl.getProgramInfoLog(program);
-    console.error('[Shader] Link error:', linkError || 'Unknown link error');
+    if (!IS_PRODUCTION) {
+      console.error('[Shader] Link error:', linkError || 'Unknown link error');
+    }
     gl.deleteProgram(program);
     gl.deleteShader(vertexShader);
     gl.deleteShader(fragmentShader);
