@@ -245,7 +245,7 @@ export default function MapView() {
     <div className="fixed inset-0">
       {/* Map container with relative positioning for proper overlay stacking */}
       <div className="relative w-full h-full">
-        <div ref={mapContainerRef} className="absolute inset-0" />
+        <div ref={mapContainerRef} className="absolute inset-0 z-0" />
 
         {/* Visual Mode Canvas Overlay - MUST be inside relative container */}
         {data && visualMode.isClient && (
