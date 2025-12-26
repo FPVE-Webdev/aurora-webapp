@@ -151,23 +151,49 @@ export function createShaderProgram(
   vertexSource: string,
   fragmentSource: string
 ): WebGLProgram | null {
-  const vertexShader = compileShader(gl, vertexSource, gl.VERTEX_SHADER);
-  const fragmentShader = compileShader(gl, fragmentSource, gl.FRAGMENT_SHADER);
+  // Validate inputs
+  if (!gl) {
+    console.error('[Shader] WebGL context is invalid');
+    return null;
+  }
 
-  if (!vertexShader || !fragmentShader) return null;
+  const vertexShader = compileShader(gl, vertexSource, gl.VERTEX_SHADER);
+  if (!vertexShader) {
+    console.error('[Shader] Failed to compile vertex shader');
+    return null;
+  }
+
+  const fragmentShader = compileShader(gl, fragmentSource, gl.FRAGMENT_SHADER);
+  if (!fragmentShader) {
+    console.error('[Shader] Failed to compile fragment shader');
+    gl.deleteShader(vertexShader);
+    return null;
+  }
 
   const program = gl.createProgram();
-  if (!program) return null;
+  if (!program) {
+    console.error('[Shader] Failed to create program');
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
+    return null;
+  }
 
   gl.attachShader(program, vertexShader);
   gl.attachShader(program, fragmentShader);
   gl.linkProgram(program);
 
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    console.error('[Shader] Link error:', gl.getProgramInfoLog(program));
+    const linkError = gl.getProgramInfoLog(program);
+    console.error('[Shader] Link error:', linkError || 'Unknown link error');
     gl.deleteProgram(program);
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
     return null;
   }
+
+  // Clean up individual shaders after linking (no longer needed)
+  gl.deleteShader(vertexShader);
+  gl.deleteShader(fragmentShader);
 
   return program;
 }
