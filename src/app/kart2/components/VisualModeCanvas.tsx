@@ -104,7 +104,13 @@ export default function VisualModeCanvas({
 
     // Resize canvas to match display size with proper DPI scaling
     const resize = () => {
-      const rect = canvas.parentElement!.getBoundingClientRect();
+      if (!canvas.parentElement) return;
+
+      const rect = canvas.parentElement.getBoundingClientRect();
+
+      // Guard against zero or invalid dimensions
+      if (rect.width <= 0 || rect.height <= 0) return;
+
       const displayWidth = rect.width * window.devicePixelRatio;
       const displayHeight = rect.height * window.devicePixelRatio;
 
