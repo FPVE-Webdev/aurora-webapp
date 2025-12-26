@@ -104,20 +104,38 @@ export default function VisualModeCanvas({
 
     // Resize canvas to match display size with proper DPI scaling
     const resize = () => {
-      if (!canvas.parentElement) return;
+      let displayWidth: number;
+      let displayHeight: number;
+      let cssWidth: number;
+      let cssHeight: number;
 
-      const rect = canvas.parentElement.getBoundingClientRect();
-
-      // Guard against zero or invalid dimensions
-      if (rect.width <= 0 || rect.height <= 0) return;
-
-      const displayWidth = rect.width * window.devicePixelRatio;
-      const displayHeight = rect.height * window.devicePixelRatio;
+      // Try to get parent dimensions first (preferred)
+      if (canvas.parentElement) {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          cssWidth = rect.width;
+          cssHeight = rect.height;
+          displayWidth = cssWidth * window.devicePixelRatio;
+          displayHeight = cssHeight * window.devicePixelRatio;
+        } else {
+          // Fallback to window dimensions if parent is not visible
+          cssWidth = window.innerWidth;
+          cssHeight = window.innerHeight;
+          displayWidth = cssWidth * window.devicePixelRatio;
+          displayHeight = cssHeight * window.devicePixelRatio;
+        }
+      } else {
+        // Fallback to window dimensions if no parent
+        cssWidth = window.innerWidth;
+        cssHeight = window.innerHeight;
+        displayWidth = cssWidth * window.devicePixelRatio;
+        displayHeight = cssHeight * window.devicePixelRatio;
+      }
 
       canvas.width = displayWidth;
       canvas.height = displayHeight;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      canvas.style.width = `${cssWidth}px`;
+      canvas.style.height = `${cssHeight}px`;
 
       gl.viewport(0, 0, canvas.width, canvas.height);
     };
