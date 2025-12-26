@@ -29,14 +29,57 @@ const getBaseURL = (): string => {
 
 class TromsøAIService {
   private async fetchJSON<T>(url: string): Promise<T> {
-    const baseURL = getBaseURL();
-    const fullURL = url.startsWith('http') ? url : `${baseURL}${url.startsWith('/') ? '' : '/'}${url.replace(getBaseURL(), '')}`;
+    const demoBase = process.env.NEXT_PUBLIC_DEMO_API_URL || '/api/aurora';
+    const preferredBase = getBaseURL();
 
-    const response = await fetch(fullURL);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const candidates = preferredBase.startsWith('http')
+      ? [preferredBase, demoBase]
+      : [preferredBase];
+
+    const join = (base: string, path: string) => {
+      const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      return `${normalizedBase}${normalizedPath}`;
+    };
+
+    let lastError: unknown;
+
+    for (const base of candidates) {
+      const fullURL = url.startsWith('http') ? url : join(base, url);
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        const response = await fetch(fullURL, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          // If we tried the "live" base and it failed, fall back to demoBase.
+          if (base !== demoBase && candidates.length > 1) {
+            lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+            continue;
+          }
+
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        // Some environments can occasionally return an empty body with 200.
+        // Parse defensively to avoid JSON.parse errors.
+        const text = await response.text();
+        if (!text || !text.trim()) {
+          throw new Error('Empty response body');
+        }
+
+        return JSON.parse(text) as T;
+      } catch (error) {
+        lastError = error;
+        // Try next candidate if available
+        continue;
+      }
     }
-    return response.json();
+
+    throw lastError instanceof Error ? lastError : new Error('Failed to fetch');
   }
 
   /**
