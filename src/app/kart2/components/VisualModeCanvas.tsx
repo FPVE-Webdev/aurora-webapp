@@ -48,6 +48,7 @@ export default function VisualModeCanvas({
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const fpsCounterRef = useRef({ frames: 0, lastTime: Date.now(), fps: 60 });
+  const lastFrameTimeRef = useRef<number>(Date.now());
   const [shouldRender, setShouldRender] = useState(true);
 
   // Check for prefers-reduced-motion
@@ -168,27 +169,35 @@ export default function VisualModeCanvas({
       displayHeight: canvas.clientHeight
     });
 
-    // Render loop with FPS monitoring
+    // Render loop with FPS capping (30 FPS) and monitoring
     const render = () => {
       if (!glRef.current || !programRef.current) return;
 
-      const currentTime = Date.now() - startTimeRef.current;
+      // FPS cap: only render every ~33ms (30 FPS)
+      const now = Date.now();
+      const deltaTime = now - lastFrameTimeRef.current;
+
+      if (deltaTime < 33) {
+        // Too soon, skip this frame
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
+      }
+
+      lastFrameTimeRef.current = now;
+      const currentTime = now - startTimeRef.current;
 
       // FPS monitoring (every 60 frames)
       fpsCounterRef.current.frames++;
       if (fpsCounterRef.current.frames >= 60) {
-        const now = Date.now();
         const delta = now - fpsCounterRef.current.lastTime;
         const fps = (60 * 1000) / delta;
         fpsCounterRef.current.fps = fps;
         fpsCounterRef.current.frames = 0;
         fpsCounterRef.current.lastTime = now;
 
-        // Auto-disable if consistently below 15 FPS
+        // Warn if below 15 FPS
         if (fps < 15) {
           console.warn('[VisualMode] Low FPS detected:', fps.toFixed(1), '- consider disabling');
-          // Note: We don't auto-disable here to respect user choice
-          // User can manually toggle off if performance is poor
         }
       }
 
