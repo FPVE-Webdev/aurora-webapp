@@ -9,7 +9,6 @@ import AIInterpretation from './AIInterpretation';
 import VisualModeCanvas from './components/VisualModeCanvas';
 import VisualModeToggle from './components/VisualModeToggle';
 import { useVisualMode } from './hooks/useVisualMode';
-import 'mapbox-gl/dist/mapbox-gl.css';
 
 export default function MapView() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
