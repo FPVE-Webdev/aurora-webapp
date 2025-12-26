@@ -110,6 +110,23 @@ export default function MapView() {
       return;
     }
 
+    // Restore saved map view from localStorage
+    const STORAGE_KEY = 'kart2:mapView:v1';
+    let savedView = null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) savedView = JSON.parse(raw);
+    } catch (err) {
+      console.warn('[MapView] Failed to parse saved view:', err);
+    }
+
+    const initialView = savedView || {
+      center: [18.95, 69.65],
+      zoom: 6,
+      bearing: 0,
+      pitch: 0
+    };
+
     // Dynamically import mapbox-gl to avoid SSR issues
     import('mapbox-gl')
       .then((mapboxgl) => {
@@ -118,15 +135,38 @@ export default function MapView() {
         const map = new mapboxgl.default.Map({
           container: mapContainerRef.current!,
           style: 'mapbox://styles/mapbox/dark-v11',
-          center: [18.95, 69.65], // Tromsø
-          zoom: 6,
+          center: initialView.center,
+          zoom: initialView.zoom,
+          bearing: initialView.bearing,
+          pitch: initialView.pitch,
           attributionControl: false,
         });
-        console.log('[MapView] Map created');
+        console.log('[MapView] Map created with view:', initialView);
 
         map.on('load', () => {
           console.log('[MapView] ✅ Map loaded!');
-          
+
+          // Persist map view on camera changes
+          const persistView = () => {
+            const center = map.getCenter();
+            const view = {
+              center: [center.lng, center.lat],
+              zoom: map.getZoom(),
+              bearing: map.getBearing(),
+              pitch: map.getPitch()
+            };
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(view));
+            } catch (err) {
+              console.warn('[MapView] Failed to persist view:', err);
+            }
+          };
+
+          map.on('moveend', persistView);
+          map.on('zoomend', persistView);
+          map.on('rotateend', persistView);
+          map.on('pitchend', persistView);
+
           // Add Tromsø dimming overlay (shown when shouldExpandMap is true)
           map.addSource('tromso-dim', {
             type: 'geojson',

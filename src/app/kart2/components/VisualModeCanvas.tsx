@@ -216,8 +216,12 @@ export default function VisualModeCanvas({
 
       // PROJECT TROMSØ TO SCREEN SPACE using Mapbox
       const projected = mapInstance.project(tromsoCoords);
-      const screenX = projected.x / canvas.width;
-      const screenY = 1.0 - (projected.y / canvas.height); // Invert Y for WebGL
+      let screenX = projected.x / canvas.width;
+      let screenY = 1.0 - (projected.y / canvas.height); // Invert Y for WebGL
+
+      // Guard against NaN/out-of-range
+      screenX = Number.isFinite(screenX) ? Math.min(1, Math.max(0, screenX)) : 0.5;
+      screenY = Number.isFinite(screenY) ? Math.min(1, Math.max(0, screenY)) : 0.5;
 
       // Set uniforms
       gl.uniform2f(resolutionLocation, canvas.width, canvas.height);

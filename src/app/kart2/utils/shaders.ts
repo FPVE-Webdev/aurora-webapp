@@ -49,14 +49,16 @@ export const FRAGMENT_SHADER = `
     // Combine noise layers
     float auroraPattern = (noise1 * 0.6 + noise2 * 0.4) * 0.5 + 0.5;
 
-    // Radial falloff from Tromsø center
-    float radialFalloff = smoothstep(0.8, 0.0, distToTromso);
+    // Radial falloff from Tromsø center (ensure visibility)
+    float radialFalloff = smoothstep(0.7, 0.0, distToTromso);
+    // Minimum visibility guarantee near center
+    radialFalloff = max(radialFalloff, 0.12);
 
     // Aurora strength: combines pattern with radial falloff
     float baseAuroraStrength = auroraPattern * radialFalloff;
 
     // Aurora intensity
-    float auroraValue = baseAuroraStrength * u_auroraIntensity * 3.5;
+    float auroraValue = baseAuroraStrength * u_auroraIntensity * 4.0;
 
     // VERY BRIGHT GREEN-CYAN COLORS (not dark)
     vec3 auroraColor = mix(
@@ -82,11 +84,11 @@ export const FRAGMENT_SHADER = `
     float cloudDim = 1.0 - (u_cloudCoverage * 0.4);
     finalColor *= cloudDim;
 
-    // Alpha based on combined effects
+    // Alpha based on combined effects (ensure visibility)
     float alpha = clamp(
       auroraValue * 0.8 + tromsoGlow * 1.5,
       0.0,
-      1.0
+      0.85
     );
 
     gl_FragColor = vec4(finalColor, alpha);
