@@ -17,15 +17,14 @@
  * - TODO: Optimize for mobile/public users
  */
 
-import { Metadata } from 'next';
-import MapView from './MapView';
+'use client';
 
-export const metadata: Metadata = {
-  title: 'Nordlyskart (Eksperimentelt) | Aurora Tromsø',
-  description: 'Eksperimentelt offentlig nordlyskart',
-};
+import MapView from './MapView';
+import { useKart2Exposure } from './useKart2Exposure';
 
 export default function Kart2Page() {
+  useKart2Exposure();
+
   return (
     <div className="fixed inset-0 bg-arctic-900">
       <MapView />

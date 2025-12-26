@@ -10,6 +10,7 @@ import { DevModeProvider } from '@/contexts/DevModeContext';
 import { DataModeProvider } from '@/contexts/DataModeContext';
 import { AdminLink } from '@/components/shared/AdminLink';
 import { Navigation } from '@/components/shared/Navigation';
+import Footer from '@/components/shared/Footer';
 import './globals.css';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -22,6 +23,7 @@ const syne = Syne({
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin');
+  const isKart2Route = pathname === '/kart2';
 
   return (
     <>
@@ -30,6 +32,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       <AdminLink />
+      {!isAdminRoute && !isKart2Route && <Footer />}
     </>
   );
 }
