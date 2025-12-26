@@ -22,7 +22,7 @@
 
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createShaderProgram, VERTEX_SHADER, FRAGMENT_SHADER } from '../utils/shaders';
 
 interface VisualModeCanvasProps {
@@ -47,10 +47,31 @@ export default function VisualModeCanvas({
   const programRef = useRef<WebGLProgram | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
+  const fpsCounterRef = useRef({ frames: 0, lastTime: Date.now(), fps: 60 });
+  const [shouldRender, setShouldRender] = useState(true);
+
+  // Check for prefers-reduced-motion
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    const handleChange = () => {
+      if (mediaQuery.matches) {
+        console.log('[VisualMode] Disabled due to prefers-reduced-motion');
+        setShouldRender(false);
+      } else {
+        setShouldRender(true);
+      }
+    };
+
+    handleChange();
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   useEffect(() => {
-    if (!isEnabled || !canvasRef.current) {
-      // Cleanup when disabled
+    if (!isEnabled || !canvasRef.current || !shouldRender) {
+      // Cleanup when disabled or reduced-motion
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
@@ -143,11 +164,29 @@ export default function VisualModeCanvas({
       cloudCoverage
     });
 
-    // Render loop
+    // Render loop with FPS monitoring
     const render = () => {
       if (!glRef.current || !programRef.current) return;
 
       const currentTime = Date.now() - startTimeRef.current;
+
+      // FPS monitoring (every 60 frames)
+      fpsCounterRef.current.frames++;
+      if (fpsCounterRef.current.frames >= 60) {
+        const now = Date.now();
+        const delta = now - fpsCounterRef.current.lastTime;
+        const fps = (60 * 1000) / delta;
+        fpsCounterRef.current.fps = fps;
+        fpsCounterRef.current.frames = 0;
+        fpsCounterRef.current.lastTime = now;
+
+        // Auto-disable if consistently below 15 FPS
+        if (fps < 15) {
+          console.warn('[VisualMode] Low FPS detected:', fps.toFixed(1), '- consider disabling');
+          // Note: We don't auto-disable here to respect user choice
+          // User can manually toggle off if performance is poor
+        }
+      }
 
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0);
@@ -186,9 +225,10 @@ export default function VisualModeCanvas({
         glRef.current = null;
       }
     };
-  }, [isEnabled, kpIndex, auroraProbability, cloudCoverage, timestamp, tromsoCoords]);
+  }, [isEnabled, kpIndex, auroraProbability, cloudCoverage, timestamp, tromsoCoords, shouldRender]);
 
-  if (!isEnabled) return null;
+  // Don't render if disabled or reduced-motion
+  if (!isEnabled || !shouldRender) return null;
 
   return (
     <canvas
