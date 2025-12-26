@@ -25,8 +25,16 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
 
     const fetchInterpretation = async () => {
       try {
-        controllerRef.current = new AbortController();
-        const timeoutId = setTimeout(() => controllerRef.current?.abort(), 8000);
+        // Only create controller if we haven't already (prevent double-invoke issues)
+        if (!controllerRef.current) {
+          controllerRef.current = new AbortController();
+        }
+
+        const timeoutId = setTimeout(() => {
+          if (controllerRef.current && isMountedRef.current) {
+            controllerRef.current.abort();
+          }
+        }, 8000);
 
         const res = await fetch('/api/ai-interpretation', {
           method: 'POST',
@@ -67,10 +75,13 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
 
     return () => {
       isMountedRef.current = false;
-      try {
-        controllerRef.current?.abort();
-      } catch {
-        // Suppress any errors from abort (including "signal is aborted without reason")
+      // Only abort if component is still mounted and controller exists
+      if (controllerRef.current && !controllerRef.current.signal.aborted) {
+        try {
+          controllerRef.current.abort();
+        } catch {
+          // Suppress any errors from abort
+        }
       }
     };
   }, []);
