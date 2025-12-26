@@ -25,6 +25,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createShaderProgram, VERTEX_SHADER, FRAGMENT_SHADER } from '../utils/shaders';
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 interface VisualModeCanvasProps {
   isEnabled: boolean;
   kpIndex: number;
