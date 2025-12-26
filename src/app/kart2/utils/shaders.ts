@@ -1,3 +1,5 @@
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 /**
  * WebGL Shaders for Visual Mode
  *
