@@ -250,7 +250,7 @@ export default function MapView() {
       </div>
 
       {/* Visual Mode Canvas Overlay */}
-      {data && visualMode.isClient && (
+      {data && visualMode.isClient && mapRef.current && (
         <VisualModeCanvas
           isEnabled={visualMode.isEnabled}
           kpIndex={data.kp}
@@ -258,6 +258,7 @@ export default function MapView() {
           cloudCoverage={chaseState.tromsoCloudCoverage}
           timestamp={data.timestamp}
           tromsoCoords={[18.95, 69.65]}
+          mapInstance={mapRef.current}
         />
       )}
 

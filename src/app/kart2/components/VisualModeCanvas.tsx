@@ -32,6 +32,7 @@ interface VisualModeCanvasProps {
   cloudCoverage: number;
   timestamp: string; // ISO 8601 timestamp
   tromsoCoords: [number, number];
+  mapInstance: any; // Mapbox map instance
 }
 
 export default function VisualModeCanvas({
@@ -40,7 +41,8 @@ export default function VisualModeCanvas({
   auroraProbability,
   cloudCoverage,
   timestamp,
-  tromsoCoords
+  tromsoCoords,
+  mapInstance
 }: VisualModeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
@@ -115,6 +117,13 @@ export default function VisualModeCanvas({
 
     resize();
     window.addEventListener('resize', resize);
+
+    // Update on map move/zoom
+    const updateOnMapChange = () => {
+      // Render loop handles projection updates automatically
+    };
+    mapInstance.on('move', updateOnMapChange);
+    mapInstance.on('zoom', updateOnMapChange);
 
     // Compile shaders
     const program = createShaderProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER);
@@ -205,11 +214,16 @@ export default function VisualModeCanvas({
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
+      // PROJECT TROMSØ TO SCREEN SPACE using Mapbox
+      const projected = mapInstance.project(tromsoCoords);
+      const screenX = projected.x / canvas.width;
+      const screenY = 1.0 - (projected.y / canvas.height); // Invert Y for WebGL
+
       // Set uniforms
       gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
       gl.uniform1f(timeLocation, currentTime);
       gl.uniform1f(auroraIntensityLocation, auroraIntensity);
-      gl.uniform2f(tromsoCenterLocation, 0.5, 0.65); // Center-ish, slightly north
+      gl.uniform2f(tromsoCenterLocation, screenX, screenY); // DYNAMIC screen-space position
       gl.uniform1f(cloudCoverageLocation, cloudCoverage / 100);
 
       // Draw fullscreen quad
@@ -222,6 +236,8 @@ export default function VisualModeCanvas({
 
     return () => {
       window.removeEventListener('resize', resize);
+      mapInstance.off('move', updateOnMapChange);
+      mapInstance.off('zoom', updateOnMapChange);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
@@ -238,7 +254,7 @@ export default function VisualModeCanvas({
         glRef.current = null;
       }
     };
-  }, [isEnabled, kpIndex, auroraProbability, cloudCoverage, timestamp, tromsoCoords, shouldRender]);
+  }, [isEnabled, kpIndex, auroraProbability, cloudCoverage, timestamp, tromsoCoords, mapInstance, shouldRender]);
 
   // Don't render if disabled or reduced-motion
   if (!isEnabled || !shouldRender) return null;
@@ -248,7 +264,7 @@ export default function VisualModeCanvas({
       ref={canvasRef}
       className="absolute inset-0 pointer-events-none"
       style={{
-        zIndex: 10,
+        zIndex: 20,
         background: 'transparent'
       }}
     />
