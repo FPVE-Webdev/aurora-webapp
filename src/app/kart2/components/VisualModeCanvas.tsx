@@ -24,6 +24,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createShaderProgram, VERTEX_SHADER, FRAGMENT_SHADER } from '../utils/shaders';
+import { useVisualMode } from '../hooks/useVisualMode';
 
 interface VisualModeCanvasProps {
   isEnabled: boolean;
