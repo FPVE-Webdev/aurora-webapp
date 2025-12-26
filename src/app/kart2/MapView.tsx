@@ -102,7 +102,6 @@ export default function MapView() {
     hasInitialized.current = true;
 
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    console.log('[MapView] Token:', token ? 'SET' : 'MISSING');
 
     if (!token) {
       const errorMsg = 'No Mapbox token found';
@@ -142,10 +141,8 @@ export default function MapView() {
           pitch: initialView.pitch,
           attributionControl: false,
         });
-        console.log('[MapView] Map created with view:', initialView);
 
         map.on('load', () => {
-          console.log('[MapView] ✅ Map loaded!');
 
           // Persist map view on camera changes
           const persistView = () => {
@@ -201,7 +198,6 @@ export default function MapView() {
               
               // Skip if source already exists
               if (map.getSource(sourceId)) {
-                console.log(`[MapView] Source ${sourceId} already exists, skipping`);
                 return;
               }
               
