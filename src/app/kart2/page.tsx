@@ -10,6 +10,7 @@
  * - Can be deleted later without side effects
  * - Not linked from main navigation yet
  * - No auth required (public access)
+ * - Redeploy trigger: Vercel env var added
  *
  * NEXT STEPS (FASE 1):
  * - TODO: Implement real aurora data integration
