@@ -161,7 +161,11 @@ export default function VisualModeCanvas({
       kpIndex,
       auroraProbability,
       auroraIntensity,
-      cloudCoverage
+      cloudCoverage,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      displayWidth: canvas.clientWidth,
+      displayHeight: canvas.clientHeight
     });
 
     // Render loop with FPS monitoring
