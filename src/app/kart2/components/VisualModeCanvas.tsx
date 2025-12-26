@@ -102,16 +102,18 @@ export default function VisualModeCanvas({
 
     glRef.current = gl;
 
-    // Resize canvas to match display size
+    // Resize canvas to match display size with proper DPI scaling
     const resize = () => {
-      const displayWidth = canvas.clientWidth;
-      const displayHeight = canvas.clientHeight;
+      const rect = canvas.parentElement!.getBoundingClientRect();
+      const displayWidth = rect.width * window.devicePixelRatio;
+      const displayHeight = rect.height * window.devicePixelRatio;
 
-      if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
-        canvas.width = displayWidth;
-        canvas.height = displayHeight;
-        gl.viewport(0, 0, displayWidth, displayHeight);
-      }
+      canvas.width = displayWidth;
+      canvas.height = displayHeight;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
     };
 
     resize();
