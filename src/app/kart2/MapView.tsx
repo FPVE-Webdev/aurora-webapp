@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { toPng } from 'html-to-image';
 import { useAuroraData } from './useAuroraData';
 import { useChaseRegions } from './useChaseRegions';
@@ -11,16 +11,37 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 export default function MapView() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
+  const hasInitialized = useRef(false); // Task 3: Map Init Guard
   const [mapError, setMapError] = useState<string | null>(null);
   const [isSnapshotting, setIsSnapshotting] = useState(false);
+  const isSnapshottingRef = useRef(false); // Task 1: Snapshot Debounce Lock
   const { data, isLoading, error } = useAuroraData();
   const chaseState = useChaseRegions();
 
+  // Task 2: Memoization Guards
+  const aiInput = useMemo(() => {
+    if (!data) return null;
+    return {
+      kp: data.kp,
+      probability: data.probability,
+      tromsoCloud: chaseState.tromsoCloudCoverage,
+      bestRegion: chaseState.bestRegion ? {
+        name: chaseState.bestRegion.region.name,
+        visibilityScore: chaseState.bestRegion.visibilityScore
+      } : null
+    };
+  }, [data, chaseState.tromsoCloudCoverage, chaseState.bestRegion]);
+
+  // Signal Refs
+  const hasLoggedSnapshot = useRef(false);
+
   // Snapshot Handler
   const handleSnapshot = async () => {
-    if (!mapContainerRef.current) return;
+    // Task 1: Check ref lock
+    if (!mapContainerRef.current || isSnapshottingRef.current) return;
     
     try {
+      isSnapshottingRef.current = true;
       setIsSnapshotting(true);
       
       // Target the parent div to capture overlay + map
@@ -28,7 +49,16 @@ export default function MapView() {
       
       const dataUrl = await toPng(element, {
         cacheBust: true,
-        pixelRatio: 2, // Check this doesn't crash mobile
+        pixelRatio: 3, // High-DPI capture (Task 1)
+        filter: (node) => {
+          // Task 3: Exclude snapshot button
+          return node.id !== 'snapshot-button-container';
+        },
+        style: {
+          // Task 2: Font smoothing
+          '-webkit-font-smoothing': 'antialiased',
+          '-moz-osx-font-smoothing': 'grayscale',
+        } as any // Cast to allow custom properties
       });
 
       // Try clipboard first
@@ -46,16 +76,25 @@ export default function MapView() {
         link.href = dataUrl;
         link.click();
       }
+
+      // Signal: Snapshot Used (Task 1)
+      if (!hasLoggedSnapshot.current) {
+        console.info('[kart2][signal] snapshot_used');
+        hasLoggedSnapshot.current = true;
+      }
       
     } catch (err) {
       console.error('Snapshot failed:', err);
     } finally {
       setIsSnapshotting(false);
+      isSnapshottingRef.current = false;
     }
   };
 
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    // Task 3: Enhanced guard
+    if (!mapContainerRef.current || mapRef.current || hasInitialized.current) return;
+    hasInitialized.current = true;
 
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     console.log('[MapView] Token:', token ? 'SET' : 'MISSING');
@@ -145,10 +184,10 @@ export default function MapView() {
                 paint: {
                   'circle-radius': isBestRegion ? 50 : 40,
                   'circle-color': isBestRegion ? '#34d399' : '#22c55e',
-                  'circle-opacity': isBestRegion ? 0.25 : 0.15,
+                  'circle-opacity': isBestRegion ? 0.4 : 0.2,
                   'circle-stroke-width': isBestRegion ? 3 : 2,
                   'circle-stroke-color': isBestRegion ? '#34d399' : '#22c55e',
-                  'circle-stroke-opacity': isBestRegion ? 0.8 : 0.5
+                  'circle-stroke-opacity': isBestRegion ? 0.9 : 0.6
                 }
               });
               
@@ -203,11 +242,11 @@ export default function MapView() {
       <div ref={mapContainerRef} className="w-full h-full" />
 
       {/* Snapshot Button */}
-      <div className="absolute bottom-24 right-4 flex flex-col gap-2 z-50">
+      <div id="snapshot-button-container" className="absolute bottom-24 right-4 flex flex-col gap-2 z-50">
         <button
           onClick={handleSnapshot}
           disabled={isSnapshotting}
-          className="bg-white/90 p-3 rounded-full shadow hover:bg-white transition-colors text-gray-700 flex items-center justify-center w-10 h-10"
+          className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
           title="Ta bilde av kartet"
         >
           {isSnapshotting ? (
@@ -257,14 +296,14 @@ export default function MapView() {
           </div>
         )}
 
-        <div className="bg-white/90 p-3 rounded shadow text-xs text-gray-600">
+        <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs text-gray-300">
           <p className="font-semibold">Tromsø, Norge</p>
           <p>Eksperimentelt kart</p>
         </div>
 
         {/* Legend - Map Explanation */}
-        <div className="bg-white/90 p-3 rounded shadow text-xs text-gray-700 max-w-[220px]">
-          <p className="font-semibold mb-2 text-gray-800">Kart forklaring</p>
+        <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs text-gray-200 max-w-[220px]">
+          <p className="font-semibold mb-2 text-gray-100">Kart forklaring</p>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500/30 border-2 border-green-500/50"></div>
@@ -276,22 +315,19 @@ export default function MapView() {
                 <span className="font-medium">Best synlighet</span>
               </div>
             )}
-            <p className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-300">
+            <p className="text-[10px] text-gray-400 mt-2 pt-2 border-t border-gray-700">
               Synlighet basert på skydekke. Nordlysaktivitet antas lik i hele regionen.
             </p>
           </div>
         </div>
 
         {/* AI Interpretation Layer */}
-        {data && (
+        {aiInput && (
           <AIInterpretation 
-            kp={data.kp} 
-            probability={data.probability}
-            tromsoCloud={chaseState.tromsoCloudCoverage}
-            bestRegion={chaseState.bestRegion ? {
-              name: chaseState.bestRegion.region.name,
-              visibilityScore: chaseState.bestRegion.visibilityScore
-            } : null}
+            kp={aiInput.kp} 
+            probability={aiInput.probability}
+            tromsoCloud={aiInput.tromsoCloud}
+            bestRegion={aiInput.bestRegion}
           />
         )}
 

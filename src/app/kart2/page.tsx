@@ -23,6 +23,10 @@
 import MapView from './MapView';
 import { useKart2Exposure } from './useKart2Exposure';
 
+// PRODUCTION LOCK:
+// This module is considered production-stable.
+// No new features or refactors should be introduced without an explicit new phase.
+// Critical bugfixes only.
 export default function Kart2Page() {
   useKart2Exposure();
 
