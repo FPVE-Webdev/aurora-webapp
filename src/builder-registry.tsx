@@ -3,31 +3,49 @@
 /**
  * Builder.io Component Registry
  *
- * This file registers custom components that can be used in Builder.io's visual editor.
- * Components registered here become available as drag-and-drop blocks.
+ * This file registers simple, builder-friendly components.
+ * Complex aurora components require live data and are not suitable for Builder.io.
+ *
+ * For marketing pages, use basic HTML/CSS components instead.
  */
 
 import { Builder } from '@builder.io/react';
 
-// Import custom components
-import AuroraStatusCard from './components/aurora/AuroraStatusCard';
-import ProbabilityGauge from './components/aurora/ProbabilityGauge';
-import QuickStats from './components/aurora/QuickStats';
-import HourlyForecast from './components/aurora/HourlyForecast';
-import BestTimeWindow from './components/aurora/BestTimeWindow';
-import DarkHoursInfo from './components/aurora/DarkHoursInfo';
-import GoNowAlert from './components/home/GoNowAlert';
-import PremiumCTA from './components/shared/PremiumCTA';
-
 /**
- * Register Aurora Components
+ * Simple Text Hero Component
+ * Builder-friendly alternative to complex aurora components
  */
+function SimpleHero({
+  title = 'Nordlys i Tromsø',
+  subtitle = 'Sanntids nordlysvarsel',
+  className = ''
+}: {
+  title?: string;
+  subtitle?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`text-center py-16 ${className}`}>
+      <h1 className="text-4xl md:text-6xl font-bold mb-4">{title}</h1>
+      <p className="text-xl text-gray-600">{subtitle}</p>
+    </div>
+  );
+}
 
-Builder.registerComponent(AuroraStatusCard, {
-  name: 'Aurora Status Card',
-  description: 'Displays current aurora status with KP index and probability',
-  image: 'https://cdn.builder.io/api/v1/image/assets%2F0e8c89e9b7b4408e92c45789e4a1e063%2F4a2b3c1d4e5f6a7b8c9d0e1f2a3b4c5d',
+Builder.registerComponent(SimpleHero, {
+  name: 'Simple Hero',
+  description: 'Simple hero section with title and subtitle',
   inputs: [
+    {
+      name: 'title',
+      type: 'string',
+      defaultValue: 'Nordlys i Tromsø',
+    },
+    {
+      name: 'subtitle',
+      type: 'string',
+      defaultValue: 'Sanntids nordlysvarsel',
+    },
     {
       name: 'className',
       type: 'string',
@@ -36,118 +54,119 @@ Builder.registerComponent(AuroraStatusCard, {
   ],
 });
 
-Builder.registerComponent(ProbabilityGauge, {
-  name: 'Probability Gauge',
-  description: 'Visual gauge showing aurora probability percentage',
+/**
+ * Feature Card Component
+ */
+function FeatureCard({
+  icon = '🌌',
+  title = 'Feature Title',
+  description = 'Feature description',
+  className = ''
+}: {
+  icon?: string;
+  title?: string;
+  description?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`p-6 bg-white rounded-lg shadow-md ${className}`}>
+      <div className="text-4xl mb-4">{icon}</div>
+      <h3 className="text-xl font-bold mb-2">{title}</h3>
+      <p className="text-gray-600">{description}</p>
+    </div>
+  );
+}
+
+Builder.registerComponent(FeatureCard, {
+  name: 'Feature Card',
+  description: 'Card with icon, title and description',
   inputs: [
     {
-      name: 'probability',
-      type: 'number',
-      defaultValue: 75,
-      helperText: 'Aurora probability (0-100)',
-    },
-    {
-      name: 'size',
+      name: 'icon',
       type: 'string',
-      defaultValue: 'md',
-      enum: ['sm', 'md', 'lg'],
-    }
-  ],
-});
-
-Builder.registerComponent(QuickStats, {
-  name: 'Quick Stats',
-  description: 'Compact aurora statistics display',
-  inputs: [
-    {
-      name: 'showKp',
-      type: 'boolean',
-      defaultValue: true,
+      defaultValue: '🌌',
+      helperText: 'Emoji or icon',
     },
     {
-      name: 'showProbability',
-      type: 'boolean',
-      defaultValue: true,
-    },
-    {
-      name: 'showCloudCover',
-      type: 'boolean',
-      defaultValue: true,
-    }
-  ],
-});
-
-Builder.registerComponent(HourlyForecast, {
-  name: 'Hourly Forecast',
-  description: 'Hour-by-hour aurora forecast for next 24 hours',
-  inputs: [
-    {
-      name: 'compact',
-      type: 'boolean',
-      defaultValue: false,
-      helperText: 'Use compact layout',
-    }
-  ],
-});
-
-Builder.registerComponent(BestTimeWindow, {
-  name: 'Best Time Window',
-  description: 'Highlights the best time window for aurora viewing',
-  inputs: [],
-});
-
-Builder.registerComponent(DarkHoursInfo, {
-  name: 'Dark Hours Info',
-  description: 'Shows when it will be dark enough to see aurora',
-  inputs: [],
-});
-
-Builder.registerComponent(GoNowAlert, {
-  name: 'Go Now Alert',
-  description: 'Urgent alert when aurora is visible right now',
-  inputs: [
-    {
-      name: 'threshold',
-      type: 'number',
-      defaultValue: 70,
-      helperText: 'Probability threshold to show alert',
-    }
-  ],
-});
-
-Builder.registerComponent(PremiumCTA, {
-  name: 'Premium CTA',
-  description: 'Call-to-action for premium features',
-  inputs: [
-    {
-      name: 'variant',
+      name: 'title',
       type: 'string',
-      defaultValue: 'default',
-      enum: ['default', 'compact', 'banner'],
+      defaultValue: 'Feature Title',
     },
     {
-      name: 'feature',
+      name: 'description',
       type: 'string',
-      defaultValue: 'alerts',
-      helperText: 'Which premium feature to highlight',
+      defaultValue: 'Feature description',
+    },
+    {
+      name: 'className',
+      type: 'string',
+      defaultValue: '',
     }
   ],
 });
 
 /**
- * Register built-in components
+ * CTA Button Component
  */
+function CTAButton({
+  text = 'Get Started',
+  href = '#',
+  variant = 'primary',
+  className = ''
+}: {
+  text?: string;
+  href?: string;
+  variant?: 'primary' | 'secondary';
+  className?: string;
+}) {
+  const baseClasses = 'px-6 py-3 rounded-lg font-semibold transition-colors';
+  const variantClasses = variant === 'primary'
+    ? 'bg-blue-600 text-white hover:bg-blue-700'
+    : 'bg-gray-200 text-gray-900 hover:bg-gray-300';
 
+  return (
+    <a href={href} className={`${baseClasses} ${variantClasses} ${className}`}>
+      {text}
+    </a>
+  );
+}
+
+Builder.registerComponent(CTAButton, {
+  name: 'CTA Button',
+  description: 'Call-to-action button',
+  inputs: [
+    {
+      name: 'text',
+      type: 'string',
+      defaultValue: 'Get Started',
+    },
+    {
+      name: 'href',
+      type: 'string',
+      defaultValue: '#',
+    },
+    {
+      name: 'variant',
+      type: 'string',
+      defaultValue: 'primary',
+      enum: ['primary', 'secondary'],
+    },
+    {
+      name: 'className',
+      type: 'string',
+      defaultValue: '',
+    }
+  ],
+});
+
+/**
+ * Register custom insert menu
+ */
 Builder.register('insertMenu', {
-  name: 'Aurora Components',
+  name: 'Marketing Components',
   items: [
-    { name: 'Aurora Status Card' },
-    { name: 'Probability Gauge' },
-    { name: 'Quick Stats' },
-    { name: 'Hourly Forecast' },
-    { name: 'Best Time Window' },
-    { name: 'Dark Hours Info' },
-    { name: 'Go Now Alert' },
-    { name: 'Premium CTA' },
+    { name: 'Simple Hero' },
+    { name: 'Feature Card' },
+    { name: 'CTA Button' },
   ],
 });
