@@ -279,10 +279,10 @@ export default function MapView() {
   }, []);
 
   return (
-    <div className="w-full h-full relative">
+    <div className="relative w-full h-full overflow-hidden">
       {/* Mapbox container - base layer */}
-      <div className="absolute inset-0">
-        <div ref={mapContainerRef} className="w-full h-full" style={{ zIndex: 0 }} />
+      <div className="absolute inset-0" style={{ zIndex: 0 }}>
+        <div ref={mapContainerRef} className="w-full h-full" />
 
       </div>
 
