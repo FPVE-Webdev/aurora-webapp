@@ -298,7 +298,7 @@ Alle 6 faser er implementert:
 ### Commits
 - `c1a3407` - Fase 1: Grunnstruktur
 - `d32d93d` - Fase 2: Shader Pipeline
-- *Pending* - Fase 6: Ytelse & fallback
+- `e32229c` - Fase 6: Ytelse & fallback
 
 ### Neste steg
 1. Test Visual Mode i browser (`npm run dev`)
