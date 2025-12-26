@@ -96,7 +96,13 @@ export default function VisualModeCanvas({
     });
 
     if (!gl) {
-      console.error('[VisualMode] WebGL not supported');
+      console.error('[VisualMode] WebGL not supported or context unavailable');
+      return;
+    }
+
+    // Guard against context loss
+    if (gl.isContextLost && gl.isContextLost()) {
+      console.error('[VisualMode] WebGL context is lost');
       return;
     }
 
