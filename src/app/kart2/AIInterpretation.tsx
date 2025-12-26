@@ -13,52 +13,53 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
   const [text, setText] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const hasFetchedRef = useRef(false);
+  const controllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    let controller: AbortController | null = null;
+    // Reset on each effect run (for StrictMode safety)
+    isMountedRef.current = true;
+
+    // Only fetch once per component lifecycle
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
 
     const fetchInterpretation = async () => {
-      // Prevent duplicate requests from StrictMode double-invoke
-      if (hasFetchedRef.current) return;
-      hasFetchedRef.current = true;
-
       try {
-        controller = new AbortController();
-        const timeoutId = setTimeout(() => controller?.abort(), 8000);
+        controllerRef.current = new AbortController();
+        const timeoutId = setTimeout(() => controllerRef.current?.abort(), 8000);
 
         const res = await fetch('/api/ai-interpretation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ kp, probability, tromsoCloud, bestRegion }),
-          signal: controller.signal,
+          signal: controllerRef.current.signal,
         });
 
         clearTimeout(timeoutId);
 
         if (!res.ok) return;
 
-        const text = await res.text();
-        if (!text || !text.trim()) return;
+        const responseText = await res.text();
+        if (!responseText || !responseText.trim()) return;
 
-        const data = JSON.parse(text) as { interpretation?: string };
+        const data = JSON.parse(responseText) as { interpretation?: string };
         if (data.interpretation && isMountedRef.current) {
           setText(data.interpretation);
           console.info('[kart2][signal] ai_displayed');
         }
       } catch (err) {
-        // Gracefully ignore network errors (endpoint may not exist yet)
-        if (err instanceof Error && err.name === 'AbortError') {
-          // Timeout - silently ignore
-          return;
+        // Gracefully ignore network errors and abort errors
+        if (err instanceof Error) {
+          if (err.name === 'AbortError') {
+            // Request was aborted (timeout or cleanup) - silently ignore
+            return;
+          }
+          if (err.message === 'Failed to fetch') {
+            // Network error - silently ignore (endpoint may not exist)
+            return;
+          }
         }
-        if (err instanceof TypeError && err.message === 'Failed to fetch') {
-          // Network error - silently ignore (endpoint may not exist)
-          return;
-        }
-        // Log unexpected errors only
-        if (!(err instanceof Error && err.name === 'AbortError')) {
-          console.warn('[kart2] AI interpretation unavailable');
-        }
+        // Suppress warnings for expected failures during development
       }
     };
 
@@ -66,7 +67,11 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
 
     return () => {
       isMountedRef.current = false;
-      controller?.abort();
+      try {
+        controllerRef.current?.abort();
+      } catch {
+        // Suppress any errors from abort (including "signal is aborted without reason")
+      }
     };
   }, []);
 
