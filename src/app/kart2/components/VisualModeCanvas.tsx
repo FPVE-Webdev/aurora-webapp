@@ -100,13 +100,17 @@ export default function VisualModeCanvas({
     });
 
     if (!gl) {
-      console.error('[VisualMode] WebGL not supported or context unavailable');
+      if (!IS_PRODUCTION) {
+        console.error('[VisualMode] WebGL not supported or context unavailable');
+      }
       return;
     }
 
     // Guard against context loss
     if (gl.isContextLost && gl.isContextLost()) {
-      console.error('[VisualMode] WebGL context is lost');
+      if (!IS_PRODUCTION) {
+        console.error('[VisualMode] WebGL context is lost');
+      }
       return;
     }
 
