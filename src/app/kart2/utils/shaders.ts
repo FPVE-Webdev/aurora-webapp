@@ -28,33 +28,28 @@ export const FRAGMENT_SHADER = `
   uniform vec2 u_tromsoCenter; // Screen-space coords [0-1]
   uniform float u_cloudCoverage; // 0-1
 
-  // Simple value noise function (WebGL 1.0 compatible)
-  float simpleNoise(vec2 v) {
-    vec2 i = floor(v);
-    vec2 f = fract(v);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-
-    float n00 = fract(sin(dot(i + vec2(0.0, 0.0), vec2(12.9898, 78.233))) * 43758.5453);
-    float n10 = fract(sin(dot(i + vec2(1.0, 0.0), vec2(12.9898, 78.233))) * 43758.5453);
-    float n01 = fract(sin(dot(i + vec2(0.0, 1.0), vec2(12.9898, 78.233))) * 43758.5453);
-    float n11 = fract(sin(dot(i + vec2(1.0, 1.0), vec2(12.9898, 78.233))) * 43758.5453);
-
-    float nx0 = mix(n00, n10, u.x);
-    float nx1 = mix(n01, n11, u.x);
-    return mix(nx0, nx1, u.y);
+  // Ultra-simple hash-based noise (optimized for speed)
+  float fastNoise(vec2 v) {
+    return fract(sin(dot(v, vec2(12.9898, 78.233))) * 43758.5453);
   }
 
   void main() {
     vec2 uv = gl_FragCoord.xy / u_resolution;
 
-    // Aurora wave pattern
-    float time = u_time * 0.0003; // Slow movement
-    vec2 noiseCoord = vec2(uv.x * 3.0, uv.y * 2.0 + time);
-    float noise1 = simpleNoise(noiseCoord);
-    float noise2 = simpleNoise(noiseCoord * 2.0 + vec2(time * 0.5, 0.0));
+    // Aurora wave pattern (single layer for performance)
+    float time = u_time * 0.0003;
+    vec2 noiseCoord = uv * vec2(2.0, 1.5) + vec2(time, time * 0.5);
 
-    // Combine noise layers
-    float auroraPattern = (noise1 * 0.6 + noise2 * 0.4) * 0.5 + 0.5; // Normalize to [0,1]
+    // Use fast hash noise
+    float noise = fastNoise(floor(noiseCoord * 8.0) / 8.0);
+
+    // Smooth interpolation
+    vec2 f = fract(noiseCoord * 8.0);
+    f = f * f * (3.0 - 2.0 * f);
+    noise = mix(noise, fastNoise(floor(noiseCoord * 8.0 + 1.0) / 8.0), f.x);
+
+    // Normalize to [0,1]
+    float auroraPattern = noise;
 
     // Vertical gradient (stronger at top/north)
     float verticalGradient = smoothstep(0.3, 1.0, uv.y);
@@ -69,14 +64,13 @@ export const FRAGMENT_SHADER = `
       auroraPattern
     );
 
-    // Tromsø radial glow
+    // Tromsø radial glow (simplified for performance)
     vec2 toTromso = uv - u_tromsoCenter;
     float distToTromso = length(toTromso);
-    float tromsoGlow = exp(-distToTromso * 8.0) * u_auroraIntensity * 0.8;
+    float tromsoGlow = max(0.0, 1.0 - distToTromso * 3.0) * u_auroraIntensity;
 
-    // Pulsing effect (3-4 sec cycle)
-    float pulse = sin(u_time * 0.002) * 0.15 + 0.85;
-    tromsoGlow *= pulse;
+    // Simple pulsing (cheaper than exp)
+    tromsoGlow *= (sin(u_time * 0.002) * 0.2 + 0.8);
 
     // Yellow glow color for Tromsø
     vec3 tromsoColor = vec3(1.0, 0.9, 0.3);
@@ -84,12 +78,11 @@ export const FRAGMENT_SHADER = `
     // Combine aurora + Tromsø glow
     vec3 finalColor = auroraColor * auroraValue + tromsoColor * tromsoGlow;
 
-    // Cloud coverage dims the effect
-    float cloudDim = 1.0 - (u_cloudCoverage * 0.6);
-    finalColor *= cloudDim;
+    // Cloud coverage dims the effect (simplified)
+    finalColor *= (1.0 - u_cloudCoverage * 0.6);
 
-    // Alpha based on total intensity
-    float alpha = clamp(auroraValue * 0.5 + tromsoGlow, 0.0, 0.5); // Max 0.5 alpha
+    // Simple alpha (avoid expensive clamp)
+    float alpha = min(auroraValue * 0.4 + tromsoGlow * 0.6, 0.5);
 
     gl_FragColor = vec4(finalColor, alpha);
   }
