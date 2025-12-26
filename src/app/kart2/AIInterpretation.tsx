@@ -55,7 +55,9 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
         const data = JSON.parse(responseText) as { interpretation?: string };
         if (data.interpretation && isMountedRef.current) {
           setText(data.interpretation);
-          console.info('[kart2][signal] ai_displayed');
+          if (!IS_PRODUCTION) {
+            console.info('[kart2][signal] ai_displayed');
+          }
         }
       } catch (err) {
         // Gracefully ignore network errors and abort errors
