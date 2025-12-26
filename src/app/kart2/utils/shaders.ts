@@ -36,53 +36,53 @@ export const FRAGMENT_SHADER = `
   void main() {
     vec2 uv = gl_FragCoord.xy / u_resolution;
 
-    // Aurora wave pattern (single layer for performance)
+    // Aurora wave pattern
     float time = u_time * 0.0003;
-    vec2 noiseCoord = uv * vec2(2.0, 1.5) + vec2(time, time * 0.5);
+    vec2 noiseCoord = vec2(uv.x * 3.0, uv.y * 2.0 + time);
+    float noise1 = fastNoise(noiseCoord);
+    float noise2 = fastNoise(noiseCoord * 2.0 + vec2(time * 0.5, 0.0));
 
-    // Use fast hash noise
-    float noise = fastNoise(floor(noiseCoord * 8.0) / 8.0);
-
-    // Smooth interpolation
-    vec2 f = fract(noiseCoord * 8.0);
-    f = f * f * (3.0 - 2.0 * f);
-    noise = mix(noise, fastNoise(floor(noiseCoord * 8.0 + 1.0) / 8.0), f.x);
-
-    // Normalize to [0,1]
-    float auroraPattern = noise;
+    // Combine noise layers
+    float auroraPattern = (noise1 * 0.6 + noise2 * 0.4) * 0.5 + 0.5;
 
     // Vertical gradient (stronger at top/north)
     float verticalGradient = smoothstep(0.3, 1.0, uv.y);
 
-    // Aurora intensity
-    float auroraValue = auroraPattern * verticalGradient * u_auroraIntensity;
+    // AGGRESSIVE: Aurora intensity MULTIPLIED
+    float auroraValue = auroraPattern * verticalGradient * u_auroraIntensity * 2.0;
 
-    // Color mapping: green → cyan
+    // BRIGHT colors (not dark)
     vec3 auroraColor = mix(
-      vec3(0.2, 0.8, 0.4),  // Green
-      vec3(0.3, 0.9, 0.9),  // Cyan
+      vec3(0.4, 1.0, 0.6),  // Bright green (not dark)
+      vec3(0.2, 1.0, 1.0),  // Bright cyan (not dark)
       auroraPattern
     );
 
-    // Tromsø radial glow (simplified for performance)
+    // Tromsø radial glow
     vec2 toTromso = uv - u_tromsoCenter;
     float distToTromso = length(toTromso);
-    float tromsoGlow = max(0.0, 1.0 - distToTromso * 3.0) * u_auroraIntensity;
+    float tromsoGlow = exp(-distToTromso * 8.0) * u_auroraIntensity * 0.8;
 
-    // Simple pulsing (cheaper than exp)
-    tromsoGlow *= (sin(u_time * 0.002) * 0.2 + 0.8);
+    // Pulsing effect (3-4 sec cycle)
+    float pulse = sin(u_time * 0.002) * 0.15 + 0.85;
+    tromsoGlow *= pulse;
 
-    // Yellow glow color for Tromsø
-    vec3 tromsoColor = vec3(1.0, 0.9, 0.3);
+    // BRIGHT yellow for Tromsø (not dark)
+    vec3 tromsoColor = vec3(1.0, 1.0, 0.3);
 
     // Combine aurora + Tromsø glow
     vec3 finalColor = auroraColor * auroraValue + tromsoColor * tromsoGlow;
 
-    // Cloud coverage dims the effect (simplified)
-    finalColor *= (1.0 - u_cloudCoverage * 0.6);
+    // Cloud coverage dims the effect
+    float cloudDim = 1.0 - (u_cloudCoverage * 0.6);
+    finalColor *= cloudDim;
 
-    // Boosted alpha for visibility (2-3x stronger than before)
-    float alpha = min(auroraValue * 1.0 + tromsoGlow * 2.0, 0.8);
+    // AGGRESSIVE: Alpha MUCH higher, cap at 1.0 (not 0.5)
+    float alpha = clamp(
+      auroraValue * 1.5 + tromsoGlow * 3.0,  // Much higher multipliers
+      0.0,
+      1.0  // Full opacity (not 0.5!)
+    );
 
     gl_FragColor = vec4(finalColor, alpha);
   }
