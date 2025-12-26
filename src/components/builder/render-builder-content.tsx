@@ -22,7 +22,7 @@ export function RenderBuilderContent({ content, model }: RenderBuilderContentPro
 
   // Show Builder.io content in preview OR if content exists
   if (isPreviewing || content) {
-    return <BuilderComponent model={model} content={content} />;
+    return <BuilderComponent model={model} content={content ?? undefined} />;
   }
 
   // Fallback for missing content (should not reach here due to parent 404 check)

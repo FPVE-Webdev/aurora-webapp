@@ -9,7 +9,6 @@ import AIInterpretation from './AIInterpretation';
 import VisualModeCanvas from './components/VisualModeCanvas';
 import VisualModeToggle from './components/VisualModeToggle';
 import { useVisualMode } from './hooks/useVisualMode';
-import 'mapbox-gl/dist/mapbox-gl.css';
 
 export default function MapView() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -130,6 +129,14 @@ export default function MapView() {
     // Dynamically import mapbox-gl to avoid SSR issues
     import('mapbox-gl')
       .then((mapboxgl) => {
+        // Load Mapbox CSS dynamically (client-side only)
+        if (!document.querySelector('link[href*="mapbox-gl.css"]')) {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css';
+          document.head.appendChild(link);
+        }
+
         mapboxgl.default.accessToken = token;
 
         const map = new mapboxgl.default.Map({
