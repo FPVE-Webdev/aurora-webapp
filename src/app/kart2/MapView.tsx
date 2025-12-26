@@ -242,7 +242,7 @@ export default function MapView() {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-gray-900">
+    <div className="fixed inset-0">
       {/* Map container with relative positioning for proper overlay stacking */}
       <div className="relative w-full h-full">
         <div ref={mapContainerRef} className="absolute inset-0" />
