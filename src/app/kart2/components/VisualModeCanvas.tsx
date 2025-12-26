@@ -234,7 +234,9 @@ export default function VisualModeCanvas({
         lowFpsCount++;
         if (lowFpsCount > 5) {
           targetDeltaTime = 33; // Switch to 30 FPS
-          console.warn('[VisualMode] Switched to adaptive 30 FPS mode');
+          if (!IS_PRODUCTION) {
+            console.warn('[VisualMode] Switched to adaptive 30 FPS mode');
+          }
           lowFpsCount = 0;
         }
       }
