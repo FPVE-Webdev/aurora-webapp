@@ -242,23 +242,24 @@ export default function MapView() {
   }, []);
 
   return (
-    <div className="fixed inset-0">
-      {/* Map container with relative positioning for proper overlay stacking */}
-      <div className="relative w-full h-full">
-        <div ref={mapContainerRef} className="absolute inset-0 z-0" />
+    <div className="w-full h-full relative">
+      {/* Mapbox container - base layer */}
+      <div className="absolute inset-0">
+        <div ref={mapContainerRef} className="w-full h-full" style={{ zIndex: 0 }} />
 
-        {/* Visual Mode Canvas Overlay - MUST be inside relative container */}
-        {data && visualMode.isClient && (
-          <VisualModeCanvas
-            isEnabled={visualMode.isEnabled}
-            kpIndex={data.kp}
-            auroraProbability={data.probability}
-            cloudCoverage={chaseState.tromsoCloudCoverage}
-            timestamp={data.timestamp}
-            tromsoCoords={[18.95, 69.65]}
-          />
-        )}
       </div>
+
+      {/* Visual Mode Canvas Overlay */}
+      {data && visualMode.isClient && (
+        <VisualModeCanvas
+          isEnabled={visualMode.isEnabled}
+          kpIndex={data.kp}
+          auroraProbability={data.probability}
+          cloudCoverage={chaseState.tromsoCloudCoverage}
+          timestamp={data.timestamp}
+          tromsoCoords={[18.95, 69.65]}
+        />
+      )}
 
       {/* Snapshot Button */}
       <div id="snapshot-button-container" className="absolute bottom-24 right-4 flex flex-col gap-2 z-50">

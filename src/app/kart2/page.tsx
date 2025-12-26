@@ -31,7 +31,7 @@ export default function Kart2Page() {
   useKart2Exposure();
 
   return (
-    <div className="fixed inset-0 bg-arctic-900">
+    <div className="w-screen h-screen overflow-hidden">
       <MapView />
     </div>
   );
