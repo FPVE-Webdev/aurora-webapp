@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface AIProps {
   kp: number;
@@ -11,39 +11,64 @@ interface AIProps {
 
 export default function AIInterpretation({ kp, probability, tromsoCloud, bestRegion }: AIProps) {
   const [text, setText] = useState<string | null>(null);
-  // Signal Ref
-  const [hasLoggedAI, setHasLoggedAI] = useState(false); // Using state cause logic is inside effect
+  const isMountedRef = useRef(true);
+  const hasFetchedRef = useRef(false);
 
   useEffect(() => {
-    async function fetchInterpretation() {
+    let controller: AbortController | null = null;
+
+    const fetchInterpretation = async () => {
+      // Prevent duplicate requests from StrictMode double-invoke
+      if (hasFetchedRef.current) return;
+      hasFetchedRef.current = true;
+
       try {
+        controller = new AbortController();
+        const timeoutId = setTimeout(() => controller?.abort(), 8000);
+
         const res = await fetch('/api/ai-interpretation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ kp, probability, tromsoCloud, bestRegion }),
+          signal: controller.signal,
         });
-        
+
+        clearTimeout(timeoutId);
+
         if (!res.ok) return;
-        
-        const data = await res.json();
-        if (data.interpretation) {
+
+        const text = await res.text();
+        if (!text || !text.trim()) return;
+
+        const data = JSON.parse(text) as { interpretation?: string };
+        if (data.interpretation && isMountedRef.current) {
           setText(data.interpretation);
-          
-          // Signal: AI Displayed (Task 2)
-          if (!hasLoggedAI) {
-            console.info('[kart2][signal] ai_displayed');
-            setHasLoggedAI(true);
-          }
+          console.info('[kart2][signal] ai_displayed');
         }
       } catch (err) {
-        // Silently fail
-        console.warn('AI layer skipped');
+        // Gracefully ignore network errors (endpoint may not exist yet)
+        if (err instanceof Error && err.name === 'AbortError') {
+          // Timeout - silently ignore
+          return;
+        }
+        if (err instanceof TypeError && err.message === 'Failed to fetch') {
+          // Network error - silently ignore (endpoint may not exist)
+          return;
+        }
+        // Log unexpected errors only
+        if (!(err instanceof Error && err.name === 'AbortError')) {
+          console.warn('[kart2] AI interpretation unavailable');
+        }
       }
-    }
+    };
 
-    // Only fetch once on mount (or when significant data changes, but keeping it simple for now)
     fetchInterpretation();
-  }, []); // Empty dependency array for "once per session" feel, or add props if we want live updates
+
+    return () => {
+      isMountedRef.current = false;
+      controller?.abort();
+    };
+  }, []);
 
   if (!text) return null;
 
