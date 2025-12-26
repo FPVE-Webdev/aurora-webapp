@@ -18,10 +18,8 @@
  * - TODO: Optimize for mobile/public users
  */
 
-'use client';
-
 import MapView from './MapView';
-import { useKart2Exposure } from './useKart2Exposure';
+import Kart2PageClient from './page-client';
 
 // PRODUCTION LOCK:
 // This module is considered production-stable.
