@@ -1,17 +1,58 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { toPng } from 'html-to-image';
 import { useAuroraData } from './useAuroraData';
 import { useChaseRegions } from './useChaseRegions';
 import { CHASE_REGIONS } from './map.config';
+import AIInterpretation from './AIInterpretation';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 export default function MapView() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [isSnapshotting, setIsSnapshotting] = useState(false);
   const { data, isLoading, error } = useAuroraData();
   const chaseState = useChaseRegions();
+
+  // Snapshot Handler
+  const handleSnapshot = async () => {
+    if (!mapContainerRef.current) return;
+    
+    try {
+      setIsSnapshotting(true);
+      
+      // Target the parent div to capture overlay + map
+      const element = mapContainerRef.current.parentElement as HTMLElement;
+      
+      const dataUrl = await toPng(element, {
+        cacheBust: true,
+        pixelRatio: 2, // Check this doesn't crash mobile
+      });
+
+      // Try clipboard first
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        alert('📷 Snapshot kopiert til utklippstavlen!');
+      } catch (clipboardErr) {
+        // Fallback to download
+        const link = document.createElement('a');
+        link.download = `nordlys-snapshot-${new Date().toISOString().slice(0,16)}.png`;
+        link.href = dataUrl;
+        link.click();
+      }
+      
+    } catch (err) {
+      console.error('Snapshot failed:', err);
+    } finally {
+      setIsSnapshotting(false);
+    }
+  };
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -33,21 +74,11 @@ export default function MapView() {
 
         const map = new mapboxgl.default.Map({
           container: mapContainerRef.current!,
-          style: {
-            version: 8,
-            sources: {
-              osm: {
-                type: 'raster',
-                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                tileSize: 256,
-              },
-            },
-            layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-          },
+          style: 'mapbox://styles/mapbox/dark-v11',
           center: [18.95, 69.65], // Tromsø
           zoom: 6,
+          attributionControl: false,
         });
-
         console.log('[MapView] Map created');
 
         map.on('load', () => {
@@ -171,8 +202,24 @@ export default function MapView() {
     <div className="fixed inset-0 bg-gray-900">
       <div ref={mapContainerRef} className="w-full h-full" />
 
+      {/* Snapshot Button */}
+      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+        <button
+          onClick={handleSnapshot}
+          disabled={isSnapshotting}
+          className="bg-white/90 p-3 rounded-full shadow hover:bg-white transition-colors text-gray-700 flex items-center justify-center w-10 h-10"
+          title="Ta bilde av kartet"
+        >
+          {isSnapshotting ? (
+            <span className="animate-pulse text-xs">⏳</span>
+          ) : (
+            <span className="text-lg">📷</span>
+          )}
+        </button>
+      </div>
+
       {/* Aurora Data Overlay */}
-      <div className="absolute top-4 left-4 space-y-3">
+      <div className="absolute top-4 left-4 space-y-3 max-w-[280px]">
         {(error || mapError) && (
           <div className="bg-red-500/90 text-white p-4 rounded shadow">
             <p className="font-bold">Feil</p>
@@ -234,6 +281,19 @@ export default function MapView() {
             </p>
           </div>
         </div>
+
+        {/* AI Interpretation Layer */}
+        {data && (
+          <AIInterpretation 
+            kp={data.kp} 
+            probability={data.probability}
+            tromsoCloud={chaseState.tromsoCloudCoverage}
+            bestRegion={chaseState.bestRegion ? {
+              name: chaseState.bestRegion.region.name,
+              visibilityScore: chaseState.bestRegion.visibilityScore
+            } : null}
+          />
+        )}
 
         {/* Tromsø Cloud Notice */}
         {chaseState.shouldExpandMap && (
