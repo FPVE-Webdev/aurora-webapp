@@ -31,7 +31,11 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
       try {
         const timeoutId = setTimeout(() => {
           if (isMountedRef.current && !controller.signal.aborted) {
-            controller.abort();
+            try {
+              controller.abort();
+            } catch {
+              // Ignore abort errors (may occur due to race conditions)
+            }
           }
         }, 8000);
 
