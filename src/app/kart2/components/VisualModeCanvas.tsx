@@ -306,6 +306,12 @@ export default function VisualModeCanvas({
       gl.uniform2f(tromsoCenterLocation, screenX, screenY); // DYNAMIC screen-space position
       gl.uniform1f(cloudCoverageLocation, cloudCoverage / 100);
 
+      // Visual tuning uniforms - for premium look
+      gl.uniform1f(alphaTuneLocation, 0.92); // Reduce alpha by ~8% for smoother blend
+      gl.uniform1f(glowRadiusLocation, 1.85); // Broader Tromsø glow (+10-15%)
+      gl.uniform1f(edgeBlendLocation, 0.65); // Softer edge falloff for smoother transitions
+      gl.uniform1f(motionSpeedLocation, 0.8); // Slower motion for premium feel
+
       // Draw fullscreen quad
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
