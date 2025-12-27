@@ -151,27 +151,30 @@ export default function VisualModeCanvas({
       let cssWidth: number;
       let cssHeight: number;
 
+      // Resolution clamping: cap devicePixelRatio at 1.5 for GPU optimization
+      const dpr = Math.min(window.devicePixelRatio, 1.5);
+
       // Try to get parent dimensions first (preferred)
       if (canvas.parentElement) {
         const rect = canvas.parentElement.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
           cssWidth = rect.width;
           cssHeight = rect.height;
-          displayWidth = cssWidth * window.devicePixelRatio;
-          displayHeight = cssHeight * window.devicePixelRatio;
+          displayWidth = cssWidth * dpr;
+          displayHeight = cssHeight * dpr;
         } else {
           // Fallback to window dimensions if parent is not visible
           cssWidth = window.innerWidth;
           cssHeight = window.innerHeight;
-          displayWidth = cssWidth * window.devicePixelRatio;
-          displayHeight = cssHeight * window.devicePixelRatio;
+          displayWidth = cssWidth * dpr;
+          displayHeight = cssHeight * dpr;
         }
       } else {
         // Fallback to window dimensions if no parent
         cssWidth = window.innerWidth;
         cssHeight = window.innerHeight;
-        displayWidth = cssWidth * window.devicePixelRatio;
-        displayHeight = cssHeight * window.devicePixelRatio;
+        displayWidth = cssWidth * dpr;
+        displayHeight = cssHeight * dpr;
       }
 
       canvas.width = displayWidth;
