@@ -82,7 +82,11 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
       isMountedRef.current = false;
       // Abort the fetch request on cleanup (safe to call multiple times with check)
       if (!controller.signal.aborted) {
-        controller.abort();
+        try {
+          controller.abort();
+        } catch {
+          // Ignore abort errors (may occur due to race conditions)
+        }
       }
     };
   }, []);
