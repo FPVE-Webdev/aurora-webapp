@@ -113,8 +113,10 @@ export const FRAGMENT_SHADER = `
     float cloudDim = 1.0 - (u_cloudCoverage * 0.2);
     finalColor *= cloudDim;
 
-    // Suppress aurora naturally toward ground (no hard edges, seamless landscape blend)
-    finalColor *= groundFade;
+    // Suppress aurora naturally toward ground with map-pitch awareness
+    // Higher pitch = softer ground fade (aurora lifts into sky)
+    float groundFade = smoothstep(0.05, 0.45, uv.y);
+    finalColor *= mix(groundFade, groundFade * 0.6, pitchFactor);
 
     // Alpha based on combined effects - tuned with global alpha multiplier
     float alpha = clamp(
