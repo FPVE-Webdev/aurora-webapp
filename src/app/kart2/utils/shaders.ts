@@ -97,12 +97,12 @@ export const FRAGMENT_SHADER = `
     float cloudDim = 1.0 - (u_cloudCoverage * 0.2);
     finalColor *= cloudDim;
 
-    // Alpha based on combined effects (increased from 0.85 to 0.95 for more visibility)
+    // Alpha based on combined effects - tuned with global alpha multiplier
     float alpha = clamp(
       auroraValue * 0.8 + tromsoGlow * 1.5,
       0.0,
       0.95
-    );
+    ) * u_alphaTune;
 
     gl_FragColor = vec4(finalColor, alpha);
   }
