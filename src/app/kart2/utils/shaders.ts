@@ -48,21 +48,21 @@ export const FRAGMENT_SHADER = `
     vec2 toTromso = uv - u_tromsoCenter;
     float distToTromso = length(toTromso);
 
-    // Aurora wave pattern (centered around Tromsø)
-    float time = u_time * 0.0003;
+    // Aurora wave pattern (centered around Tromsø) - tuned motion speed
+    float time = u_time * 0.0003 * u_motionSpeed;
     vec2 noiseCoord = vec2(uv.x * 3.0, uv.y * 2.0 + time);
     float noise1 = fastNoise(noiseCoord);
     float noise2 = fastNoise(noiseCoord * 2.0 + vec2(time * 0.5, 0.0));
 
     // Combine noise layers with shimmer effect for organic wavering
-    float shimmer = sin(u_time * 0.003 + noiseCoord.x * 5.0) * 0.1 + 0.9;
+    float shimmer = sin(u_time * 0.003 * u_motionSpeed + noiseCoord.x * 5.0) * 0.1 + 0.9;
     float auroraPattern = ((noise1 * 0.6 + noise2 * 0.4) * 0.5 + 0.5) * shimmer;
 
     // Radial expansion waves - creates moving bands radiating from Tromsø
-    float waves = sin((distToTromso * 10.0 - u_time * 0.0005)) * 0.1 + 0.9;
+    float waves = sin((distToTromso * 10.0 - u_time * 0.0005 * u_motionSpeed)) * 0.1 + 0.9;
 
-    // Radial falloff from Tromsø center (ensure visibility)
-    float radialFalloff = smoothstep(0.7, 0.0, distToTromso) * waves;
+    // Radial falloff from Tromsø center - tuned edge blending
+    float radialFalloff = smoothstep(u_edgeBlend, 0.0, distToTromso) * waves;
     // Minimum visibility guarantee near center
     radialFalloff = max(radialFalloff, 0.12);
 
