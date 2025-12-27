@@ -159,11 +159,11 @@ export function useAuroraData() {
           // Fetch real weather for this spot
           const weatherRes = await fetch(`/api/weather/${spot.latitude}/${spot.longitude}`);
 
-          let weatherData: unknown = null;
+          let weatherData: { cloudCoverage: number; temperature: number; windSpeed?: number } | undefined;
           if (weatherRes.ok) {
             const weatherText = await weatherRes.text();
             if (weatherText && weatherText.trim()) {
-              weatherData = JSON.parse(weatherText);
+              weatherData = JSON.parse(weatherText) as { cloudCoverage: number; temperature: number; windSpeed?: number };
             }
           }
 

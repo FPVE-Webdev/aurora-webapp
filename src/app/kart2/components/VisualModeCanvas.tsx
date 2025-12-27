@@ -224,13 +224,10 @@ export default function VisualModeCanvas({
       if (!glRef.current || !programRef.current) return;
 
       // Guard against context loss
-    if (glRef.current.isContextLost && glRef.current.isContextLost()) {
-      // Call context loss handler if provided
-      if (handleContextLoss) {
-        handleContextLoss();
+      if (glRef.current.isContextLost && glRef.current.isContextLost()) {
+        console.warn('[VisualMode] WebGL context lost');
+        return;
       }
-      return;
-    }
 
       const now = Date.now();
       const deltaTime = now - lastFrameTimeRef.current;
@@ -266,14 +263,9 @@ export default function VisualModeCanvas({
         fpsCounterRef.current.frames = 0;
         fpsCounterRef.current.lastTime = now;
 
-        // Check FPS health guardrail
-        if (checkFpsHealth) {
-          const shouldAutoDisable = checkFpsHealth(fps);
-          if (shouldAutoDisable) {
-            // Auto-disabled - stop rendering
-            animationFrameRef.current = requestAnimationFrame(render);
-            return;
-          }
+        // Warn if FPS is critically low
+        if (fps < 15) {
+          console.warn('[VisualMode] Low FPS detected:', fps.toFixed(1), '- consider disabling');
         }
       }
 
