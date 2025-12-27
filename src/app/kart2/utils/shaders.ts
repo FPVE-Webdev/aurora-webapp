@@ -234,8 +234,8 @@ export const FRAGMENT_SHADER = `
     float amplitude = 1.0;
     float frequency = 1.0;
     
-    // Quality-based octave count (3 for desktop, 2 for mobile)
-    int octaves = int(3.0 * u_qualityScale);
+    // Quality-based octave count (2 for desktop, 1-2 for mobile - clearer band structure)
+    int octaves = int(2.0 * u_qualityScale);
     if (octaves < 1) octaves = 1;
     
     for (int i = 0; i < 3; i++) {
@@ -250,7 +250,7 @@ export const FRAGMENT_SHADER = `
     n += wave * 0.2;
     
     // Shape into vertical curtains with sharp edges
-    float curtain = smoothstep(0.3, 0.7, n * 0.5 + 0.5);
+    float curtain = smoothstep(0.4, 0.65, n * 0.5 + 0.5); // Sharper thresholds for clearer bands
     
     return curtain;
   }
@@ -296,15 +296,15 @@ export const FRAGMENT_SHADER = `
     vec3 finalColor = vec3(0.0);
     float finalAlpha = 0.0;
     
-    // Quality-based layer count (8 for desktop, 4 for mobile)
-    int layers = int(8.0 * u_qualityScale);
+    // Quality-based layer count (6 for desktop, 3 for mobile - clearer band separation)
+    int layers = int(6.0 * u_qualityScale);
     if (layers < 2) layers = 2;
     
     float pulse = getPulse(u_time);
     float shimmer = getShimmer(u_time, uv);
     
     // Ray-march loop
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 6; i++) {
       if (i >= layers) break;
       
       float t = float(i) / float(layers - 1);
@@ -332,6 +332,11 @@ export const FRAGMENT_SHADER = `
       float altitudeFalloff = 1.0 - abs(altitude - 120.0) / 180.0;
       altitudeFalloff = max(0.2, altitudeFalloff);
       curtainValue *= altitudeFalloff;
+
+      // Screen-space vertical strength: aurora strengthens toward top of screen
+      float verticalBoost = smoothstep(0.2, 0.9, uv.y); // Weak at horizon, strong at zenith
+      verticalBoost = mix(1.0, verticalBoost * 1.8, pitchFactor); // More dramatic when tilted
+      curtainValue *= verticalBoost;
       
       // Get color for this altitude
       vec3 layerColor = getAuroraColor(altitude, curtainValue);
