@@ -27,6 +27,14 @@ import { createShaderProgram, VERTEX_SHADER, FRAGMENT_SHADER } from '../utils/sh
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
+/**
+ * Detect if device is mobile based on viewport width and touch support
+ */
+const isMobileDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth <= 768 || 'ontouchstart' in window;
+};
+
 interface VisualModeCanvasProps {
   isEnabled: boolean;
   kpIndex: number;
