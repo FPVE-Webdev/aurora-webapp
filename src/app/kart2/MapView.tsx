@@ -202,37 +202,8 @@ export default function MapView() {
           map.on('rotateend', persistView);
           map.on('pitchend', persistView);
 
-          // ===== TERRAIN & DEPTH ENHANCEMENT =====
-
-          // Add subtle hillshade for mountain/fjord depth
-          // Uses Mapbox's built-in hillshade source (no additional data needed)
-          map.addSource('mapbox-dem', {
-            type: 'raster-dem',
-            url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
-            tileSize: 512,
-            maxzoom: 14
-          });
-
-          // Add hillshade layer with very subtle styling
-          map.addLayer({
-            id: 'hillshade',
-            type: 'hillshade',
-            source: 'mapbox-dem',
-            layout: {
-              visibility: 'visible'
-            },
-            paint: {
-              // Low contrast for subtlety (never compete with aurora)
-              'hillshade-shadow-color': '#000000',
-              'hillshade-highlight-color': '#ffffff',
-              'hillshade-exaggeration': 0.3, // Very subtle (0.0-1.0, default 0.5)
-              'hillshade-accent-color': '#1a1a2e',
-              'hillshade-illumination-direction': 315, // Northwest light
-              'hillshade-illumination-anchor': 'viewport'
-            }
-          }); // Added to base style layers
-
           // ===== CITY LIGHTS - TROMSØ FOCUS =====
+          // (Terrain depth is already provided by dark-v11 base style)
 
           // Add warm glow around Tromsø city center
           map.addSource('tromso-city-glow', {
