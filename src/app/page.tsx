@@ -55,10 +55,17 @@ export default function HomePage() {
         const text = await response.text();
         if (!text || !text.trim()) return;
 
-        const data = JSON.parse(text) as { extended_metrics?: ExtendedMetricsType };
-
-        if (isMounted && data.extended_metrics) {
-          setExtendedMetrics(data.extended_metrics);
+        try {
+          const data = JSON.parse(text) as { extended_metrics?: ExtendedMetricsType };
+          if (isMounted && data.extended_metrics) {
+            setExtendedMetrics(data.extended_metrics);
+          }
+        } catch (parseError) {
+          // Invalid JSON response - silently ignore
+          if (!IS_PRODUCTION) {
+            console.warn('Failed to parse extended metrics JSON:', parseError);
+          }
+          return;
         }
       } catch (error) {
         // Ignore expected transient failures (navigation, aborted requests, offline).
