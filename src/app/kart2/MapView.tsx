@@ -202,6 +202,104 @@ export default function MapView() {
           map.on('rotateend', persistView);
           map.on('pitchend', persistView);
 
+          // ===== TERRAIN & DEPTH ENHANCEMENT =====
+
+          // Add subtle hillshade for mountain/fjord depth
+          // Uses Mapbox's built-in hillshade source (no additional data needed)
+          map.addSource('mapbox-dem', {
+            type: 'raster-dem',
+            url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+            tileSize: 512,
+            maxzoom: 14
+          });
+
+          // Add hillshade layer with very subtle styling
+          map.addLayer({
+            id: 'hillshade',
+            type: 'hillshade',
+            source: 'mapbox-dem',
+            layout: {
+              visibility: 'visible'
+            },
+            paint: {
+              // Low contrast for subtlety (never compete with aurora)
+              'hillshade-shadow-color': '#000000',
+              'hillshade-highlight-color': '#ffffff',
+              'hillshade-exaggeration': 0.3, // Very subtle (0.0-1.0, default 0.5)
+              'hillshade-accent-color': '#1a1a2e',
+              'hillshade-illumination-direction': 315, // Northwest light
+              'hillshade-illumination-anchor': 'viewport'
+            }
+          }, 'tromso-dim-circle'); // Insert before custom layers
+
+          // ===== CITY LIGHTS - TROMSØ FOCUS =====
+
+          // Add warm glow around Tromsø city center
+          map.addSource('tromso-city-glow', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: [18.95, 69.65] // Tromsø center
+              },
+              properties: {
+                name: 'Tromsø'
+              }
+            }
+          });
+
+          // Large radial glow (outer)
+          map.addLayer({
+            id: 'tromso-glow-outer',
+            type: 'circle',
+            source: 'tromso-city-glow',
+            paint: {
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                5, 80,  // Large at far zoom
+                8, 180  // Even larger when zoomed in
+              ],
+              'circle-color': '#ffcc66', // Warm amber
+              'circle-opacity': 0.08,     // Very subtle
+              'circle-blur': 1.0          // Maximum blur for soft glow
+            }
+          }, 'tromso-dim-circle');
+
+          // Medium radial glow (middle)
+          map.addLayer({
+            id: 'tromso-glow-middle',
+            type: 'circle',
+            source: 'tromso-city-glow',
+            paint: {
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                5, 50,
+                8, 120
+              ],
+              'circle-color': '#ffdd88', // Warmer yellow
+              'circle-opacity': 0.12,
+              'circle-blur': 0.8
+            }
+          }, 'tromso-dim-circle');
+
+          // Inner bright core
+          map.addLayer({
+            id: 'tromso-glow-core',
+            type: 'circle',
+            source: 'tromso-city-glow',
+            paint: {
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                5, 25,
+                8, 60
+              ],
+              'circle-color': '#ffeeaa', // Bright warm white
+              'circle-opacity': 0.2,
+              'circle-blur': 0.6
+            }
+          }, 'tromso-dim-circle');
+
           // Add Tromsø dimming overlay (shown when shouldExpandMap is true)
           map.addSource('tromso-dim', {
             type: 'geojson',
