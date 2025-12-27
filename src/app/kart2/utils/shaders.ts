@@ -183,22 +183,40 @@ export const FRAGMENT_SHADER = `
   vec2 computeParallax(vec2 uv, float altitude, float pitch) {
     // Virtual camera at ground level looking up
     float heightDiff = altitude - u_cameraAltitude;
-    
-    // Parallax displacement based on pitch (0-45 degrees)
-    float pitchRadians = pitch * 1.5708; // 45° = π/4 ≈ 1.5708
-    float parallaxScale = tan(pitchRadians) * heightDiff * 0.0001;
-    
-    // Aurora shifts upward in screen space as pitch increases
-    return vec2(0.0, parallaxScale * u_depthFactor);
+
+    // Convert pitch to radians (0-60 degrees range for better visibility)
+    float pitchRadians = pitch * 1.0472; // 60° = π/3 ≈ 1.0472
+
+    // Calculate viewing angle effects
+    float viewAngle = tan(pitchRadians);
+
+    // Vertical displacement: higher altitudes appear higher in screen space
+    float verticalShift = viewAngle * heightDiff * 0.00015;
+
+    // Horizontal depth: when tilted, we see "into" the aurora volume
+    // Objects at higher altitude appear to recede horizontally from center
+    vec2 toCenter = uv - u_tromsoCenter;
+    float horizontalDepth = length(toCenter) * viewAngle * heightDiff * 0.00008;
+
+    // Combine vertical lift with horizontal depth perspective
+    vec2 parallaxOffset = vec2(
+      toCenter.x * horizontalDepth * 0.5, // Perspective compression toward horizon
+      verticalShift // Vertical lift
+    );
+
+    return parallaxOffset * u_depthFactor;
   }
 
   // ===== CURTAIN SAMPLING WITH 3D NOISE =====
 
-  float sampleCurtain(vec2 uv, float altitude, float time) {
+  float sampleCurtain(vec2 uv, float altitude, float time, float pitch) {
     // 3D position for noise sampling
+    // When viewing from side, adjust sampling to show curtain depth
+    float depthFactor = mix(1.0, 1.5, pitch); // Stretch curtains when tilted
+
     vec3 pos = vec3(
       uv.x * 3.0 * u_curtainDensity,
-      uv.y * 2.0,
+      uv.y * 2.0 * depthFactor,
       altitude * 0.01
     );
     
@@ -262,7 +280,12 @@ export const FRAGMENT_SHADER = `
 
     // Map-aware screen-space sky projection
     float pitchFactor = clamp(u_mapPitch, 0.0, 1.0);
-    float skyFactor = smoothstep(0.25, 0.85, uv.y);
+
+    // Adjust sky visibility based on pitch
+    // When tilted, more of the screen shows sky
+    float skyStart = mix(0.25, 0.10, pitchFactor * 0.7);
+    float skyEnd = mix(0.85, 0.95, pitchFactor * 0.5);
+    float skyFactor = smoothstep(skyStart, skyEnd, uv.y);
     
     // Virtual camera setup
     float cameraAltitude = u_cameraAltitude; // 0.0 km (ground observer)
@@ -298,7 +321,7 @@ export const FRAGMENT_SHADER = `
       }
       
       // Sample curtain density at this altitude
-      float curtainValue = sampleCurtain(samplePos, altitude, u_time);
+      float curtainValue = sampleCurtain(samplePos, altitude, u_time, pitchFactor);
       
       // Apply intensity and atmospheric effects
       curtainValue *= u_auroraIntensity * 6.0; // Increased from 3.5 to 6.0 for stronger colors
@@ -345,13 +368,19 @@ export const FRAGMENT_SHADER = `
     finalColor *= cloudDim;
     
     // Ground fade (suppress aurora near horizon)
-    float groundFade = smoothstep(0.05, 0.45, uv.y);
-    groundFade = mix(groundFade, groundFade * 0.6, pitchFactor);
+    // When tilted, ground takes up less screen space
+    float groundStart = mix(0.05, 0.0, pitchFactor * 0.8);
+    float groundEnd = mix(0.45, 0.30, pitchFactor * 0.6);
+    float groundFade = smoothstep(groundStart, groundEnd, uv.y);
     finalColor *= groundFade;
     
-    // Sky lift (aurora appears higher with map pitch)
-    float auroraLift = mix(skyFactor, skyFactor * 1.4, pitchFactor);
-    finalColor *= auroraLift;
+    // Sky lift and depth visibility boost
+    // When pitched, aurora becomes more visible due to better viewing angle
+    float auroraLift = mix(skyFactor * 0.8, skyFactor * 1.6, pitchFactor);
+
+    // Boost overall visibility when viewing from side
+    float sideViewBoost = 1.0 + (pitchFactor * 0.8);
+    finalColor *= auroraLift * sideViewBoost;
     
     // ===== FINAL OUTPUT =====
     
