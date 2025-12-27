@@ -274,6 +274,40 @@ export const FRAGMENT_SHADER = `
     return cycle;
   }
 
+  float getAuroraCyclePhase(float time) {
+    // Aurora cycle: ~40 second period with distinct phases
+    // Returns: phase multiplier (0.2 calm → 1.0 peak)
+    float cycleDuration = 40000.0; // 40 seconds
+    float cycleTime = mod(time, cycleDuration);
+    float t = cycleTime / cycleDuration; // 0.0 to 1.0
+
+    // Phase timing:
+    // 0.0 - 0.4: Calm (0.2 intensity)
+    // 0.4 - 0.5: Build-up (0.2 → 1.0)
+    // 0.5 - 0.7: Peak (1.0 intensity, 8 seconds)
+    // 0.7 - 1.0: Return to calm (1.0 → 0.2)
+
+    float intensity;
+    if (t < 0.4) {
+      // Calm phase with subtle variation
+      intensity = 0.2 + sin(t * 15.708) * 0.05;
+    } else if (t < 0.5) {
+      // Build-up phase
+      float buildT = (t - 0.4) / 0.1;
+      intensity = mix(0.2, 1.0, smoothstep(0.0, 1.0, buildT));
+    } else if (t < 0.7) {
+      // Peak phase with micro-variations
+      float peakT = (t - 0.5) / 0.2;
+      intensity = 1.0 + sin(peakT * 31.416) * 0.1; // 1.0 ± 0.1
+    } else {
+      // Return to calm
+      float returnT = (t - 0.7) / 0.3;
+      intensity = mix(1.0, 0.2, smoothstep(0.0, 1.0, returnT));
+    }
+
+    return intensity;
+  }
+
   // ===== MAIN RAY-MARCHING RENDERER =====
 
   void main() {
