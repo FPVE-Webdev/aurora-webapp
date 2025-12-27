@@ -200,6 +200,12 @@ export default function VisualModeCanvas({
     const tromsoCenterLocation = gl.getUniformLocation(program, 'u_tromsoCenter');
     const cloudCoverageLocation = gl.getUniformLocation(program, 'u_cloudCoverage');
 
+    // Visual tuning uniform locations
+    const alphaTuneLocation = gl.getUniformLocation(program, 'u_alphaTune');
+    const glowRadiusLocation = gl.getUniformLocation(program, 'u_glowRadius');
+    const edgeBlendLocation = gl.getUniformLocation(program, 'u_edgeBlend');
+    const motionSpeedLocation = gl.getUniformLocation(program, 'u_motionSpeed');
+
     // Enable alpha blending
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
