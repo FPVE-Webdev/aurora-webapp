@@ -364,10 +364,11 @@ export const FRAGMENT_SHADER = `
     vec2 toTromso = uv - u_tromsoCenter;
     float distToTromso = length(toTromso);
     
-    // Subtle ground-level glow
+    // Subtle ground-level glow with slow pulse
     float tromsoGlow = pow(1.0 - clamp(distToTromso, 0.0, 1.0), u_glowRadius);
-    tromsoGlow *= u_auroraIntensity * 2.0; // Reduced from 4.5
-    tromsoGlow *= pulse;
+    float tromsoPulse = getTromsoPulse(u_time); // Dedicated 7s pulse cycle
+    tromsoGlow *= u_auroraIntensity * 1.5; // Reduced base for subtlety
+    tromsoGlow *= tromsoPulse;
     
     vec3 tromsoColor = vec3(1.0, 0.8, 0.0); // Warm gold
     finalColor += tromsoColor * tromsoGlow * 0.3; // Reduced contribution
