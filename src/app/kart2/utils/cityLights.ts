@@ -47,7 +47,7 @@ function samplePointInPolygon(
   polygon: Array<[number, number]>,
   spreadLon: number,
   spreadLat: number,
-  center: [number, number],
+  center: readonly [number, number],
   maxAttempts = 40
 ): [number, number] {
   for (let a = 0; a < maxAttempts; a++) {
@@ -58,7 +58,7 @@ function samplePointInPolygon(
     const p: [number, number] = [lon, lat];
     if (pointInPolygon(p, polygon)) return p;
   }
-  return center;
+  return [center[0], center[1]];
 }
 
 /**
