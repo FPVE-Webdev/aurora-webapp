@@ -85,7 +85,7 @@ export default function VisualModeCanvas({
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Idle pause: pause rendering when tab is inactive
+  // Idle pause: pause rendering when tab is inactive (Page Visibility API)
   useEffect(() => {
     if (!isEnabled) return;
 
@@ -95,19 +95,6 @@ export default function VisualModeCanvas({
 
       if (!IS_PRODUCTION) {
         console.log('[VisualMode] Page visibility:', isNowVisible ? 'visible' : 'hidden');
-      }
-
-      // Resume render loop if page becomes visible again
-      if (isNowVisible && !animationFrameRef.current) {
-        // Trigger render loop restart
-        lastFrameTimeRef.current = Date.now();
-        if (animationFrameRef.current === null) {
-          // Re-initialize render loop
-          const render = () => {
-            // Loop will continue from main useEffect
-          };
-          animationFrameRef.current = requestAnimationFrame(render) || 0;
-        }
       }
     };
 
