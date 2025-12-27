@@ -295,10 +295,10 @@ export default function VisualModeCanvas({
       if (!glRef.current || !programRef.current) return;
 
       // Guard against context loss
-      if (glRef.current.isContextLost && glRef.current.isContextLost()) {
-        // WebGL context lost - stop rendering
+      if (glRef.current.isContextLost?.()) {
+        // WebGL context lost - stop rendering and wait for restoration
         if (!IS_PRODUCTION) {
-          console.warn('[VisualMode] WebGL context lost');
+          console.warn('[VisualMode] WebGL context lost during render - pausing');
         }
         return;
       }
