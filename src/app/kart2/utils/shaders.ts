@@ -45,12 +45,15 @@ export const FRAGMENT_SHADER = `
   void main() {
     vec2 uv = gl_FragCoord.xy / u_resolution;
 
-    // --- Screen-space sky bias (simulate vertical perspective) ---
-    // uv.y: 0 = bottom of screen (ground), 1 = top (sky)
+    // --- Map-aware screen-space sky projection ---
+    // Map pitch (0-1, normalized from 0-45 degrees)
+    float pitchFactor = clamp(u_mapPitch, 0.0, 1.0);
+
+    // Screen-space vertical bias (sky is higher on screen)
     float skyFactor = smoothstep(0.25, 0.85, uv.y);
 
-    // Inverse factor for ground suppression
-    float groundFade = smoothstep(0.0, 0.4, uv.y);
+    // Combine map pitch with screen-space sky
+    float auroraLift = mix(skyFactor, skyFactor * 1.4, pitchFactor);
 
     // Distance from Tromsø (screen-space anchored)
     vec2 toTromso = uv - u_tromsoCenter;
