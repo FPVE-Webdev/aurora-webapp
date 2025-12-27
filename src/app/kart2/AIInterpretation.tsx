@@ -29,24 +29,35 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
 
     const fetchInterpretation = async () => {
       try {
-        const timeoutId = setTimeout(() => {
-          if (isMountedRef.current && !controller.signal.aborted) {
-            try {
-              controller.abort();
-            } catch {
-              // Ignore abort errors (may occur due to race conditions)
-            }
+        // Create a timeout signal that aborts after 8 seconds
+        const timeoutSignal = AbortSignal.timeout(8000);
+
+        // Race the user's abort with the timeout abort
+        const abortController = AbortController.prototype.constructor;
+        const composedController = new (abortController as any)();
+
+        controller.signal.addEventListener('abort', () => {
+          try {
+            composedController.abort();
+          } catch {
+            // Ignore errors
           }
-        }, 8000);
+        });
+
+        timeoutSignal.addEventListener('abort', () => {
+          try {
+            composedController.abort();
+          } catch {
+            // Ignore errors
+          }
+        });
 
         const res = await fetch('/api/ai-interpretation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ kp, probability, tromsoCloud, bestRegion }),
-          signal: controller.signal,
+          signal: composedController.signal,
         });
-
-        clearTimeout(timeoutId);
 
         if (!res.ok) return;
 
