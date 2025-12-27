@@ -230,7 +230,7 @@ export default function MapView() {
               'hillshade-illumination-direction': 315, // Northwest light
               'hillshade-illumination-anchor': 'viewport'
             }
-          }, 'tromso-dim-circle'); // Insert before custom layers
+          }); // Added to base style layers
 
           // ===== CITY LIGHTS - TROMSØ FOCUS =====
 
@@ -264,7 +264,7 @@ export default function MapView() {
               'circle-opacity': 0.08,     // Very subtle
               'circle-blur': 1.0          // Maximum blur for soft glow
             }
-          }, 'tromso-dim-circle');
+          });
 
           // Medium radial glow (middle)
           map.addLayer({
@@ -281,7 +281,7 @@ export default function MapView() {
               'circle-opacity': 0.12,
               'circle-blur': 0.8
             }
-          }, 'tromso-dim-circle');
+          });
 
           // Inner bright core
           map.addLayer({
@@ -298,7 +298,7 @@ export default function MapView() {
               'circle-opacity': 0.2,
               'circle-blur': 0.6
             }
-          }, 'tromso-dim-circle');
+          });
 
           // Add Tromsø dimming overlay (shown when shouldExpandMap is true)
           map.addSource('tromso-dim', {
