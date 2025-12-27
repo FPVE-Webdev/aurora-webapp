@@ -90,9 +90,24 @@ export default function VisualModeCanvas({
     if (!isEnabled) return;
 
     const handleVisibilityChange = () => {
-      setIsPageVisible(!document.hidden);
+      const isNowVisible = !document.hidden;
+      setIsPageVisible(isNowVisible);
+
       if (!IS_PRODUCTION) {
-        console.log('[VisualMode] Page visibility:', !document.hidden);
+        console.log('[VisualMode] Page visibility:', isNowVisible ? 'visible' : 'hidden');
+      }
+
+      // Resume render loop if page becomes visible again
+      if (isNowVisible && !animationFrameRef.current) {
+        // Trigger render loop restart
+        lastFrameTimeRef.current = Date.now();
+        if (animationFrameRef.current === null) {
+          // Re-initialize render loop
+          const render = () => {
+            // Loop will continue from main useEffect
+          };
+          animationFrameRef.current = requestAnimationFrame(render) || 0;
+        }
       }
     };
 
