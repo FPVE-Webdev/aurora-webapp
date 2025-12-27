@@ -52,12 +52,23 @@ export default function MapView() {
       // Target the parent div to capture overlay + map
       const element = mapContainerRef.current.parentElement as HTMLElement;
 
-      const dataUrl = await toPng(element, {
+      // Create a clone to avoid modifying the original
+      const clonedElement = element.cloneNode(true) as HTMLElement;
+
+      // Remove the snapshot button from the clone
+      const snapshotButtonContainer = clonedElement.querySelector('#snapshot-button-container');
+      if (snapshotButtonContainer) {
+        snapshotButtonContainer.remove();
+      }
+
+      const dataUrl = await toPng(clonedElement, {
         cacheBust: true,
         pixelRatio: 3, // High-DPI capture (Task 1)
+        allowTaint: true, // Allow tainted canvas to bypass CORS restrictions on cross-origin stylesheets
         filter: (node) => {
-          // Task 3: Exclude snapshot button
-          return node.id !== 'snapshot-button-container';
+          // Skip snapshot button in case cloning didn't catch it
+          const nodeElement = node as HTMLElement;
+          return nodeElement.id !== 'snapshot-button-container';
         },
         style: {
           // Task 2: Font smoothing
@@ -87,9 +98,27 @@ export default function MapView() {
         console.info('[kart2][signal] snapshot_used');
         hasLoggedSnapshot.current = true;
       }
-      
+
     } catch (err) {
-      console.error('Snapshot failed:', err);
+      console.error('[kart2] Snapshot failed:', err);
+      // Try simpler fallback: just copy the data URL as a download without processing external stylesheets
+      if (mapContainerRef.current) {
+        try {
+          const canvas = await html2canvas(mapContainerRef.current.parentElement as HTMLElement, {
+            allowTaint: true,
+            useCORS: false, // Disable CORS to allow tainted canvas
+            logging: false,
+            backgroundColor: '#000000'
+          });
+          const link = document.createElement('a');
+          link.download = `nordlys-snapshot-${new Date().toISOString().slice(0,16)}.png`;
+          link.href = canvas.toDataURL();
+          link.click();
+        } catch (fallbackErr) {
+          console.error('[kart2] Snapshot fallback also failed:', fallbackErr);
+          alert('📷 Snapshot kunne ikke genereres. Prøv å refresh siden.');
+        }
+      }
     } finally {
       setIsSnapshotting(false);
       isSnapshottingRef.current = false;
