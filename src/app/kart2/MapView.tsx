@@ -416,16 +416,7 @@ export default function MapView() {
               }
             });
 
-            // ===== TERRAIN & CITY LIGHTS VISUAL MODE ADJUSTMENTS =====
-
-            // Hillshade: reduce opacity when Visual Mode is ON (aurora dominates)
-            if (map.getLayer('hillshade')) {
-              map.setPaintProperty(
-                'hillshade',
-                'hillshade-exaggeration',
-                isDimmed ? 0.15 : 0.3 // Even more subtle when aurora is visible
-              );
-            }
+            // ===== CITY LIGHTS VISUAL MODE ADJUSTMENTS =====
 
             // City glow layers: keep visible but slightly reduce when Visual Mode is ON
             // (provides human scale contrast to aurora)
