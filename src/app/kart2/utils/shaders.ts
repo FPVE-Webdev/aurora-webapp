@@ -84,9 +84,9 @@ export const FRAGMENT_SHADER = `
     // Aurora strength: combines pattern with radial falloff
     float baseAuroraStrength = auroraPattern * radialFalloff;
 
-    // Aurora intensity - scaled by sky perspective (stronger high, weaker low)
+    // Aurora intensity - scaled by map-aware sky perspective (stronger high, weaker low)
     float auroraValue = baseAuroraStrength * u_auroraIntensity * 4.0;
-    auroraValue *= skyFactor;
+    auroraValue *= auroraLift;
 
     // VIVID AURORA COLORS - deeper, more saturated green and pure cyan
     vec3 auroraColor = mix(
