@@ -55,11 +55,11 @@ export const FRAGMENT_SHADER = `
     vec2 toTromso = uv - u_tromsoCenter;
     float distToTromso = length(toTromso);
 
-    // Aurora wave pattern (centered around Tromsø) - tuned motion speed
-    float time = u_time * 0.0003 * u_motionSpeed;
-    vec2 noiseCoord = vec2(uv.x * 3.0, uv.y * 2.0 + time);
+    // Aurora wave pattern (centered around Tromsø) - depth-based motion (sky moves slower, ground faster)
+    float depthTime = u_time * mix(0.00015, 0.00035, skyFactor);
+    vec2 noiseCoord = vec2(uv.x * 3.0, uv.y * 2.0 + depthTime);
     float noise1 = fastNoise(noiseCoord);
-    float noise2 = fastNoise(noiseCoord * 2.0 + vec2(time * 0.5, 0.0));
+    float noise2 = fastNoise(noiseCoord * 2.0 + vec2(depthTime * 0.5, 0.0));
 
     // Combine noise layers with shimmer effect for organic wavering
     float shimmer = sin(u_time * 0.003 * u_motionSpeed + noiseCoord.x * 5.0) * 0.1 + 0.9;
