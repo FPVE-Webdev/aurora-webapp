@@ -1,13 +1,18 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 const cache = new Map<string, { data: string, timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes (in-memory)
+
+// Lazy initialization of OpenAI client (only when needed at runtime)
+function getOpenAIClient() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY is not configured');
+  }
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +21,7 @@ export async function POST(req: Request) {
     // Cache Check (Task 4)
     const cacheKey = JSON.stringify({ kp, probability, tromsoCloud, bestRegion });
     const now = Date.now();
-    
+
     if (cache.has(cacheKey)) {
       const { data, timestamp } = cache.get(cacheKey)!;
       if (now - timestamp < CACHE_TTL) {
@@ -25,9 +30,8 @@ export async function POST(req: Request) {
       cache.delete(cacheKey);
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: 'OpenAI API key missing' }, { status: 500 });
-    }
+    // Initialize OpenAI client only at runtime
+    const openai = getOpenAIClient();
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
