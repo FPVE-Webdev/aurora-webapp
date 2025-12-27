@@ -30,6 +30,12 @@ export const FRAGMENT_SHADER = `
   uniform vec2 u_tromsoCenter; // Screen-space coords [0-1]
   uniform float u_cloudCoverage; // 0-1
 
+  // Visual tuning uniforms (runtime adjustable)
+  uniform float u_alphaTune; // Global alpha multiplier (0.9-1.0, default 0.92)
+  uniform float u_glowRadius; // Tromsø glow radius tuning (1.5-2.5, default 1.85)
+  uniform float u_edgeBlend; // Edge falloff softness (0.3-0.8, default 0.65)
+  uniform float u_motionSpeed; // Motion multiplier (0.6-1.0, default 0.8)
+
   // Ultra-simple hash-based noise (optimized for speed)
   float fastNoise(vec2 v) {
     return fract(sin(dot(v, vec2(12.9898, 78.233))) * 43758.5453);
