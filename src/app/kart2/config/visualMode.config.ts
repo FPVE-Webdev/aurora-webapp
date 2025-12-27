@@ -9,10 +9,10 @@ export const VISUAL_MODE_CONFIG = {
   // ===== 3D RENDERING PARAMETERS =====
   
   /** Number of altitude layers to ray-march through (desktop) */
-  rayMarchLayers: 8,
+  rayMarchLayers: 6, // Reduced from 8 for clearer band separation
   
   /** Number of altitude layers for mobile devices */
-  rayMarchLayersMobile: 4,
+  rayMarchLayersMobile: 3, // Reduced from 4 for performance and clearer bands
   
   /** Minimum aurora altitude in kilometers */
   altitudeMin: 80,
@@ -44,7 +44,7 @@ export const VISUAL_MODE_CONFIG = {
   curtainDensityBase: 1.0,
   
   /** Curtain edge sharpness (0.0=soft glow, 1.0=sharp edges) */
-  curtainSharpness: 0.4,
+  curtainSharpness: 0.6, // Increased from 0.4 for sharper, more defined bands
   
   /** Threshold for curtain visibility (smoothstep lower bound) */
   curtainThresholdLow: 0.3,
@@ -55,7 +55,7 @@ export const VISUAL_MODE_CONFIG = {
   // ===== NOISE PARAMETERS =====
   
   /** Number of noise octaves for detail (desktop) */
-  noiseOctaves: 3,
+  noiseOctaves: 2, // Reduced from 3 for clearer curtain structure
   
   /** Number of noise octaves for mobile */
   noiseOctavesMobile: 2,
