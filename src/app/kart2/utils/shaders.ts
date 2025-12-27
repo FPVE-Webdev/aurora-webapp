@@ -109,6 +109,9 @@ export const FRAGMENT_SHADER = `
     float cloudDim = 1.0 - (u_cloudCoverage * 0.2);
     finalColor *= cloudDim;
 
+    // Suppress aurora naturally toward ground (no hard edges, seamless landscape blend)
+    finalColor *= groundFade;
+
     // Alpha based on combined effects - tuned with global alpha multiplier
     float alpha = clamp(
       auroraValue * 0.8 + tromsoGlow * 1.5,
