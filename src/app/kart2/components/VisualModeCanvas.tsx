@@ -358,6 +358,10 @@ export default function VisualModeCanvas({
       gl.uniform1f(edgeBlendLocation, 0.65); // Softer edge falloff for smoother transitions
       gl.uniform1f(motionSpeedLocation, 0.8); // Slower motion for premium feel
 
+      // Map pitch for aurora tilt alignment
+      const pitch = mapInstance.getPitch(); // 0-45 degrees
+      gl.uniform1f(mapPitchLocation, Math.max(0, Math.min(1, pitch / 45.0))); // Clamp to 0-1
+
       // Draw fullscreen quad
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
