@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 import { useAuroraData } from '@/hooks/useAuroraData';
 import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
 import { AuroraStatusCard } from '@/components/aurora/AuroraStatusCard';
