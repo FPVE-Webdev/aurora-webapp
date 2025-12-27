@@ -247,21 +247,29 @@ export default function VisualModeCanvas({
 
     // Silent initialization - only log if there's an issue
 
-    // Render loop with adaptive FPS capping (default 60 FPS, fallback to 30 FPS) and monitoring
-    let targetDeltaTime = 16; // 60 FPS default
+    // Adaptive quality: detect device and set FPS targets
+    isMobileRef.current = isMobileDevice();
+    let targetDeltaTime = isMobileRef.current ? 33 : 16; // Mobile: 30 FPS, Desktop: 60 FPS
     let lowFpsCount = 0;
 
+    // Render loop with adaptive FPS capping and idle pause support
     const render = () => {
+      // Idle pause: skip rendering if page is not visible
+      if (!isPageVisible) {
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
+      }
+
       if (!glRef.current || !programRef.current) return;
 
       // Guard against context loss
-    if (glRef.current.isContextLost && glRef.current.isContextLost()) {
-      // Call context loss handler if provided
-      if (handleContextLoss) {
-        handleContextLoss();
+      if (glRef.current.isContextLost && glRef.current.isContextLost()) {
+        // Call context loss handler if provided
+        if (handleContextLoss) {
+          handleContextLoss();
+        }
+        return;
       }
-      return;
-    }
 
       const now = Date.now();
       const deltaTime = now - lastFrameTimeRef.current;
