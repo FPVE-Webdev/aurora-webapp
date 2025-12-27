@@ -272,9 +272,9 @@ export default function VisualModeCanvas({
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    // Calculate aurora intensity (spec formula) - increased baseline from 0.6 to 0.8 for more responsive effect
+    // Calculate aurora intensity (spec formula) - toned down for subtle effect
     const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
-    const auroraIntensity = clamp01(kpIndex / 9) * 0.8 + clamp01(auroraProbability / 100) * 0.4;
+    const auroraIntensity = clamp01(kpIndex / 9) * 0.35 + clamp01(auroraProbability / 100) * 0.15;
 
     // Silent initialization - only log if there's an issue
 
@@ -382,10 +382,10 @@ export default function VisualModeCanvas({
       gl.uniform2f(tromsoCenterLocation, screenX, screenY); // DYNAMIC screen-space position
       gl.uniform1f(cloudCoverageLocation, cloudCoverage / 100);
 
-      // Visual tuning uniforms - for premium look
-      gl.uniform1f(alphaTuneLocation, 0.92); // Reduce alpha by ~8% for smoother blend
-      gl.uniform1f(glowRadiusLocation, 1.85); // Broader Tromsø glow (+10-15%)
-      gl.uniform1f(edgeBlendLocation, 0.65); // Softer edge falloff for smoother transitions
+      // Visual tuning uniforms - for subtle, premium look
+      gl.uniform1f(alphaTuneLocation, 0.55); // Significant alpha reduction for subtlety
+      gl.uniform1f(glowRadiusLocation, 1.6); // Moderate Tromsø glow
+      gl.uniform1f(edgeBlendLocation, 0.70); // Softer edge falloff for smoother transitions
       gl.uniform1f(motionSpeedLocation, 0.8); // Slower motion for premium feel
 
       // Map pitch for aurora tilt alignment
