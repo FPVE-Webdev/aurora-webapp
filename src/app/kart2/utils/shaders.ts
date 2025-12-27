@@ -44,6 +44,13 @@ export const FRAGMENT_SHADER = `
   void main() {
     vec2 uv = gl_FragCoord.xy / u_resolution;
 
+    // --- Screen-space sky bias (simulate vertical perspective) ---
+    // uv.y: 0 = bottom of screen (ground), 1 = top (sky)
+    float skyFactor = smoothstep(0.25, 0.85, uv.y);
+
+    // Inverse factor for ground suppression
+    float groundFade = smoothstep(0.0, 0.4, uv.y);
+
     // Distance from Tromsø (screen-space anchored)
     vec2 toTromso = uv - u_tromsoCenter;
     float distToTromso = length(toTromso);
