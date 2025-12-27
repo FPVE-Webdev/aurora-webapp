@@ -401,6 +401,7 @@ export default function VisualModeCanvas({
     render();
 
     return () => {
+      cleanupEventListeners();
       window.removeEventListener('resize', resize);
       mapInstance.off('move', updateOnMapChange);
       mapInstance.off('zoom', updateOnMapChange);
