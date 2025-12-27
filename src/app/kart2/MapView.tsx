@@ -150,6 +150,24 @@ export default function MapView() {
           attributionControl: false,
         });
 
+        // --- Tromsø Scene Lock ---
+        // Geographic bounds (Tromsø + surroundings)
+        const TROMSO_BOUNDS: [[number, number], [number, number]] = [
+          [17.5, 68.8], // Southwest
+          [20.5, 70.3]  // Northeast
+        ];
+
+        // Lock map movement to Tromsø region
+        map.setMaxBounds(TROMSO_BOUNDS);
+
+        // Lock zoom levels (prevent world view / micro zoom)
+        map.setMinZoom(5.5);
+        map.setMaxZoom(8.5);
+
+        // Stable orientation
+        map.setBearing(0);
+        map.setPitchBounds(0, 45);
+
         map.on('load', () => {
 
           // Persist map view on camera changes
