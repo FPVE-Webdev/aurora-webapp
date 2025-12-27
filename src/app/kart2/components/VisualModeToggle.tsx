@@ -39,7 +39,7 @@ export default function VisualModeToggle({ isEnabled, onToggle }: VisualModeTogg
       {/* Permanent Disclaimer - NEVER HIDDEN */}
       <div className="text-[10px] text-gray-400 border-t border-gray-700 pt-2">
         <p className="leading-tight">
-          Visual representation of live conditions. Not a prediction or exact location.
+          Visual representation of live conditions. Not a prediction.
         </p>
       </div>
     </div>
