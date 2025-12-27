@@ -267,6 +267,13 @@ export const FRAGMENT_SHADER = `
     return sin(time * 0.003 * u_motionSpeed + uv.x * 5.0) * 0.1 + 0.9;
   }
 
+  float getTromsoPulse(float time) {
+    // Slow 6-8 second pulse (7s average)
+    // Baseline: 0.3, Peak: 1.0
+    float cycle = sin(time * 0.00014286) * 0.35 + 0.65; // 7000ms period ≈ 7s
+    return cycle;
+  }
+
   // ===== MAIN RAY-MARCHING RENDERER =====
 
   void main() {
