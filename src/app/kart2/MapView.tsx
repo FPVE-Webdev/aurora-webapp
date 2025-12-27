@@ -8,6 +8,8 @@ import AIInterpretation from './AIInterpretation';
 import VisualModeCanvas from './components/VisualModeCanvas';
 import VisualModeToggle from './components/VisualModeToggle';
 import { useVisualMode } from './hooks/useVisualMode';
+import VisualModeErrorBoundary from './components/VisualModeErrorBoundary';
+import { generateTromsoCityLights } from './utils/cityLights';
 
 export default function MapView() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -16,9 +18,62 @@ export default function MapView() {
   const [mapError, setMapError] = useState<string | null>(null);
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const isSnapshottingRef = useRef(false); // Task 1: Snapshot Debounce Lock
+  const [visualModeError, setVisualModeError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const { data, isLoading, error } = useAuroraData();
   const chaseState = useChaseRegions();
   const visualMode = useVisualMode();
+
+  // Fixed "scene" camera: Tromsø viewpoint (not a navigable world map)
+  const SCENE_CENTER: [number, number] = [18.95, 69.65];
+  const SCENE_ZOOM = 8.0;
+  // Flat/horizontal view (top-down from the user's screen)
+  const SCENE_PITCH = 0;
+  // User should feel they are in Tromsø looking north
+  const SCENE_BEARING = 0;
+
+  // Manual zoom + expand presets (still locked to Tromsø)
+  const ZOOM_STEP = 0.1;
+  const ZOOM_SCENE_MIN = 7.8;
+  const ZOOM_SCENE_MAX = 8.0;
+  const ZOOM_EXPANDED_TARGET = 5.4;
+  const ZOOM_EXPANDED_MIN = 5.2;
+  const ZOOM_EXPANDED_MAX = 8.0;
+
+  const getZoomBounds = () => (isExpanded
+    ? { min: ZOOM_EXPANDED_MIN, max: ZOOM_EXPANDED_MAX }
+    : { min: ZOOM_SCENE_MIN, max: ZOOM_SCENE_MAX }
+  );
+
+  const clampZoom = (z: number) => {
+    const b = getZoomBounds();
+    return Math.min(b.max, Math.max(b.min, z));
+  };
+
+  const easeToZoom = (targetZoom: number) => {
+    if (!mapRef.current) return;
+    mapRef.current.easeTo({
+      center: SCENE_CENTER,
+      zoom: clampZoom(targetZoom),
+      pitch: SCENE_PITCH,
+      bearing: SCENE_BEARING,
+      duration: 650,
+      easing: (t: number) => t * t * (3 - 2 * t),
+      essential: true,
+    });
+  };
+
+  const zoomIn = () => {
+    if (!mapRef.current) return;
+    const next = (mapRef.current.getZoom?.() ?? SCENE_ZOOM) + ZOOM_STEP;
+    easeToZoom(next);
+  };
+
+  const zoomOut = () => {
+    if (!mapRef.current) return;
+    const next = (mapRef.current.getZoom?.() ?? SCENE_ZOOM) - ZOOM_STEP;
+    easeToZoom(next);
+  };
 
   // Task 2: Memoization Guards
   const aiInput = useMemo(() => {
@@ -116,26 +171,20 @@ export default function MapView() {
 
     if (!token) {
       const errorMsg = 'No Mapbox token found';
-      console.error('[MapView]', errorMsg);
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.error('[MapView]', errorMsg);
+      }
       setMapError(errorMsg);
       return;
     }
 
-    // Restore saved map view from localStorage
-    const STORAGE_KEY = 'kart2:mapView:v1';
-    let savedView = null;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) savedView = JSON.parse(raw);
-    } catch (err) {
-      console.warn('[MapView] Failed to parse saved view:', err);
-    }
-
-    const initialView = savedView || {
-      center: [18.95, 69.65], // Tromsø center
-      zoom: 6.5,              // Slightly closer for better detail
-      bearing: 0,             // North-up orientation
-      pitch: 45               // 45° tilt to show 3D aurora depth
+    // Scene camera is fixed (no saved view)
+    const initialView = {
+      center: SCENE_CENTER,
+      zoom: SCENE_ZOOM,
+      bearing: SCENE_BEARING,
+      pitch: SCENE_PITCH,
     };
 
     // Dynamically import mapbox-gl to avoid SSR issues
@@ -162,113 +211,139 @@ export default function MapView() {
         });
 
         // --- Tromsø Scene Lock ---
-        // Geographic bounds (Tromsø + surroundings)
+        // Disable free navigation: this is a cinematic scene, not a tool.
+        map.dragPan.disable();
+        map.scrollZoom.disable();
+        map.doubleClickZoom.disable();
+        map.touchZoomRotate.disable();
+        map.keyboard.disable();
+        map.dragRotate.disable();
+        map.boxZoom.disable();
+        map.touchPitch.disable();
+
+        // Bounds: Tromsø + ~50km radius
+        // ~50km ≈ 0.45° lat, ≈ 1.30° lon at this latitude
         const TROMSO_BOUNDS: [[number, number], [number, number]] = [
-          [17.5, 68.8], // Southwest
-          [20.5, 70.3]  // Northeast
+          [SCENE_CENTER[0] - 1.3, SCENE_CENTER[1] - 0.45], // SW
+          [SCENE_CENTER[0] + 1.3, SCENE_CENTER[1] + 0.45], // NE
         ];
 
         // Lock map movement to Tromsø region
         map.setMaxBounds(TROMSO_BOUNDS);
 
-        // Lock zoom levels (prevent world view / micro zoom)
-        map.setMinZoom(5.5);
-        map.setMaxZoom(8.5);
-
-        // Stable orientation
-        map.setBearing(0);
+        // Lock zoom levels tightly around the scene
+        map.setMinZoom(ZOOM_SCENE_MIN);
+        map.setMaxZoom(ZOOM_SCENE_MAX);
 
         map.on('load', () => {
+          // Enforce scene camera on load (in case style defaults override)
+          map.jumpTo({
+            center: SCENE_CENTER,
+            zoom: SCENE_ZOOM,
+            pitch: SCENE_PITCH,
+            bearing: SCENE_BEARING,
+          });
 
-          // Persist map view on camera changes
-          const persistView = () => {
-            const center = map.getCenter();
-            const view = {
-              center: [center.lng, center.lat],
-              zoom: map.getZoom(),
-              bearing: map.getBearing(),
-              pitch: map.getPitch()
-            };
-            try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(view));
-            } catch (err) {
-              console.warn('[MapView] Failed to persist view:', err);
+          // ===== MAPBOX TERRAIN + HILLSHADE =====
+          // Terrain provides elevation data; hillshade makes it visible even in flat (pitch=0) view.
+          if (!map.getSource('mapbox-dem')) {
+            map.addSource('mapbox-dem', {
+              type: 'raster-dem',
+              url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+              tileSize: 512,
+              maxzoom: 14,
+            } as any);
+          }
+
+          // Separate DEM for hillshade to avoid Mapbox warning + preserve resolution.
+          if (!map.getSource('mapbox-dem-hillshade')) {
+            map.addSource('mapbox-dem-hillshade', {
+              type: 'raster-dem',
+              url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+              tileSize: 512,
+              maxzoom: 14,
+            } as any);
+          }
+
+          // Enable terrain (safe even if pitch=0; helps when pitch is increased later)
+          try {
+            map.setTerrain?.({ source: 'mapbox-dem', exaggeration: 1.15 } as any);
+          } catch {}
+
+          // Subtle hillshade for terrain readability
+          if (!map.getLayer('tromso-hillshade')) {
+            const styleLayers = map.getStyle?.()?.layers || [];
+            const firstSymbolLayerId =
+              styleLayers.find((l: any) => l?.type === 'symbol')?.id || undefined;
+            const beforeId = map.getLayer('road-label') ? 'road-label' : firstSymbolLayerId;
+
+            const hillshadeLayer = {
+              id: 'tromso-hillshade',
+              type: 'hillshade',
+              source: 'mapbox-dem-hillshade',
+              paint: {
+                'hillshade-exaggeration': 0.45,
+                'hillshade-illumination-direction': 335,
+                'hillshade-shadow-color': '#000000',
+                'hillshade-highlight-color': '#7dd3fc',
+                'hillshade-accent-color': '#1d4ed8',
+              },
+            } as any;
+
+            // Insert below labels when possible; otherwise append safely.
+            if (beforeId) {
+              map.addLayer(hillshadeLayer, beforeId);
+            } else {
+              map.addLayer(hillshadeLayer);
             }
+          }
+
+          // ===== CITY LIGHTS – AIRPLANE VIEW =====
+          // Deterministic point lights (no per-frame JS)
+          const cityLights = generateTromsoCityLights(1337);
+          if (!map.getSource('tromso-city-lights')) {
+            map.addSource('tromso-city-lights', {
+              type: 'geojson',
+              data: cityLights as any,
+            });
+          }
+
+          // Base opacities (OFF = fully visible, ON = *0.8 in dimMapForVisualMode)
+          // Microscopic airplane lights: no glow, no halo — just tiny light sources.
+          const CITY_LIGHTS_BASE_OPACITY: Record<'dim' | 'medium' | 'bright', number> = {
+            dim: 0.10,
+            medium: 0.14,
+            bright: 0.20,
           };
 
-          map.on('moveend', persistView);
-          map.on('zoomend', persistView);
-          map.on('rotateend', persistView);
-          map.on('pitchend', persistView);
-
-          // ===== CITY LIGHTS - TROMSØ FOCUS =====
-          // (Terrain depth is already provided by dark-v11 base style)
-
-          // Add warm glow around Tromsø city center
-          map.addSource('tromso-city-glow', {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              geometry: {
-                type: 'Point',
-                coordinates: [18.95, 69.65] // Tromsø center
-              },
-              properties: {
-                name: 'Tromsø'
+          const addLightsLayer = (id: string, tier: 'dim' | 'medium' | 'bright', color: string) => {
+            if (map.getLayer(id)) return;
+            map.addLayer({
+              id,
+              type: 'circle',
+              source: 'tromso-city-lights',
+              filter: ['==', ['get', 'tier'], tier],
+              paint: {
+                // Microscopic radii, zoom-responsive up to 8
+                'circle-radius': [
+                  'interpolate', ['linear'], ['zoom'],
+                  5.2, tier === 'bright' ? 0.9 : tier === 'medium' ? 0.75 : 0.6,
+                  8.0, tier === 'bright' ? 1.6 : tier === 'medium' ? 1.3 : 1.0,
+                ],
+                'circle-color': color,
+                'circle-blur': 0.0,
+                'circle-opacity': CITY_LIGHTS_BASE_OPACITY[tier],
+                'circle-stroke-width': 0,
+                // Anchor to ground plane in pitched view
+                'circle-pitch-alignment': 'map',
+                'circle-pitch-scale': 'map',
               }
-            }
-          });
+            });
+          };
 
-          // Large radial glow (outer)
-          map.addLayer({
-            id: 'tromso-glow-outer',
-            type: 'circle',
-            source: 'tromso-city-glow',
-            paint: {
-              'circle-radius': [
-                'interpolate', ['linear'], ['zoom'],
-                5, 80,  // Large at far zoom
-                8, 180  // Even larger when zoomed in
-              ],
-              'circle-color': '#ffcc66', // Warm amber
-              'circle-opacity': 0.08,     // Very subtle
-              'circle-blur': 1.0          // Maximum blur for soft glow
-            }
-          });
-
-          // Medium radial glow (middle)
-          map.addLayer({
-            id: 'tromso-glow-middle',
-            type: 'circle',
-            source: 'tromso-city-glow',
-            paint: {
-              'circle-radius': [
-                'interpolate', ['linear'], ['zoom'],
-                5, 50,
-                8, 120
-              ],
-              'circle-color': '#ffdd88', // Warmer yellow
-              'circle-opacity': 0.12,
-              'circle-blur': 0.8
-            }
-          });
-
-          // Inner bright core
-          map.addLayer({
-            id: 'tromso-glow-core',
-            type: 'circle',
-            source: 'tromso-city-glow',
-            paint: {
-              'circle-radius': [
-                'interpolate', ['linear'], ['zoom'],
-                5, 25,
-                8, 60
-              ],
-              'circle-color': '#ffeeaa', // Bright warm white
-              'circle-opacity': 0.2,
-              'circle-blur': 0.6
-            }
-          });
+          addLightsLayer('tromso-lights-dim', 'dim', '#ffcc66');
+          addLightsLayer('tromso-lights-medium', 'medium', '#ffdd88');
+          addLightsLayer('tromso-lights-bright', 'bright', '#ffeeaa');
 
           // Add Tromsø dimming overlay (shown when shouldExpandMap is true)
           map.addSource('tromso-dim', {
@@ -277,7 +352,7 @@ export default function MapView() {
               type: 'Feature',
               geometry: {
                 type: 'Point',
-                coordinates: [18.95, 69.65]
+                coordinates: SCENE_CENTER
               },
               properties: {}
             }
@@ -354,7 +429,10 @@ export default function MapView() {
                 }
               });
             } catch (err) {
-              console.error(`[MapView] Failed to add chase region ${region.id}:`, err);
+              if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.error(`[MapView] Failed to add chase region ${region.id}:`, err);
+              }
             }
           });
         });
@@ -416,31 +494,24 @@ export default function MapView() {
             });
 
             // ===== CITY LIGHTS VISUAL MODE ADJUSTMENTS =====
-
-            // City glow layers: keep visible but slightly reduce when Visual Mode is ON
-            // (provides human scale contrast to aurora)
-            const cityGlowLayers = [
-              'tromso-glow-outer',
-              'tromso-glow-middle',
-              'tromso-glow-core'
+            // Dim city lights slightly when Visual Mode is ON (no flicker: fixed values).
+            const cityLayers: Array<[string, number]> = [
+              ['tromso-lights-dim', 0.10],
+              ['tromso-lights-medium', 0.14],
+              ['tromso-lights-bright', 0.20],
             ];
-            cityGlowLayers.forEach(layerId => {
+            const scale = isDimmed ? 0.8 : 1.0;
+            cityLayers.forEach(([layerId, base]) => {
               if (map.getLayer(layerId)) {
-                const currentOpacity = map.getPaintProperty(layerId, 'circle-opacity');
-                // When Visual Mode ON: maintain glow but slightly reduce
-                // When OFF: restore to full brightness
-                const baseOpacity = layerId === 'tromso-glow-outer' ? 0.08 :
-                                   layerId === 'tromso-glow-middle' ? 0.12 : 0.2;
-                map.setPaintProperty(
-                  layerId,
-                  'circle-opacity',
-                  isDimmed ? baseOpacity * 0.8 : baseOpacity
-                );
+                map.setPaintProperty(layerId, 'circle-opacity', base * scale);
               }
             });
           } catch (err) {
             // Silently fail if layer doesn't exist (style may vary)
-            console.warn('[MapView] Failed to dim layer:', err);
+            if (process.env.NODE_ENV !== 'production') {
+              // eslint-disable-next-line no-console
+              console.warn('[MapView] Failed to dim layer:', err);
+            }
           }
         };
 
@@ -452,19 +523,52 @@ export default function MapView() {
 
           if (!error) return;
 
-          console.error('[MapView] Critical map error:', error);
+          if (process.env.NODE_ENV !== 'production') {
+            // eslint-disable-next-line no-console
+            console.error('[MapView] Critical map error:', error);
+          }
           setMapError('Map failed to load');
         });
 
         mapRef.current = map;
+
+        // --- Subtle cinematic drift (no user navigation) ---
+        // Gentle alternating easeTo (no per-frame JS).
+        const drift = {
+          t: 0,
+          timer: null as null | ReturnType<typeof setInterval>,
+        };
+        const applyDrift = () => {
+          if (!mapRef.current) return;
+          drift.t = (drift.t + 1) % 2;
+          const sign = drift.t === 0 ? 1 : -1;
+          mapRef.current.easeTo({
+            center: [SCENE_CENTER[0] + sign * 0.02, SCENE_CENTER[1] + sign * 0.01],
+            bearing: SCENE_BEARING,
+            pitch: SCENE_PITCH,
+            duration: 11000,
+            easing: (t: number) => t * t * (3 - 2 * t), // smoothstep
+            essential: true,
+          });
+        };
+        map.once('idle', () => {
+          applyDrift();
+          drift.timer = setInterval(applyDrift, 12000);
+        });
+        (map as any).__kart2_drift = drift;
       })
       .catch((err) => {
-        console.error('[MapView] Failed to load mapbox-gl:', err);
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.error('[MapView] Failed to load mapbox-gl:', err);
+        }
         setMapError('Failed to load map library');
       });
 
     return () => {
       if (mapRef.current) {
+        const drift = (mapRef.current as any).__kart2_drift;
+        if (drift?.timer) clearInterval(drift.timer);
         // Restore map before removing
         if ((mapRef.current as any).dimMapForVisualMode) {
           (mapRef.current as any).dimMapForVisualMode(false);
@@ -474,6 +578,21 @@ export default function MapView() {
       }
     };
   }, []);
+
+  // Expand toggle: widen zoom range + ease to expanded target, still locked center/bounds.
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const b = getZoomBounds();
+    mapRef.current.setMinZoom?.(b.min);
+    mapRef.current.setMaxZoom?.(b.max);
+
+    if (isExpanded) {
+      easeToZoom(ZOOM_EXPANDED_TARGET);
+    } else {
+      easeToZoom(SCENE_ZOOM);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpanded]);
 
   // Watch visual mode toggle and dim/restore map accordingly
   useEffect(() => {
@@ -494,15 +613,21 @@ export default function MapView() {
       {/* Visual Mode Canvas Overlay - wrapped for proper z-index stacking */}
       {data && visualMode.isClient && mapRef.current && (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
-          <VisualModeCanvas
-            isEnabled={visualMode.isEnabled}
-            kpIndex={data.kp}
-            auroraProbability={data.probability}
-            cloudCoverage={chaseState.tromsoCloudCoverage}
-            timestamp={data.timestamp}
-            tromsoCoords={[18.95, 69.65]}
-            mapInstance={mapRef.current}
-          />
+          <VisualModeErrorBoundary
+            resetKey={`${visualMode.isEnabled}-${data.timestamp}`}
+            onError={() => setVisualModeError('Nordlysanimasjon (Visual Mode) feilet')}
+          >
+            <VisualModeCanvas
+              isEnabled={visualMode.isEnabled}
+              kpIndex={data.kp}
+              auroraProbability={data.probability}
+              cloudCoverage={chaseState.tromsoCloudCoverage}
+              timestamp={data.timestamp}
+              tromsoCoords={[18.95, 69.65]}
+              mapInstance={mapRef.current}
+              onFatalError={() => setVisualModeError('Nordlysanimasjon (Visual Mode) feilet')}
+            />
+          </VisualModeErrorBoundary>
         </div>
       )}
 
@@ -517,117 +642,162 @@ export default function MapView() {
         />
       )}
 
-      {/* Snapshot Button */}
-      <div id="snapshot-button-container" className="absolute bottom-24 right-4 flex flex-col gap-2 z-50">
-        <div className="flex flex-col items-center gap-1">
-          <button
-            onClick={handleSnapshot}
-            disabled={isSnapshotting}
-            className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
-            title={visualMode.isEnabled ? 'Share this moment' : 'Ta bilde av kartet'}
-          >
-            {isSnapshotting ? (
-              <span className="animate-pulse text-xs">⏳</span>
-            ) : (
-              <span className="text-lg">📷</span>
+      {/* UI Overlay (always top-most). pointer-events-none so map remains interactive,
+          but interactive UI elements use pointer-events-auto. */}
+      <div className="absolute inset-0 z-50 pointer-events-none">
+        {/* Snapshot Button */}
+        <div
+          id="snapshot-button-container"
+          className="pointer-events-auto absolute bottom-24 right-4 flex flex-col gap-2"
+        >
+          {/* Manual Zoom + Expand */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={() => setIsExpanded((v) => !v)}
+              className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
+              title={isExpanded ? 'Komprimer utsikt' : 'Utvid utsikt'}
+            >
+              <span className="text-base">{isExpanded ? '⤡' : '⤢'}</span>
+            </button>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                onClick={zoomIn}
+                className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
+                title="Zoom inn"
+              >
+                <span className="text-lg">+</span>
+              </button>
+              <button
+                onClick={zoomOut}
+                className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
+                title="Zoom ut"
+              >
+                <span className="text-lg">−</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={handleSnapshot}
+              disabled={isSnapshotting}
+              className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
+              title={visualMode.isEnabled ? 'Share this moment' : 'Ta bilde av kartet'}
+            >
+              {isSnapshotting ? (
+                <span className="animate-pulse text-xs">⏳</span>
+              ) : (
+                <span className="text-lg">📷</span>
+              )}
+            </button>
+            {/* Visual Mode context label */}
+            {visualMode.isEnabled && (
+              <span className="text-[9px] text-emerald-300/70 font-medium">Share</span>
             )}
-          </button>
-          {/* Visual Mode context label */}
-          {visualMode.isEnabled && (
-            <span className="text-[9px] text-emerald-300/70 font-medium">Share</span>
+          </div>
+        </div>
+
+        {/* Aurora Data Overlay */}
+        <div className="pointer-events-auto absolute top-4 left-4 space-y-3 max-w-[280px]">
+          {(error || mapError) && (
+            <div className="bg-red-500/90 text-white p-4 rounded shadow">
+              <p className="font-bold">Feil</p>
+              <p className="text-sm">{error || mapError}</p>
+            </div>
+          )}
+
+          {visualModeError && (
+            <div className="bg-yellow-500/90 text-black p-3 rounded shadow text-xs">
+              <p className="font-semibold">Visual Mode utilgjengelig</p>
+              <p className="text-[10px] opacity-90">{visualModeError}</p>
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="bg-white/90 p-4 rounded shadow">
+              <p className="text-sm text-gray-600">Laster nordlysdata...</p>
+            </div>
+          )}
+
+          {data && (
+            <div className="bg-black/80 backdrop-blur-sm text-white p-4 rounded shadow-lg">
+              <h2 className="font-bold text-lg mb-3">Nordlys Status</h2>
+
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-white/60">Kp-indeks</p>
+                  <p className="text-3xl font-bold text-primary">{data.kp.toFixed(1)}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-white/60">Sannsynlighet</p>
+                  <p className="text-2xl font-bold">{data.probability}%</p>
+                </div>
+
+                <div className="pt-2 border-t border-white/20">
+                  <p className="text-xs text-white/40">
+                    Oppdatert: {new Date(data.timestamp).toLocaleTimeString('no-NO')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs text-gray-300">
+            <p className="font-semibold">Tromsø, Norge</p>
+            <p>Eksperimentelt kart</p>
+          </div>
+
+          {/* Legend - Map Explanation */}
+          <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs text-gray-200 max-w-[220px]">
+            <p className="font-semibold mb-2 text-gray-100">Kart forklaring</p>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500/30 border-2 border-green-500/50"></div>
+                <span>Mulige observasjonssteder</span>
+              </div>
+              {chaseState.bestRegion && (
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-emerald-400/40 border-2 border-emerald-400"></div>
+                  <span className="font-medium">Best synlighet</span>
+                </div>
+              )}
+              <p className="text-[10px] text-gray-400 mt-2 pt-2 border-t border-gray-700">
+                Synlighet basert på skydekke. Nordlysaktivitet antas lik i hele regionen.
+              </p>
+            </div>
+          </div>
+
+          {/* AI Interpretation Layer */}
+          {aiInput && (
+            <AIInterpretation
+              kp={aiInput.kp}
+              probability={aiInput.probability}
+              tromsoCloud={aiInput.tromsoCloud}
+              bestRegion={aiInput.bestRegion}
+            />
+          )}
+
+          {/* Visual Mode Toggle */}
+          {visualMode.isClient && (
+            <VisualModeToggle
+              isEnabled={visualMode.isEnabled}
+              onToggle={() => {
+                // If the user toggles, allow the VisualModeErrorBoundary to reset.
+                setVisualModeError(null);
+                visualMode.toggle();
+              }}
+            />
+          )}
+
+          {/* Tromsø Cloud Notice */}
+          {chaseState.shouldExpandMap && (
+            <div className="bg-orange-500/90 text-white p-3 rounded shadow text-xs">
+              <p className="font-semibold">Høyt skydekke over Tromsø</p>
+              <p className="text-[10px] mt-1 opacity-90">Alternative steder markert på kart</p>
+            </div>
           )}
         </div>
-      </div>
-
-      {/* Aurora Data Overlay */}
-      <div className="absolute top-4 left-4 space-y-3 max-w-[280px]">
-        {(error || mapError) && (
-          <div className="bg-red-500/90 text-white p-4 rounded shadow">
-            <p className="font-bold">Feil</p>
-            <p className="text-sm">{error || mapError}</p>
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="bg-white/90 p-4 rounded shadow">
-            <p className="text-sm text-gray-600">Laster nordlysdata...</p>
-          </div>
-        )}
-
-        {data && (
-          <div className="bg-black/80 backdrop-blur-sm text-white p-4 rounded shadow-lg">
-            <h2 className="font-bold text-lg mb-3">Nordlys Status</h2>
-
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs text-white/60">Kp-indeks</p>
-                <p className="text-3xl font-bold text-primary">{data.kp.toFixed(1)}</p>
-              </div>
-
-              <div>
-                <p className="text-xs text-white/60">Sannsynlighet</p>
-                <p className="text-2xl font-bold">{data.probability}%</p>
-              </div>
-
-              <div className="pt-2 border-t border-white/20">
-                <p className="text-xs text-white/40">
-                  Oppdatert: {new Date(data.timestamp).toLocaleTimeString('no-NO')}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs text-gray-300">
-          <p className="font-semibold">Tromsø, Norge</p>
-          <p>Eksperimentelt kart</p>
-        </div>
-
-        {/* Legend - Map Explanation */}
-        <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs text-gray-200 max-w-[220px]">
-          <p className="font-semibold mb-2 text-gray-100">Kart forklaring</p>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500/30 border-2 border-green-500/50"></div>
-              <span>Mulige observasjonssteder</span>
-            </div>
-            {chaseState.bestRegion && (
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-emerald-400/40 border-2 border-emerald-400"></div>
-                <span className="font-medium">Best synlighet</span>
-              </div>
-            )}
-            <p className="text-[10px] text-gray-400 mt-2 pt-2 border-t border-gray-700">
-              Synlighet basert på skydekke. Nordlysaktivitet antas lik i hele regionen.
-            </p>
-          </div>
-        </div>
-
-        {/* AI Interpretation Layer */}
-        {aiInput && (
-          <AIInterpretation
-            kp={aiInput.kp}
-            probability={aiInput.probability}
-            tromsoCloud={aiInput.tromsoCloud}
-            bestRegion={aiInput.bestRegion}
-          />
-        )}
-
-        {/* Visual Mode Toggle */}
-        {visualMode.isClient && (
-          <VisualModeToggle
-            isEnabled={visualMode.isEnabled}
-            onToggle={visualMode.toggle}
-          />
-        )}
-
-        {/* Tromsø Cloud Notice */}
-        {chaseState.shouldExpandMap && (
-          <div className="bg-orange-500/90 text-white p-3 rounded shadow text-xs">
-            <p className="font-semibold">Høyt skydekke over Tromsø</p>
-            <p className="text-[10px] mt-1 opacity-90">Alternative steder markert på kart</p>
-          </div>
-        )}
       </div>
     </div>
   );

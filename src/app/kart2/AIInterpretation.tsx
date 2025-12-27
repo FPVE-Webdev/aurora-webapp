@@ -17,6 +17,10 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
   const hasFetchedRef = useRef(false);
 
   useEffect(() => {
+    // AI is opt-in for /kart2. Avoid noisy 500s when OpenAI isn't configured locally.
+    // Enable by setting: NEXT_PUBLIC_KART2_AI=1
+    if (process.env.NEXT_PUBLIC_KART2_AI !== '1') return;
+
     // Only fetch once per component lifecycle
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
@@ -53,9 +57,6 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
         // Only update state if component is still mounted
         if (data.interpretation && isMountedRef.current) {
           setText(data.interpretation);
-          if (!IS_PRODUCTION) {
-            console.info('[kart2][signal] ai_displayed');
-          }
         }
       } catch (err) {
         // Clear timeout on error

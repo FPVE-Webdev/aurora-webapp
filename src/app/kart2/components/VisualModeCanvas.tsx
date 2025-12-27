@@ -49,6 +49,8 @@ interface VisualModeCanvasProps {
   timestamp: string; // ISO 8601 timestamp
   tromsoCoords: [number, number];
   mapInstance: any; // Mapbox map instance
+  /** Called if the visual mode renderer hits an unrecoverable runtime error. */
+  onFatalError?: (error: unknown) => void;
 }
 
 export default function VisualModeCanvas({
@@ -58,7 +60,8 @@ export default function VisualModeCanvas({
   cloudCoverage,
   timestamp,
   tromsoCoords,
-  mapInstance
+  mapInstance,
+  onFatalError
 }: VisualModeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
@@ -70,6 +73,7 @@ export default function VisualModeCanvas({
   const [shouldRender, setShouldRender] = useState(true);
   const [isPageVisible, setIsPageVisible] = useState(true);
   const isMobileRef = useRef(false);
+  const fatalErrorReportedRef = useRef(false);
 
   // Check for prefers-reduced-motion
   useEffect(() => {
@@ -98,7 +102,11 @@ export default function VisualModeCanvas({
       setIsPageVisible(isNowVisible);
 
       if (!IS_PRODUCTION) {
-        console.log('[VisualMode] Page visibility:', isNowVisible ? 'visible' : 'hidden');
+        // keep dev console clean unless explicitly debugging
+        if (process.env.NEXT_PUBLIC_KART2_DEBUG === '1') {
+          // eslint-disable-next-line no-console
+          console.log('[VisualMode] Page visibility:', isNowVisible ? 'visible' : 'hidden');
+        }
       }
     };
 
@@ -125,63 +133,109 @@ export default function VisualModeCanvas({
     }
 
     const canvas = canvasRef.current;
+    let positionBuffer: WebGLBuffer | null = null;
 
-    // Initialize WebGL
-    const gl = canvas.getContext('webgl', {
-      alpha: true,
-      premultipliedAlpha: false,
-      antialias: false
-    });
+    const reportFatal = (err: unknown) => {
+      if (fatalErrorReportedRef.current) return;
+      fatalErrorReportedRef.current = true;
 
-    if (!gl) {
+      // Production must be clean (no console errors). Log only in dev.
       if (!IS_PRODUCTION) {
-        console.error('[VisualMode] WebGL not supported or context unavailable');
+        // eslint-disable-next-line no-console
+        console.error('[VisualMode] Fatal error:', err);
       }
-      return;
-    }
 
-    // Guard against context loss
-    if (gl.isContextLost?.()) {
-      if (!IS_PRODUCTION) {
-        console.warn('[VisualMode] WebGL context is lost - attempting recovery');
-      }
-      // Attempt to recover by clearing the ref and requesting a new context on next frame
-      glRef.current = null;
-      return;
-    }
+      try {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+      } catch {}
 
-    glRef.current = gl;
+      try {
+        setShouldRender(false);
+      } catch {}
 
-    // Handle context loss events
-    const handleContextLoss = (event: Event) => {
-      event.preventDefault();
-      if (!IS_PRODUCTION) {
-        console.warn('[VisualMode] WebGL context lost event - pausing rendering');
-      }
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
+      try {
+        onFatalError?.(err);
+      } catch {}
+
+      try {
+        if (programRef.current && glRef.current) {
+          glRef.current.deleteProgram(programRef.current);
+          programRef.current = null;
+        }
+        if (positionBuffer && glRef.current) {
+          glRef.current.deleteBuffer(positionBuffer);
+        }
+        if (glRef.current) {
+          glRef.current.getExtension('WEBGL_lose_context')?.loseContext();
+          glRef.current = null;
+        }
+      } catch {}
     };
 
-    const handleContextRestore = () => {
-      if (!IS_PRODUCTION) {
-        console.log('[VisualMode] WebGL context restored - resuming rendering');
+    // Define no-op placeholders so catch blocks can safely reference them.
+    let cleanupEventListeners = () => {};
+    let resize = () => {};
+    let updateOnMapChange = () => {};
+
+    try {
+      // Initialize WebGL
+      const gl = canvas.getContext('webgl', {
+        alpha: true,
+        premultipliedAlpha: false,
+        antialias: false
+      });
+
+      if (!gl) {
+        // Not a crash; just disable Visual Mode rendering.
+        reportFatal(new Error('WebGL not supported or context unavailable'));
+        return;
       }
-      // Context restoration is handled by reinitializing the effect
-    };
 
-    canvas.addEventListener('webglcontextlost', handleContextLoss);
-    canvas.addEventListener('webglcontextrestored', handleContextRestore);
+      // Guard against context loss
+      if (gl.isContextLost?.()) {
+        if (!IS_PRODUCTION) {
+          console.warn('[VisualMode] WebGL context is lost - attempting recovery');
+        }
+        // Attempt to recover by clearing the ref and requesting a new context on next frame
+        glRef.current = null;
+        return;
+      }
 
-    // Cleanup event listeners in the return function
-    const cleanupEventListeners = () => {
-      canvas.removeEventListener('webglcontextlost', handleContextLoss);
-      canvas.removeEventListener('webglcontextrestored', handleContextRestore);
-    };
+      glRef.current = gl;
 
-    // Resize canvas to match display size with proper DPI scaling
-    const resize = () => {
+      // Handle context loss events
+      const handleContextLoss = (event: Event) => {
+        event.preventDefault();
+        if (!IS_PRODUCTION) {
+          console.warn('[VisualMode] WebGL context lost event - pausing rendering');
+        }
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+      };
+
+      const handleContextRestore = () => {
+        if (!IS_PRODUCTION) {
+          console.log('[VisualMode] WebGL context restored - resuming rendering');
+        }
+        // Context restoration is handled by reinitializing the effect
+      };
+
+      canvas.addEventListener('webglcontextlost', handleContextLoss);
+      canvas.addEventListener('webglcontextrestored', handleContextRestore);
+
+      // Cleanup event listeners in the return function
+      cleanupEventListeners = () => {
+        canvas.removeEventListener('webglcontextlost', handleContextLoss);
+        canvas.removeEventListener('webglcontextrestored', handleContextRestore);
+      };
+
+      // Resize canvas to match display size with proper DPI scaling
+      resize = () => {
       let displayWidth: number;
       let displayHeight: number;
       let cssWidth: number;
@@ -221,38 +275,36 @@ export default function VisualModeCanvas({
       gl.viewport(0, 0, canvas.width, canvas.height);
     };
 
-    resize();
-    window.addEventListener('resize', resize);
+      resize();
+      window.addEventListener('resize', resize);
 
-    // Update on map move/zoom
-    const updateOnMapChange = () => {
-      // Render loop handles projection updates automatically
-    };
-    mapInstance.on('move', updateOnMapChange);
-    mapInstance.on('zoom', updateOnMapChange);
+      // Update on map move/zoom
+      updateOnMapChange = () => {
+        // Render loop handles projection updates automatically
+      };
+      mapInstance.on('move', updateOnMapChange);
+      mapInstance.on('zoom', updateOnMapChange);
 
     // Compile shaders
-    const program = createShaderProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER);
-    if (!program) {
-      if (!IS_PRODUCTION) {
-        console.error('[VisualMode] Failed to create shader program');
+      const program = createShaderProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER);
+      if (!program) {
+        reportFatal(new Error('Failed to create shader program'));
+        return;
       }
-      return;
-    }
 
     programRef.current = program;
     gl.useProgram(program);
 
-    // Create fullscreen quad
-    const positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      // Create fullscreen quad
+      positionBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     const positions = new Float32Array([
       -1, -1,
        1, -1,
       -1,  1,
        1,  1,
     ]);
-    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
     // Setup vertex attribute
     const positionLocation = gl.getAttribLocation(program, 'a_position');
@@ -299,8 +351,9 @@ export default function VisualModeCanvas({
     let targetDeltaTime = isMobileRef.current ? 33 : 16; // Mobile: 30 FPS, Desktop: 60 FPS
     let lowFpsCount = 0;
 
-    // Render loop with adaptive FPS capping and idle pause support
-    const render = () => {
+      // Render loop with adaptive FPS capping and idle pause support
+      const render = () => {
+        try {
       // Idle pause: skip rendering if page is not visible
       // (but still schedule next frame - browser throttles requestAnimationFrame when hidden)
       if (!isPageVisible) {
@@ -363,8 +416,8 @@ export default function VisualModeCanvas({
         fpsCounterRef.current.frames = 0;
         fpsCounterRef.current.lastTime = now;
 
-        // Warn if FPS is critically low
-        if (fps < 15) {
+        // Warn if FPS is critically low (dev only)
+        if (!IS_PRODUCTION && fps < 15) {
           console.warn('[VisualMode] Low FPS detected:', fps.toFixed(1), '- consider disabling');
         }
       }
@@ -427,32 +480,50 @@ export default function VisualModeCanvas({
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
       animationFrameRef.current = requestAnimationFrame(render);
+        } catch (err) {
+          reportFatal(err);
+        }
     };
 
-    render();
+      render();
 
-    return () => {
-      cleanupEventListeners();
-      window.removeEventListener('resize', resize);
-      mapInstance.off('move', updateOnMapChange);
-      mapInstance.off('zoom', updateOnMapChange);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-      if (programRef.current && glRef.current) {
-        glRef.current.deleteProgram(programRef.current);
-        programRef.current = null;
-      }
-      if (positionBuffer && glRef.current) {
-        glRef.current.deleteBuffer(positionBuffer);
-      }
-      if (glRef.current) {
-        glRef.current.getExtension('WEBGL_lose_context')?.loseContext();
-        glRef.current = null;
-      }
-    };
-  }, [isEnabled, kpIndex, auroraProbability, cloudCoverage, timestamp, tromsoCoords, mapInstance, shouldRender]);
+      return () => {
+        cleanupEventListeners();
+        window.removeEventListener('resize', resize);
+        mapInstance.off('move', updateOnMapChange);
+        mapInstance.off('zoom', updateOnMapChange);
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+        if (programRef.current && glRef.current) {
+          glRef.current.deleteProgram(programRef.current);
+          programRef.current = null;
+        }
+        if (positionBuffer && glRef.current) {
+          glRef.current.deleteBuffer(positionBuffer);
+        }
+        if (glRef.current) {
+          glRef.current.getExtension('WEBGL_lose_context')?.loseContext();
+          glRef.current = null;
+        }
+      };
+    } catch (err) {
+      // Best-effort cleanup if init crashes mid-way.
+      try {
+        cleanupEventListeners();
+      } catch {}
+      try {
+        window.removeEventListener('resize', resize);
+      } catch {}
+      try {
+        mapInstance.off('move', updateOnMapChange);
+        mapInstance.off('zoom', updateOnMapChange);
+      } catch {}
+      reportFatal(err);
+      return;
+    }
+  }, [isEnabled, kpIndex, auroraProbability, cloudCoverage, timestamp, tromsoCoords, mapInstance, shouldRender, isPageVisible, onFatalError]);
 
   // Don't render if disabled or reduced-motion
   if (!isEnabled || !shouldRender) return null;
