@@ -63,7 +63,13 @@ async function fetchMetnoWeather(lat: number, lon: number): Promise<WeatherPaylo
       throw new Error('Met.no response was empty');
     }
 
-    const data = JSON.parse(text) as any;
+    let data: any;
+    try {
+      data = JSON.parse(text) as any;
+    } catch (parseError) {
+      throw new Error(`Met.no response was not valid JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+    }
+
     const current = data?.properties?.timeseries?.[0]?.data?.instant?.details;
 
     if (!current) {
