@@ -218,7 +218,7 @@ export const FRAGMENT_SHADER = `
     
     // Quality-based octave count (3 for desktop, 2 for mobile)
     int octaves = int(3.0 * u_qualityScale);
-    octaves = max(1, octaves);
+    if (octaves < 1) octaves = 1;
     
     for (int i = 0; i < 3; i++) {
       if (i >= octaves) break;
@@ -275,7 +275,7 @@ export const FRAGMENT_SHADER = `
     
     // Quality-based layer count (8 for desktop, 4 for mobile)
     int layers = int(8.0 * u_qualityScale);
-    layers = max(2, layers);
+    if (layers < 2) layers = 2;
     
     float pulse = getPulse(u_time);
     float shimmer = getShimmer(u_time, uv);
