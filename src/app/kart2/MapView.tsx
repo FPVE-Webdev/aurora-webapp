@@ -414,6 +414,17 @@ export default function MapView() {
         </div>
       )}
 
+      {/* Gradient overlay to dim upper screen area (sky) when visual mode is active */}
+      {visualMode.isEnabled && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            zIndex: 5, // Between map (0) and VisualModeCanvas (10)
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 60%)',
+          }}
+        />
+      )}
+
       {/* Snapshot Button */}
       <div id="snapshot-button-container" className="absolute bottom-24 right-4 flex flex-col gap-2 z-50">
         <div className="flex flex-col items-center gap-1">
