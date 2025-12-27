@@ -17,47 +17,32 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
   const hasFetchedRef = useRef(false);
 
   useEffect(() => {
-    // Reset on each effect run (for StrictMode safety)
-    isMountedRef.current = true;
-
     // Only fetch once per component lifecycle
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
 
-    // Create a fresh controller for this effect run (prevents StrictMode double-invoke issues)
-    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const fetchInterpretation = async () => {
       try {
-        // Create a timeout signal that aborts after 8 seconds
-        const timeoutSignal = AbortSignal.timeout(8000);
+        const controller = new AbortController();
 
-        // Race the user's abort with the timeout abort
-        const abortController = AbortController.prototype.constructor;
-        const composedController = new (abortController as any)();
-
-        controller.signal.addEventListener('abort', () => {
-          try {
-            composedController.abort();
-          } catch {
-            // Ignore errors
+        // Timeout after 8 seconds
+        timeoutId = setTimeout(() => {
+          if (isMountedRef.current) {
+            controller.abort();
           }
-        });
-
-        timeoutSignal.addEventListener('abort', () => {
-          try {
-            composedController.abort();
-          } catch {
-            // Ignore errors
-          }
-        });
+        }, 8000);
 
         const res = await fetch('/api/ai-interpretation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ kp, probability, tromsoCloud, bestRegion }),
-          signal: composedController.signal,
+          signal: controller.signal,
         });
+
+        // Clear timeout if request completed
+        if (timeoutId) clearTimeout(timeoutId);
 
         if (!res.ok) return;
 
@@ -65,6 +50,7 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
         if (!responseText || !responseText.trim()) return;
 
         const data = JSON.parse(responseText) as { interpretation?: string };
+        // Only update state if component is still mounted
         if (data.interpretation && isMountedRef.current) {
           setText(data.interpretation);
           if (!IS_PRODUCTION) {
@@ -72,14 +58,13 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
           }
         }
       } catch (err) {
+        // Clear timeout on error
+        if (timeoutId) clearTimeout(timeoutId);
+
         // Gracefully ignore network errors and abort errors
         if (err instanceof Error) {
-          if (err.name === 'AbortError') {
-            // Request was aborted (timeout or cleanup) - silently ignore
-            return;
-          }
-          if (err.message === 'Failed to fetch') {
-            // Network error - silently ignore (endpoint may not exist)
+          if (err.name === 'AbortError' || err.message === 'Failed to fetch') {
+            // Request was aborted or network error - silently ignore
             return;
           }
         }
@@ -91,14 +76,8 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
 
     return () => {
       isMountedRef.current = false;
-      // Abort the fetch request on cleanup (safe to call multiple times with check)
-      if (!controller.signal.aborted) {
-        try {
-          controller.abort();
-        } catch {
-          // Ignore abort errors (may occur due to race conditions)
-        }
-      }
+      // Clear timeout on unmount
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, []);
 
