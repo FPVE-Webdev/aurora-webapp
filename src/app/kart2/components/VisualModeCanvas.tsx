@@ -135,14 +135,44 @@ export default function VisualModeCanvas({
     }
 
     // Guard against context loss
-    if (gl.isContextLost && gl.isContextLost()) {
+    if (gl.isContextLost?.()) {
       if (!IS_PRODUCTION) {
-        console.error('[VisualMode] WebGL context is lost');
+        console.warn('[VisualMode] WebGL context is lost - attempting recovery');
       }
+      // Attempt to recover by clearing the ref and requesting a new context on next frame
+      glRef.current = null;
       return;
     }
 
     glRef.current = gl;
+
+    // Handle context loss events
+    const handleContextLoss = (event: Event) => {
+      event.preventDefault();
+      if (!IS_PRODUCTION) {
+        console.warn('[VisualMode] WebGL context lost event - pausing rendering');
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+
+    const handleContextRestore = () => {
+      if (!IS_PRODUCTION) {
+        console.log('[VisualMode] WebGL context restored - resuming rendering');
+      }
+      // Context restoration is handled by reinitializing the effect
+    };
+
+    canvas.addEventListener('webglcontextlost', handleContextLoss);
+    canvas.addEventListener('webglcontextrestored', handleContextRestore);
+
+    // Cleanup event listeners in the return function
+    const cleanupEventListeners = () => {
+      canvas.removeEventListener('webglcontextlost', handleContextLoss);
+      canvas.removeEventListener('webglcontextrestored', handleContextRestore);
+    };
 
     // Resize canvas to match display size with proper DPI scaling
     const resize = () => {
