@@ -305,8 +305,6 @@ export default function MapView() {
             timestamp={data.timestamp}
             tromsoCoords={[18.95, 69.65]}
             mapInstance={mapRef.current}
-            checkFpsHealth={visualMode.checkFpsHealth}
-            handleContextLoss={visualMode.handleContextLoss}
           />
         </div>
       )}
