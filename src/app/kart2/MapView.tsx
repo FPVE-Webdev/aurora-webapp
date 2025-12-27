@@ -352,8 +352,8 @@ export default function MapView() {
           }
         };
 
-        // Store reference for cleanup
-        (mapRef.current as any).dimMapForVisualMode = dimMapForVisualMode;
+        // Store reference on map object for cleanup
+        (map as any).dimMapForVisualMode = dimMapForVisualMode;
 
         map.on('error', (e) => {
           const error = (e as any)?.error;
