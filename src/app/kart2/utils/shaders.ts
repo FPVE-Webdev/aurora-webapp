@@ -147,9 +147,9 @@ export const FRAGMENT_SHADER = `
     // 100-150km: Bright green (O 557.7nm) - primary band
     // 200-300km: Red (O 630.0nm) - high altitude
 
-    vec3 colorLow = vec3(0.4, 0.2, 0.8);     // Blue-purple
-    vec3 colorMid = vec3(0.2, 1.0, 0.3);     // Bright green
-    vec3 colorHigh = vec3(1.0, 0.2, 0.2);    // Red
+    vec3 colorLow = vec3(0.6, 0.3, 1.0);     // Vibrant blue-purple (stronger)
+    vec3 colorMid = vec3(0.3, 1.0, 0.4);     // Bright vivid green (more saturated)
+    vec3 colorHigh = vec3(1.0, 0.3, 0.3);    // Bright red (more visible)
 
     // Smooth transitions between color bands
     if (altitude < 120.0) {
@@ -301,7 +301,7 @@ export const FRAGMENT_SHADER = `
       float curtainValue = sampleCurtain(samplePos, altitude, u_time);
       
       // Apply intensity and atmospheric effects
-      curtainValue *= u_auroraIntensity * 3.5;
+      curtainValue *= u_auroraIntensity * 6.0; // Increased from 3.5 to 6.0 for stronger colors
       curtainValue *= shimmer;
       curtainValue *= pulse;
       
@@ -314,7 +314,7 @@ export const FRAGMENT_SHADER = `
       vec3 layerColor = getAuroraColor(altitude, curtainValue);
       
       // Depth-based alpha (layers blend together)
-      float layerAlpha = curtainValue * 0.15;
+      float layerAlpha = curtainValue * 0.25; // Increased from 0.15 to 0.25 for more opacity
       
       // Accumulate color with depth blending (front-to-back)
       finalColor += layerColor * layerAlpha * (1.0 - finalAlpha);
