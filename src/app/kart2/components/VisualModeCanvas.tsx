@@ -64,6 +64,8 @@ export default function VisualModeCanvas({
   const fpsCounterRef = useRef({ frames: 0, lastTime: Date.now(), fps: 60 });
   const lastFrameTimeRef = useRef<number>(Date.now());
   const [shouldRender, setShouldRender] = useState(true);
+  const [isPageVisible, setIsPageVisible] = useState(true);
+  const isMobileRef = useRef(false);
 
   // Check for prefers-reduced-motion
   useEffect(() => {
