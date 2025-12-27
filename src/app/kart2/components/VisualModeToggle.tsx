@@ -1,12 +1,16 @@
 /**
  * Visual Mode Toggle UI Component
  *
- * Simple toggle switch with permanent disclaimer.
+ * Simple toggle switch with permanent disclaimer and subtle first-load tooltip.
  *
  * CRITICAL: Disclaimer must NEVER be hidden or removed.
  */
 
 'use client';
+
+import { useState, useEffect, useRef } from 'react';
+
+const TOOLTIP_SEEN_KEY = 'kart2-visual-mode-tooltip-seen';
 
 interface VisualModeToggleProps {
   isEnabled: boolean;
@@ -14,6 +18,33 @@ interface VisualModeToggleProps {
 }
 
 export default function VisualModeToggle({ isEnabled, onToggle }: VisualModeToggleProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Show tooltip on first load (first time seeing this component)
+  useEffect(() => {
+    const hasSeenTooltip = localStorage.getItem(TOOLTIP_SEEN_KEY);
+    if (!hasSeenTooltip && typeof window !== 'undefined') {
+      // Show tooltip after a brief delay
+      tooltipTimeoutRef.current = setTimeout(() => {
+        setShowTooltip(true);
+        localStorage.setItem(TOOLTIP_SEEN_KEY, 'true');
+      }, 800);
+    }
+
+    return () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Dismiss tooltip on toggle interaction
+  const handleToggle = () => {
+    setShowTooltip(false);
+    onToggle();
+  };
+
   return (
     <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs max-w-[260px]">
       {/* Toggle Switch */}
