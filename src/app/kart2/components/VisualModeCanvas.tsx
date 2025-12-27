@@ -274,16 +274,26 @@ export default function VisualModeCanvas({
       const now = Date.now();
       const deltaTime = now - lastFrameTimeRef.current;
 
-      // Adaptive FPS: fallback to 30 FPS if performance is poor
-      if (fpsCounterRef.current.fps < 20) {
+      // Adaptive FPS: automatic downgrade if performance drops
+      // Desktop target: 60 FPS (16ms), fallback to 30 FPS (33ms)
+      // Mobile target: 30 FPS (33ms), fallback further if needed
+      const fpsThreshold = isMobileRef.current ? 25 : 50; // Mobile: 25 FPS, Desktop: 50 FPS
+
+      if (fpsCounterRef.current.fps < fpsThreshold) {
         lowFpsCount++;
         if (lowFpsCount > 5) {
-          targetDeltaTime = 33; // Switch to 30 FPS
-          if (!IS_PRODUCTION) {
-            console.warn('[VisualMode] Switched to adaptive 30 FPS mode');
+          // Downgrade to 30 FPS if not already there
+          if (targetDeltaTime !== 33) {
+            targetDeltaTime = 33;
+            if (!IS_PRODUCTION) {
+              console.warn('[VisualMode] Auto-downgrade: FPS dropped to', fpsCounterRef.current.fps.toFixed(1), '- switching to 30 FPS');
+            }
           }
           lowFpsCount = 0;
         }
+      } else {
+        // Reset counter when FPS recovers
+        lowFpsCount = 0;
       }
 
       // FPS cap: only render every ~16ms (60 FPS default) or ~33ms (30 FPS fallback)
