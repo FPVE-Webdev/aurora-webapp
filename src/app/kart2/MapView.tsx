@@ -27,8 +27,8 @@ export default function MapView() {
   // Fixed "scene" camera: Tromsø viewpoint (not a navigable world map)
   const SCENE_CENTER: [number, number] = [18.95, 69.65];
   const SCENE_ZOOM = 8.0;
-  // Flat/horizontal view (top-down from the user's screen)
-  const SCENE_PITCH = 0;
+  // Side-view (cinematic horizon). User rotates horizontally to "look around".
+  const SCENE_PITCH = 60;
   // User should feel they are in Tromsø looking north
   const SCENE_BEARING = 0;
 
@@ -52,11 +52,13 @@ export default function MapView() {
 
   const easeToZoom = (targetZoom: number) => {
     if (!mapRef.current) return;
+    const currentBearing = mapRef.current.getBearing?.() ?? SCENE_BEARING;
     mapRef.current.easeTo({
       center: SCENE_CENTER,
       zoom: clampZoom(targetZoom),
       pitch: SCENE_PITCH,
-      bearing: SCENE_BEARING,
+      // Preserve user's current bearing (horizontal look-around)
+      bearing: currentBearing,
       duration: 650,
       easing: (t: number) => t * t * (3 - 2 * t),
       essential: true,
@@ -73,6 +75,21 @@ export default function MapView() {
     if (!mapRef.current) return;
     const next = (mapRef.current.getZoom?.() ?? SCENE_ZOOM) - ZOOM_STEP;
     easeToZoom(next);
+  };
+
+  const rotateBy = (deltaDeg: number) => {
+    if (!mapRef.current) return;
+    const currentBearing = mapRef.current.getBearing?.() ?? SCENE_BEARING;
+    const currentZoom = mapRef.current.getZoom?.() ?? SCENE_ZOOM;
+    mapRef.current.easeTo({
+      center: SCENE_CENTER,
+      zoom: clampZoom(currentZoom),
+      pitch: SCENE_PITCH,
+      bearing: currentBearing + deltaDeg,
+      duration: 650,
+      easing: (t: number) => t * t * (3 - 2 * t),
+      essential: true,
+    });
   };
 
   // Task 2: Memoization Guards
@@ -215,9 +232,10 @@ export default function MapView() {
         map.dragPan.disable();
         map.scrollZoom.disable();
         map.doubleClickZoom.disable();
-        map.touchZoomRotate.disable();
+        // Allow horizontal look-around via rotation (bearing). Zoom is constrained by min/max.
+        map.dragRotate.enable();
+        map.touchZoomRotate.enable();
         map.keyboard.disable();
-        map.dragRotate.disable();
         map.boxZoom.disable();
         map.touchPitch.disable();
 
@@ -537,14 +555,36 @@ export default function MapView() {
         const drift = {
           t: 0,
           timer: null as null | ReturnType<typeof setInterval>,
+          lastUserInteraction: 0,
+          isUserRotating: false,
         };
+        const markUserInteraction = () => {
+          drift.lastUserInteraction = Date.now();
+        };
+        // Pause drift while user is actively rotating / shortly after
+        map.on('rotatestart', () => {
+          drift.isUserRotating = true;
+          markUserInteraction();
+        });
+        map.on('rotate', markUserInteraction);
+        map.on('rotateend', () => {
+          drift.isUserRotating = false;
+          markUserInteraction();
+        });
+
         const applyDrift = () => {
           if (!mapRef.current) return;
+          // Don't fight the user; wait a bit after interaction.
+          if (drift.isUserRotating) return;
+          if (Date.now() - drift.lastUserInteraction < 4500) return;
+
           drift.t = (drift.t + 1) % 2;
           const sign = drift.t === 0 ? 1 : -1;
+          const currentBearing = mapRef.current.getBearing?.() ?? SCENE_BEARING;
           mapRef.current.easeTo({
             center: [SCENE_CENTER[0] + sign * 0.02, SCENE_CENTER[1] + sign * 0.01],
-            bearing: SCENE_BEARING,
+            // Preserve user's current bearing (look-around)
+            bearing: currentBearing,
             pitch: SCENE_PITCH,
             duration: 11000,
             easing: (t: number) => t * t * (3 - 2 * t), // smoothstep
@@ -659,6 +699,23 @@ export default function MapView() {
             >
               <span className="text-base">{isExpanded ? '⤡' : '⤢'}</span>
             </button>
+            {/* Look-around (horizontal rotation) */}
+            <div className="flex flex-col items-center gap-2">
+              <button
+                onClick={() => rotateBy(-15)}
+                className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
+                title="Se mot venstre"
+              >
+                <span className="text-base">↺</span>
+              </button>
+              <button
+                onClick={() => rotateBy(15)}
+                className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
+                title="Se mot høyre"
+              >
+                <span className="text-base">↻</span>
+              </button>
+            </div>
             <div className="flex flex-col items-center gap-2">
               <button
                 onClick={zoomIn}
