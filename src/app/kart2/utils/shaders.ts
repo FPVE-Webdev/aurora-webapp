@@ -341,8 +341,10 @@ export const FRAGMENT_SHADER = `
     int layers = int(6.0 * u_qualityScale);
     if (layers < 2) layers = 2;
     
-    float pulse = getPulse(u_time);
-    float shimmer = getShimmer(u_time, uv);
+    // Aurora cycle phase (40s cycle: calm → build → peak → return)
+    float cyclePhase = getAuroraCyclePhase(u_time);
+    // Soft baseline pulse for subtle variation
+    float baselinePulse = getPulse(u_time) * 0.5 + 0.5; // Softer: 0.5-1.0 range
     
     // Ray-march loop
     for (int i = 0; i < 6; i++) {
@@ -364,10 +366,9 @@ export const FRAGMENT_SHADER = `
       // Sample curtain density at this altitude
       float curtainValue = sampleCurtain(samplePos, altitude, u_time, pitchFactor);
       
-      // Apply intensity and atmospheric effects
-      curtainValue *= u_auroraIntensity * 6.0; // Increased from 3.5 to 6.0 for stronger colors
-      curtainValue *= shimmer;
-      curtainValue *= pulse;
+      // Apply intensity with dramatic cycle and subtle baseline pulse
+      curtainValue *= u_auroraIntensity * 5.0 * cyclePhase; // Cycle modulates base intensity
+      curtainValue *= baselinePulse; // Subtle baseline variation
       
       // Altitude-based intensity falloff (stronger at primary band ~120km)
       float altitudeFalloff = 1.0 - abs(altitude - 120.0) / 180.0;
