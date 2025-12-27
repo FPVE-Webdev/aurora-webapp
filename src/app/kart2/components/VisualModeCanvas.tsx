@@ -43,8 +43,6 @@ interface VisualModeCanvasProps {
   timestamp: string; // ISO 8601 timestamp
   tromsoCoords: [number, number];
   mapInstance: any; // Mapbox map instance
-  checkFpsHealth?: (fps: number) => boolean; // Returns true if auto-disabled due to low FPS
-  handleContextLoss?: () => boolean; // Call when WebGL context is lost
 }
 
 export default function VisualModeCanvas({
