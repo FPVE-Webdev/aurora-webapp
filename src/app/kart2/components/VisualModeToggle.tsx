@@ -47,11 +47,18 @@ export default function VisualModeToggle({ isEnabled, onToggle }: VisualModeTogg
 
   return (
     <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs max-w-[260px]">
+      {/* First-Load Tooltip */}
+      {showTooltip && (
+        <div className="mb-2 p-2 bg-emerald-500/20 border border-emerald-500/50 rounded text-[11px] text-emerald-200 animate-pulse">
+          <p>Toggle Visual Mode for live atmosphere</p>
+        </div>
+      )}
+
       {/* Toggle Switch */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-gray-200 font-medium">Visual mode</span>
         <button
-          onClick={onToggle}
+          onClick={handleToggle}
           className={`
             relative inline-flex h-6 w-11 items-center rounded-full transition-colors
             ${isEnabled ? 'bg-emerald-500' : 'bg-gray-700'}
