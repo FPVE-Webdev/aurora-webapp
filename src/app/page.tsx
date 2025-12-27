@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 import { useAuroraData } from '@/hooks/useAuroraData';
 import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
 import { AuroraStatusCard } from '@/components/aurora/AuroraStatusCard';
@@ -34,21 +36,57 @@ export default function HomePage() {
 
   // Fetch extended metrics (Phase 2 feature)
   useEffect(() => {
+    let isMounted = true;
+    let controller: AbortController | null = null;
+
     async function fetchExtendedMetrics() {
       try {
-        const response = await fetch('/api/aurora/tonight?lang=no');
-        const data = await response.json();
-        if (data.extended_metrics) {
-          setExtendedMetrics(data.extended_metrics);
+        // Cancel any in-flight request before starting a new one.
+        controller?.abort();
+        controller = new AbortController();
+
+        const response = await fetch('/api/aurora/tonight?lang=no', {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) return;
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) return;
+
+        const text = await response.text();
+        if (!text || !text.trim()) return;
+
+        try {
+          const data = JSON.parse(text) as { extended_metrics?: ExtendedMetricsType };
+          if (isMounted && data.extended_metrics) {
+            setExtendedMetrics(data.extended_metrics);
+          }
+        } catch (parseError) {
+          // Invalid JSON response - silently ignore
+          if (!IS_PRODUCTION) {
+            console.warn('Failed to parse extended metrics JSON:', parseError);
+          }
+          return;
         }
       } catch (error) {
-        console.error('Failed to fetch extended metrics:', error);
+        // Ignore expected transient failures (navigation, aborted requests, offline).
+        if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
+          return;
+        }
+
+        console.warn('Failed to fetch extended metrics');
       }
     }
 
     fetchExtendedMetrics();
     const interval = setInterval(fetchExtendedMetrics, 30 * 60 * 1000); // Update every 30 minutes
-    return () => clearInterval(interval);
+
+    return () => {
+      isMounted = false;
+      controller?.abort();
+      clearInterval(interval);
+    };
   }, []);
 
   // Get current spot forecast

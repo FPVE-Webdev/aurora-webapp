@@ -24,6 +24,22 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createShaderProgram, VERTEX_SHADER, FRAGMENT_SHADER } from '../utils/shaders';
+import {
+  VISUAL_MODE_CONFIG,
+  getQualityConfig,
+  calculateAuroraIntensity,
+  calculateCurtainDensity
+} from '../config/visualMode.config';
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+/**
+ * Detect if device is mobile based on viewport width and touch support
+ */
+const isMobileDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth <= 768 || 'ontouchstart' in window;
+};
 
 interface VisualModeCanvasProps {
   isEnabled: boolean;
@@ -52,6 +68,8 @@ export default function VisualModeCanvas({
   const fpsCounterRef = useRef({ frames: 0, lastTime: Date.now(), fps: 60 });
   const lastFrameTimeRef = useRef<number>(Date.now());
   const [shouldRender, setShouldRender] = useState(true);
+  const [isPageVisible, setIsPageVisible] = useState(true);
+  const isMobileRef = useRef(false);
 
   // Check for prefers-reduced-motion
   useEffect(() => {
@@ -59,7 +77,6 @@ export default function VisualModeCanvas({
 
     const handleChange = () => {
       if (mediaQuery.matches) {
-        console.log('[VisualMode] Disabled due to prefers-reduced-motion');
         setShouldRender(false);
       } else {
         setShouldRender(true);
@@ -71,6 +88,26 @@ export default function VisualModeCanvas({
 
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
+
+  // Idle pause: pause rendering when tab is inactive (Page Visibility API)
+  useEffect(() => {
+    if (!isEnabled) return;
+
+    const handleVisibilityChange = () => {
+      const isNowVisible = !document.hidden;
+      setIsPageVisible(isNowVisible);
+
+      if (!IS_PRODUCTION) {
+        console.log('[VisualMode] Page visibility:', isNowVisible ? 'visible' : 'hidden');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isEnabled]);
 
   useEffect(() => {
     if (!isEnabled || !canvasRef.current || !shouldRender) {
@@ -97,22 +134,91 @@ export default function VisualModeCanvas({
     });
 
     if (!gl) {
-      console.error('[VisualMode] WebGL not supported');
+      if (!IS_PRODUCTION) {
+        console.error('[VisualMode] WebGL not supported or context unavailable');
+      }
+      return;
+    }
+
+    // Guard against context loss
+    if (gl.isContextLost?.()) {
+      if (!IS_PRODUCTION) {
+        console.warn('[VisualMode] WebGL context is lost - attempting recovery');
+      }
+      // Attempt to recover by clearing the ref and requesting a new context on next frame
+      glRef.current = null;
       return;
     }
 
     glRef.current = gl;
 
-    // Resize canvas to match display size
-    const resize = () => {
-      const displayWidth = canvas.clientWidth;
-      const displayHeight = canvas.clientHeight;
-
-      if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
-        canvas.width = displayWidth;
-        canvas.height = displayHeight;
-        gl.viewport(0, 0, displayWidth, displayHeight);
+    // Handle context loss events
+    const handleContextLoss = (event: Event) => {
+      event.preventDefault();
+      if (!IS_PRODUCTION) {
+        console.warn('[VisualMode] WebGL context lost event - pausing rendering');
       }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+
+    const handleContextRestore = () => {
+      if (!IS_PRODUCTION) {
+        console.log('[VisualMode] WebGL context restored - resuming rendering');
+      }
+      // Context restoration is handled by reinitializing the effect
+    };
+
+    canvas.addEventListener('webglcontextlost', handleContextLoss);
+    canvas.addEventListener('webglcontextrestored', handleContextRestore);
+
+    // Cleanup event listeners in the return function
+    const cleanupEventListeners = () => {
+      canvas.removeEventListener('webglcontextlost', handleContextLoss);
+      canvas.removeEventListener('webglcontextrestored', handleContextRestore);
+    };
+
+    // Resize canvas to match display size with proper DPI scaling
+    const resize = () => {
+      let displayWidth: number;
+      let displayHeight: number;
+      let cssWidth: number;
+      let cssHeight: number;
+
+      // Resolution clamping: cap devicePixelRatio at 1.5 for GPU optimization
+      const dpr = Math.min(window.devicePixelRatio, 1.5);
+
+      // Try to get parent dimensions first (preferred)
+      if (canvas.parentElement) {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          cssWidth = rect.width;
+          cssHeight = rect.height;
+          displayWidth = cssWidth * dpr;
+          displayHeight = cssHeight * dpr;
+        } else {
+          // Fallback to window dimensions if parent is not visible
+          cssWidth = window.innerWidth;
+          cssHeight = window.innerHeight;
+          displayWidth = cssWidth * dpr;
+          displayHeight = cssHeight * dpr;
+        }
+      } else {
+        // Fallback to window dimensions if no parent
+        cssWidth = window.innerWidth;
+        cssHeight = window.innerHeight;
+        displayWidth = cssWidth * dpr;
+        displayHeight = cssHeight * dpr;
+      }
+
+      canvas.width = displayWidth;
+      canvas.height = displayHeight;
+      canvas.style.width = `${cssWidth}px`;
+      canvas.style.height = `${cssHeight}px`;
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
     };
 
     resize();
@@ -128,7 +234,9 @@ export default function VisualModeCanvas({
     // Compile shaders
     const program = createShaderProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER);
     if (!program) {
-      console.error('[VisualMode] Failed to create shader program');
+      if (!IS_PRODUCTION) {
+        console.error('[VisualMode] Failed to create shader program');
+      }
       return;
     }
 
@@ -152,41 +260,92 @@ export default function VisualModeCanvas({
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-    // Get uniform locations
+    // Get uniform locations - Core
     const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
     const timeLocation = gl.getUniformLocation(program, 'u_time');
     const auroraIntensityLocation = gl.getUniformLocation(program, 'u_auroraIntensity');
     const tromsoCenterLocation = gl.getUniformLocation(program, 'u_tromsoCenter');
     const cloudCoverageLocation = gl.getUniformLocation(program, 'u_cloudCoverage');
+    const mapPitchLocation = gl.getUniformLocation(program, 'u_mapPitch');
+
+    // 3D Rendering uniform locations
+    const cameraAltitudeLocation = gl.getUniformLocation(program, 'u_cameraAltitude');
+    const magneticNorthLocation = gl.getUniformLocation(program, 'u_magneticNorth');
+    const curtainDensityLocation = gl.getUniformLocation(program, 'u_curtainDensity');
+    const altitudeScaleLocation = gl.getUniformLocation(program, 'u_altitudeScale');
+    const depthFactorLocation = gl.getUniformLocation(program, 'u_depthFactor');
+
+    // Visual tuning uniform locations
+    const alphaTuneLocation = gl.getUniformLocation(program, 'u_alphaTune');
+    const glowRadiusLocation = gl.getUniformLocation(program, 'u_glowRadius');
+    const edgeBlendLocation = gl.getUniformLocation(program, 'u_edgeBlend');
+    const motionSpeedLocation = gl.getUniformLocation(program, 'u_motionSpeed');
+    const qualityScaleLocation = gl.getUniformLocation(program, 'u_qualityScale');
 
     // Enable alpha blending
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    // Calculate aurora intensity (spec formula)
-    const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
-    const auroraIntensity = clamp01(kpIndex / 9) * 0.6 + clamp01(auroraProbability / 100) * 0.4;
+    // Calculate aurora intensity from config
+    const auroraIntensity = calculateAuroraIntensity(kpIndex, auroraProbability);
 
-    console.log('[VisualMode] Initialized', {
-      kpIndex,
-      auroraProbability,
-      auroraIntensity,
-      cloudCoverage,
-      canvasWidth: canvas.width,
-      canvasHeight: canvas.height,
-      displayWidth: canvas.clientWidth,
-      displayHeight: canvas.clientHeight
-    });
+    // Calculate curtain density based on KP index
+    const curtainDensity = calculateCurtainDensity(kpIndex);
 
-    // Render loop with FPS capping (30 FPS) and monitoring
+    // Silent initialization - only log if there's an issue
+
+    // Adaptive quality: detect device and set FPS targets
+    isMobileRef.current = isMobileDevice();
+    let targetDeltaTime = isMobileRef.current ? 33 : 16; // Mobile: 30 FPS, Desktop: 60 FPS
+    let lowFpsCount = 0;
+
+    // Render loop with adaptive FPS capping and idle pause support
     const render = () => {
+      // Idle pause: skip rendering if page is not visible
+      // (but still schedule next frame - browser throttles requestAnimationFrame when hidden)
+      if (!isPageVisible) {
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
+      }
+
       if (!glRef.current || !programRef.current) return;
 
-      // FPS cap: only render every ~33ms (30 FPS)
+      // Guard against context loss
+      if (glRef.current.isContextLost?.()) {
+        // WebGL context lost - stop rendering and wait for restoration
+        if (!IS_PRODUCTION) {
+          console.warn('[VisualMode] WebGL context lost during render - pausing');
+        }
+        return;
+      }
+
       const now = Date.now();
       const deltaTime = now - lastFrameTimeRef.current;
 
-      if (deltaTime < 33) {
+      // Adaptive FPS: automatic downgrade if performance drops
+      // Desktop target: 60 FPS (16ms), fallback to 30 FPS (33ms)
+      // Mobile target: 30 FPS (33ms), fallback further if needed
+      const fpsThreshold = isMobileRef.current ? 25 : 50; // Mobile: 25 FPS, Desktop: 50 FPS
+
+      if (fpsCounterRef.current.fps < fpsThreshold) {
+        lowFpsCount++;
+        if (lowFpsCount > 5) {
+          // Downgrade to 30 FPS if not already there
+          if (targetDeltaTime !== 33) {
+            targetDeltaTime = 33;
+            if (!IS_PRODUCTION) {
+              console.warn('[VisualMode] Auto-downgrade: FPS dropped to', fpsCounterRef.current.fps.toFixed(1), '- switching to 30 FPS');
+            }
+          }
+          lowFpsCount = 0;
+        }
+      } else {
+        // Reset counter when FPS recovers
+        lowFpsCount = 0;
+      }
+
+      // FPS cap: only render every ~16ms (60 FPS default) or ~33ms (30 FPS fallback)
+      if (deltaTime < targetDeltaTime) {
         // Too soon, skip this frame
         animationFrameRef.current = requestAnimationFrame(render);
         return;
@@ -204,10 +363,19 @@ export default function VisualModeCanvas({
         fpsCounterRef.current.frames = 0;
         fpsCounterRef.current.lastTime = now;
 
-        // Warn if below 15 FPS
+        // Warn if FPS is critically low
         if (fps < 15) {
           console.warn('[VisualMode] Low FPS detected:', fps.toFixed(1), '- consider disabling');
         }
+      }
+
+      // Early exit optimization: skip rendering if aurora is too dim to be visible
+      if (auroraIntensity < 0.05) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
       }
 
       gl.viewport(0, 0, canvas.width, canvas.height);
@@ -223,12 +391,37 @@ export default function VisualModeCanvas({
       screenX = Number.isFinite(screenX) ? Math.min(1, Math.max(0, screenX)) : 0.5;
       screenY = Number.isFinite(screenY) ? Math.min(1, Math.max(0, screenY)) : 0.5;
 
-      // Set uniforms
+      // Get quality config based on zoom level for LOD
+      const zoom = mapInstance.getZoom();
+      const qualityConfig = getQualityConfig(isMobileRef.current, zoom);
+
+      // Set core uniforms
       gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
       gl.uniform1f(timeLocation, currentTime);
       gl.uniform1f(auroraIntensityLocation, auroraIntensity);
-      gl.uniform2f(tromsoCenterLocation, screenX, screenY); // DYNAMIC screen-space position
+      gl.uniform2f(tromsoCenterLocation, screenX, screenY);
       gl.uniform1f(cloudCoverageLocation, cloudCoverage / 100);
+
+      // Map pitch for aurora tilt alignment
+      const pitch = mapInstance.getPitch(); // 0-45 degrees
+      gl.uniform1f(mapPitchLocation, Math.max(0, Math.min(1, pitch / 45.0)));
+
+      // 3D Rendering uniforms
+      gl.uniform1f(cameraAltitudeLocation, VISUAL_MODE_CONFIG.cameraAltitude);
+      gl.uniform2f(magneticNorthLocation,
+        VISUAL_MODE_CONFIG.magneticNorth[0],
+        VISUAL_MODE_CONFIG.magneticNorth[1]
+      );
+      gl.uniform1f(curtainDensityLocation, curtainDensity);
+      gl.uniform1f(altitudeScaleLocation, VISUAL_MODE_CONFIG.altitudeScale);
+      gl.uniform1f(depthFactorLocation, VISUAL_MODE_CONFIG.depthFactor);
+
+      // Visual tuning uniforms from config
+      gl.uniform1f(alphaTuneLocation, VISUAL_MODE_CONFIG.alphaTune);
+      gl.uniform1f(glowRadiusLocation, VISUAL_MODE_CONFIG.tromsoGlowRadius);
+      gl.uniform1f(edgeBlendLocation, VISUAL_MODE_CONFIG.groundFadeEnd);
+      gl.uniform1f(motionSpeedLocation, VISUAL_MODE_CONFIG.motionSpeedBase);
+      gl.uniform1f(qualityScaleLocation, qualityConfig.qualityScale);
 
       // Draw fullscreen quad
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -239,6 +432,7 @@ export default function VisualModeCanvas({
     render();
 
     return () => {
+      cleanupEventListeners();
       window.removeEventListener('resize', resize);
       mapInstance.off('move', updateOnMapChange);
       mapInstance.off('zoom', updateOnMapChange);
@@ -266,9 +460,12 @@ export default function VisualModeCanvas({
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 pointer-events-none"
+      className="absolute pointer-events-none"
       style={{
-        zIndex: 20,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         background: 'transparent'
       }}
     />

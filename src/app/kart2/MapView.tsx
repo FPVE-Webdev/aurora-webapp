@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { toPng } from 'html-to-image';
 import { useAuroraData } from './useAuroraData';
 import { useChaseRegions } from './useChaseRegions';
 import { CHASE_REGIONS } from './map.config';
@@ -42,20 +41,33 @@ export default function MapView() {
   const handleSnapshot = async () => {
     // Task 1: Check ref lock
     if (!mapContainerRef.current || isSnapshottingRef.current) return;
-    
+
     try {
       isSnapshottingRef.current = true;
       setIsSnapshotting(true);
-      
+
+      // Dynamically import html-to-image only when snapshot is used
+      const { toPng } = await import('html-to-image');
+
       // Target the parent div to capture overlay + map
       const element = mapContainerRef.current.parentElement as HTMLElement;
-      
-      const dataUrl = await toPng(element, {
+
+      // Create a clone to avoid modifying the original
+      const clonedElement = element.cloneNode(true) as HTMLElement;
+
+      // Remove the snapshot button from the clone
+      const snapshotButtonContainer = clonedElement.querySelector('#snapshot-button-container');
+      if (snapshotButtonContainer) {
+        snapshotButtonContainer.remove();
+      }
+
+      const dataUrl = await toPng(clonedElement, {
         cacheBust: true,
         pixelRatio: 3, // High-DPI capture (Task 1)
         filter: (node) => {
-          // Task 3: Exclude snapshot button
-          return node.id !== 'snapshot-button-container';
+          // Skip snapshot button in case cloning didn't catch it
+          const nodeElement = node as HTMLElement;
+          return nodeElement.id !== 'snapshot-button-container';
         },
         style: {
           // Task 2: Font smoothing
@@ -85,9 +97,10 @@ export default function MapView() {
         console.info('[kart2][signal] snapshot_used');
         hasLoggedSnapshot.current = true;
       }
-      
+
     } catch (err) {
-      console.error('Snapshot failed:', err);
+      console.error('[kart2] Snapshot failed:', err);
+      alert('📷 Snapshot kunne ikke genereres. Vennligst prøv igjen eller refresh siden.');
     } finally {
       setIsSnapshotting(false);
       isSnapshottingRef.current = false;
@@ -100,7 +113,6 @@ export default function MapView() {
     hasInitialized.current = true;
 
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    console.log('[MapView] Token:', token ? 'SET' : 'MISSING');
 
     if (!token) {
       const errorMsg = 'No Mapbox token found';
@@ -120,10 +132,10 @@ export default function MapView() {
     }
 
     const initialView = savedView || {
-      center: [18.95, 69.65],
-      zoom: 6,
-      bearing: 0,
-      pitch: 0
+      center: [18.95, 69.65], // Tromsø center
+      zoom: 6.5,              // Slightly closer for better detail
+      bearing: 0,             // North-up orientation
+      pitch: 45               // 45° tilt to show 3D aurora depth
     };
 
     // Dynamically import mapbox-gl to avoid SSR issues
@@ -148,10 +160,25 @@ export default function MapView() {
           pitch: initialView.pitch,
           attributionControl: false,
         });
-        console.log('[MapView] Map created with view:', initialView);
+
+        // --- Tromsø Scene Lock ---
+        // Geographic bounds (Tromsø + surroundings)
+        const TROMSO_BOUNDS: [[number, number], [number, number]] = [
+          [17.5, 68.8], // Southwest
+          [20.5, 70.3]  // Northeast
+        ];
+
+        // Lock map movement to Tromsø region
+        map.setMaxBounds(TROMSO_BOUNDS);
+
+        // Lock zoom levels (prevent world view / micro zoom)
+        map.setMinZoom(5.5);
+        map.setMaxZoom(8.5);
+
+        // Stable orientation
+        map.setBearing(0);
 
         map.on('load', () => {
-          console.log('[MapView] ✅ Map loaded!');
 
           // Persist map view on camera changes
           const persistView = () => {
@@ -173,6 +200,75 @@ export default function MapView() {
           map.on('zoomend', persistView);
           map.on('rotateend', persistView);
           map.on('pitchend', persistView);
+
+          // ===== CITY LIGHTS - TROMSØ FOCUS =====
+          // (Terrain depth is already provided by dark-v11 base style)
+
+          // Add warm glow around Tromsø city center
+          map.addSource('tromso-city-glow', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: [18.95, 69.65] // Tromsø center
+              },
+              properties: {
+                name: 'Tromsø'
+              }
+            }
+          });
+
+          // Large radial glow (outer)
+          map.addLayer({
+            id: 'tromso-glow-outer',
+            type: 'circle',
+            source: 'tromso-city-glow',
+            paint: {
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                5, 80,  // Large at far zoom
+                8, 180  // Even larger when zoomed in
+              ],
+              'circle-color': '#ffcc66', // Warm amber
+              'circle-opacity': 0.08,     // Very subtle
+              'circle-blur': 1.0          // Maximum blur for soft glow
+            }
+          });
+
+          // Medium radial glow (middle)
+          map.addLayer({
+            id: 'tromso-glow-middle',
+            type: 'circle',
+            source: 'tromso-city-glow',
+            paint: {
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                5, 50,
+                8, 120
+              ],
+              'circle-color': '#ffdd88', // Warmer yellow
+              'circle-opacity': 0.12,
+              'circle-blur': 0.8
+            }
+          });
+
+          // Inner bright core
+          map.addLayer({
+            id: 'tromso-glow-core',
+            type: 'circle',
+            source: 'tromso-city-glow',
+            paint: {
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                5, 25,
+                8, 60
+              ],
+              'circle-color': '#ffeeaa', // Bright warm white
+              'circle-opacity': 0.2,
+              'circle-blur': 0.6
+            }
+          });
 
           // Add Tromsø dimming overlay (shown when shouldExpandMap is true)
           map.addSource('tromso-dim', {
@@ -207,7 +303,6 @@ export default function MapView() {
               
               // Skip if source already exists
               if (map.getSource(sourceId)) {
-                console.log(`[MapView] Source ${sourceId} already exists, skipping`);
                 return;
               }
               
@@ -264,6 +359,94 @@ export default function MapView() {
           });
         });
 
+        // Helper function to dim map layers when visual mode is active
+        const dimMapForVisualMode = (isDimmed: boolean) => {
+          if (!map) return;
+
+          try {
+            // Dim road layers
+            const roadLayers = [
+              'road-primary', 'road-secondary-tertiary', 'road-street',
+              'road-motorway-trunk', 'road-minor', 'road-path'
+            ];
+            roadLayers.forEach(layerId => {
+              if (map.getLayer(layerId)) {
+                map.setPaintProperty(
+                  layerId,
+                  'line-opacity',
+                  isDimmed ? 0.15 : 0.5 // Dimmed vs normal
+                );
+              }
+            });
+
+            // Dim label layers (POI, place names)
+            const labelLayers = [
+              'place-city-label', 'place-town-label', 'place-village-label',
+              'poi-label', 'road-label'
+            ];
+            labelLayers.forEach(layerId => {
+              if (map.getLayer(layerId)) {
+                map.setPaintProperty(
+                  layerId,
+                  'text-opacity',
+                  isDimmed ? 0.2 : 0.8
+                );
+              }
+            });
+
+            // Reduce water brightness
+            if (map.getLayer('water')) {
+              map.setPaintProperty(
+                'water',
+                'fill-opacity',
+                isDimmed ? 0.3 : 0.5
+              );
+            }
+
+            // Dim landuse layers (parks, industrial, etc.)
+            const landuseLayers = ['landuse', 'landcover'];
+            landuseLayers.forEach(layerId => {
+              if (map.getLayer(layerId)) {
+                map.setPaintProperty(
+                  layerId,
+                  'fill-opacity',
+                  isDimmed ? 0.2 : 0.4
+                );
+              }
+            });
+
+            // ===== CITY LIGHTS VISUAL MODE ADJUSTMENTS =====
+
+            // City glow layers: keep visible but slightly reduce when Visual Mode is ON
+            // (provides human scale contrast to aurora)
+            const cityGlowLayers = [
+              'tromso-glow-outer',
+              'tromso-glow-middle',
+              'tromso-glow-core'
+            ];
+            cityGlowLayers.forEach(layerId => {
+              if (map.getLayer(layerId)) {
+                const currentOpacity = map.getPaintProperty(layerId, 'circle-opacity');
+                // When Visual Mode ON: maintain glow but slightly reduce
+                // When OFF: restore to full brightness
+                const baseOpacity = layerId === 'tromso-glow-outer' ? 0.08 :
+                                   layerId === 'tromso-glow-middle' ? 0.12 : 0.2;
+                map.setPaintProperty(
+                  layerId,
+                  'circle-opacity',
+                  isDimmed ? baseOpacity * 0.8 : baseOpacity
+                );
+              }
+            });
+          } catch (err) {
+            // Silently fail if layer doesn't exist (style may vary)
+            console.warn('[MapView] Failed to dim layer:', err);
+          }
+        };
+
+        // Store reference on map object for cleanup
+        (map as any).dimMapForVisualMode = dimMapForVisualMode;
+
         map.on('error', (e) => {
           const error = (e as any)?.error;
 
@@ -282,47 +465,78 @@ export default function MapView() {
 
     return () => {
       if (mapRef.current) {
+        // Restore map before removing
+        if ((mapRef.current as any).dimMapForVisualMode) {
+          (mapRef.current as any).dimMapForVisualMode(false);
+        }
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
   }, []);
 
+  // Watch visual mode toggle and dim/restore map accordingly
+  useEffect(() => {
+    if (!mapRef.current || !(mapRef.current as any).dimMapForVisualMode) return;
+
+    // Dim map when visual mode is enabled
+    (mapRef.current as any).dimMapForVisualMode(visualMode.isEnabled);
+  }, [visualMode.isEnabled]);
+
   return (
-    <div className="w-full h-full relative">
+    <div className="relative w-full h-full overflow-hidden">
       {/* Mapbox container - base layer */}
-      <div className="absolute inset-0">
-        <div ref={mapContainerRef} className="w-full h-full" style={{ zIndex: 0 }} />
+      <div className="absolute inset-0" style={{ zIndex: 0 }}>
+        <div ref={mapContainerRef} className="w-full h-full" />
 
       </div>
 
-      {/* Visual Mode Canvas Overlay */}
+      {/* Visual Mode Canvas Overlay - wrapped for proper z-index stacking */}
       {data && visualMode.isClient && mapRef.current && (
-        <VisualModeCanvas
-          isEnabled={visualMode.isEnabled}
-          kpIndex={data.kp}
-          auroraProbability={data.probability}
-          cloudCoverage={chaseState.tromsoCloudCoverage}
-          timestamp={data.timestamp}
-          tromsoCoords={[18.95, 69.65]}
-          mapInstance={mapRef.current}
+        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+          <VisualModeCanvas
+            isEnabled={visualMode.isEnabled}
+            kpIndex={data.kp}
+            auroraProbability={data.probability}
+            cloudCoverage={chaseState.tromsoCloudCoverage}
+            timestamp={data.timestamp}
+            tromsoCoords={[18.95, 69.65]}
+            mapInstance={mapRef.current}
+          />
+        </div>
+      )}
+
+      {/* Gradient overlay to dim upper screen area (sky) when visual mode is active */}
+      {visualMode.isEnabled && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            zIndex: 5, // Between map (0) and VisualModeCanvas (10)
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 60%)',
+          }}
         />
       )}
 
       {/* Snapshot Button */}
       <div id="snapshot-button-container" className="absolute bottom-24 right-4 flex flex-col gap-2 z-50">
-        <button
-          onClick={handleSnapshot}
-          disabled={isSnapshotting}
-          className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
-          title="Ta bilde av kartet"
-        >
-          {isSnapshotting ? (
-            <span className="animate-pulse text-xs">⏳</span>
-          ) : (
-            <span className="text-lg">📷</span>
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={handleSnapshot}
+            disabled={isSnapshotting}
+            className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
+            title={visualMode.isEnabled ? 'Share this moment' : 'Ta bilde av kartet'}
+          >
+            {isSnapshotting ? (
+              <span className="animate-pulse text-xs">⏳</span>
+            ) : (
+              <span className="text-lg">📷</span>
+            )}
+          </button>
+          {/* Visual Mode context label */}
+          {visualMode.isEnabled && (
+            <span className="text-[9px] text-emerald-300/70 font-medium">Share</span>
           )}
-        </button>
+        </div>
       </div>
 
       {/* Aurora Data Overlay */}

@@ -71,3 +71,8 @@ export async function register() {
     }
   }
 }
+
+export async function onRequestError(err: unknown) {
+  const Sentry = await import('@sentry/nextjs');
+  Sentry.captureException(err);
+}

@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 interface AIProps {
   kp: number;
@@ -11,39 +13,73 @@ interface AIProps {
 
 export default function AIInterpretation({ kp, probability, tromsoCloud, bestRegion }: AIProps) {
   const [text, setText] = useState<string | null>(null);
-  // Signal Ref
-  const [hasLoggedAI, setHasLoggedAI] = useState(false); // Using state cause logic is inside effect
+  const isMountedRef = useRef(true);
+  const hasFetchedRef = useRef(false);
 
   useEffect(() => {
-    async function fetchInterpretation() {
+    // Only fetch once per component lifecycle
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const fetchInterpretation = async () => {
       try {
+        const controller = new AbortController();
+
+        // Timeout after 8 seconds
+        timeoutId = setTimeout(() => {
+          if (isMountedRef.current) {
+            controller.abort();
+          }
+        }, 8000);
+
         const res = await fetch('/api/ai-interpretation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ kp, probability, tromsoCloud, bestRegion }),
+          signal: controller.signal,
         });
-        
+
+        // Clear timeout if request completed
+        if (timeoutId) clearTimeout(timeoutId);
+
         if (!res.ok) return;
-        
-        const data = await res.json();
-        if (data.interpretation) {
+
+        const responseText = await res.text();
+        if (!responseText || !responseText.trim()) return;
+
+        const data = JSON.parse(responseText) as { interpretation?: string };
+        // Only update state if component is still mounted
+        if (data.interpretation && isMountedRef.current) {
           setText(data.interpretation);
-          
-          // Signal: AI Displayed (Task 2)
-          if (!hasLoggedAI) {
+          if (!IS_PRODUCTION) {
             console.info('[kart2][signal] ai_displayed');
-            setHasLoggedAI(true);
           }
         }
       } catch (err) {
-        // Silently fail
-        console.warn('AI layer skipped');
-      }
-    }
+        // Clear timeout on error
+        if (timeoutId) clearTimeout(timeoutId);
 
-    // Only fetch once on mount (or when significant data changes, but keeping it simple for now)
+        // Gracefully ignore network errors and abort errors
+        if (err instanceof Error) {
+          if (err.name === 'AbortError' || err.message === 'Failed to fetch') {
+            // Request was aborted or network error - silently ignore
+            return;
+          }
+        }
+        // Suppress warnings for expected failures during development
+      }
+    };
+
     fetchInterpretation();
-  }, []); // Empty dependency array for "once per session" feel, or add props if we want live updates
+
+    return () => {
+      isMountedRef.current = false;
+      // Clear timeout on unmount
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
 
   if (!text) return null;
 
