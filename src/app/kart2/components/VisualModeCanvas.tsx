@@ -24,6 +24,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createShaderProgram, VERTEX_SHADER, FRAGMENT_SHADER } from '../utils/shaders';
+import {
+  VISUAL_MODE_CONFIG,
+  getQualityConfig,
+  calculateAuroraIntensity,
+  calculateCurtainDensity
+} from '../config/visualMode.config';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
@@ -254,27 +260,37 @@ export default function VisualModeCanvas({
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-    // Get uniform locations
+    // Get uniform locations - Core
     const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
     const timeLocation = gl.getUniformLocation(program, 'u_time');
     const auroraIntensityLocation = gl.getUniformLocation(program, 'u_auroraIntensity');
     const tromsoCenterLocation = gl.getUniformLocation(program, 'u_tromsoCenter');
     const cloudCoverageLocation = gl.getUniformLocation(program, 'u_cloudCoverage');
+    const mapPitchLocation = gl.getUniformLocation(program, 'u_mapPitch');
+
+    // 3D Rendering uniform locations
+    const cameraAltitudeLocation = gl.getUniformLocation(program, 'u_cameraAltitude');
+    const magneticNorthLocation = gl.getUniformLocation(program, 'u_magneticNorth');
+    const curtainDensityLocation = gl.getUniformLocation(program, 'u_curtainDensity');
+    const altitudeScaleLocation = gl.getUniformLocation(program, 'u_altitudeScale');
+    const depthFactorLocation = gl.getUniformLocation(program, 'u_depthFactor');
 
     // Visual tuning uniform locations
     const alphaTuneLocation = gl.getUniformLocation(program, 'u_alphaTune');
     const glowRadiusLocation = gl.getUniformLocation(program, 'u_glowRadius');
     const edgeBlendLocation = gl.getUniformLocation(program, 'u_edgeBlend');
     const motionSpeedLocation = gl.getUniformLocation(program, 'u_motionSpeed');
-    const mapPitchLocation = gl.getUniformLocation(program, 'u_mapPitch');
+    const qualityScaleLocation = gl.getUniformLocation(program, 'u_qualityScale');
 
     // Enable alpha blending
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    // Calculate aurora intensity (spec formula) - toned down for subtle effect
-    const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
-    const auroraIntensity = clamp01(kpIndex / 9) * 0.35 + clamp01(auroraProbability / 100) * 0.15;
+    // Calculate aurora intensity from config
+    const auroraIntensity = calculateAuroraIntensity(kpIndex, auroraProbability);
+
+    // Calculate curtain density based on KP index
+    const curtainDensity = calculateCurtainDensity(kpIndex);
 
     // Silent initialization - only log if there's an issue
 
@@ -375,22 +391,37 @@ export default function VisualModeCanvas({
       screenX = Number.isFinite(screenX) ? Math.min(1, Math.max(0, screenX)) : 0.5;
       screenY = Number.isFinite(screenY) ? Math.min(1, Math.max(0, screenY)) : 0.5;
 
-      // Set uniforms
+      // Get quality config based on zoom level for LOD
+      const zoom = mapInstance.getZoom();
+      const qualityConfig = getQualityConfig(isMobileRef.current, zoom);
+
+      // Set core uniforms
       gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
       gl.uniform1f(timeLocation, currentTime);
       gl.uniform1f(auroraIntensityLocation, auroraIntensity);
-      gl.uniform2f(tromsoCenterLocation, screenX, screenY); // DYNAMIC screen-space position
+      gl.uniform2f(tromsoCenterLocation, screenX, screenY);
       gl.uniform1f(cloudCoverageLocation, cloudCoverage / 100);
-
-      // Visual tuning uniforms - for subtle, premium look
-      gl.uniform1f(alphaTuneLocation, 0.55); // Significant alpha reduction for subtlety
-      gl.uniform1f(glowRadiusLocation, 1.6); // Moderate Tromsø glow
-      gl.uniform1f(edgeBlendLocation, 0.70); // Softer edge falloff for smoother transitions
-      gl.uniform1f(motionSpeedLocation, 0.8); // Slower motion for premium feel
 
       // Map pitch for aurora tilt alignment
       const pitch = mapInstance.getPitch(); // 0-45 degrees
-      gl.uniform1f(mapPitchLocation, Math.max(0, Math.min(1, pitch / 45.0))); // Clamp to 0-1
+      gl.uniform1f(mapPitchLocation, Math.max(0, Math.min(1, pitch / 45.0)));
+
+      // 3D Rendering uniforms
+      gl.uniform1f(cameraAltitudeLocation, VISUAL_MODE_CONFIG.cameraAltitude);
+      gl.uniform2f(magneticNorthLocation,
+        VISUAL_MODE_CONFIG.magneticNorth[0],
+        VISUAL_MODE_CONFIG.magneticNorth[1]
+      );
+      gl.uniform1f(curtainDensityLocation, curtainDensity);
+      gl.uniform1f(altitudeScaleLocation, VISUAL_MODE_CONFIG.altitudeScale);
+      gl.uniform1f(depthFactorLocation, VISUAL_MODE_CONFIG.depthFactor);
+
+      // Visual tuning uniforms from config
+      gl.uniform1f(alphaTuneLocation, VISUAL_MODE_CONFIG.alphaTune);
+      gl.uniform1f(glowRadiusLocation, VISUAL_MODE_CONFIG.tromsoGlowRadius);
+      gl.uniform1f(edgeBlendLocation, VISUAL_MODE_CONFIG.groundFadeEnd);
+      gl.uniform1f(motionSpeedLocation, VISUAL_MODE_CONFIG.motionSpeedBase);
+      gl.uniform1f(qualityScaleLocation, qualityConfig.qualityScale);
 
       // Draw fullscreen quad
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
