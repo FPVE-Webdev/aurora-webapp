@@ -85,6 +85,24 @@ export default function VisualModeCanvas({
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
+  // Idle pause: pause rendering when tab is inactive
+  useEffect(() => {
+    if (!isEnabled) return;
+
+    const handleVisibilityChange = () => {
+      setIsPageVisible(!document.hidden);
+      if (!IS_PRODUCTION) {
+        console.log('[VisualMode] Page visibility:', !document.hidden);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isEnabled]);
+
   useEffect(() => {
     if (!isEnabled || !canvasRef.current || !shouldRender) {
       // Cleanup when disabled or reduced-motion
