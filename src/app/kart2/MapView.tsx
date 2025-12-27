@@ -305,18 +305,24 @@ export default function MapView() {
 
       {/* Snapshot Button */}
       <div id="snapshot-button-container" className="absolute bottom-24 right-4 flex flex-col gap-2 z-50">
-        <button
-          onClick={handleSnapshot}
-          disabled={isSnapshotting}
-          className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
-          title="Ta bilde av kartet"
-        >
-          {isSnapshotting ? (
-            <span className="animate-pulse text-xs">⏳</span>
-          ) : (
-            <span className="text-lg">📷</span>
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={handleSnapshot}
+            disabled={isSnapshotting}
+            className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
+            title={visualMode.isEnabled ? 'Share this moment' : 'Ta bilde av kartet'}
+          >
+            {isSnapshotting ? (
+              <span className="animate-pulse text-xs">⏳</span>
+            ) : (
+              <span className="text-lg">📷</span>
+            )}
+          </button>
+          {/* Visual Mode context label */}
+          {visualMode.isEnabled && (
+            <span className="text-[9px] text-emerald-300/70 font-medium">Share</span>
           )}
-        </button>
+        </div>
       </div>
 
       {/* Aurora Data Overlay */}
