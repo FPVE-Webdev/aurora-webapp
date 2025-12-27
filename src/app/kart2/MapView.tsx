@@ -133,10 +133,10 @@ export default function MapView() {
     }
 
     const initialView = savedView || {
-      center: [18.95, 69.65],
-      zoom: 6,
-      bearing: 0,
-      pitch: 0
+      center: [18.95, 69.65], // Tromsø center
+      zoom: 6.5,              // Slightly closer for better detail
+      bearing: 0,             // North-up orientation
+      pitch: 45               // 45° tilt to show 3D aurora depth
     };
 
     // Dynamically import mapbox-gl to avoid SSR issues
