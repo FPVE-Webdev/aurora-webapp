@@ -35,6 +35,7 @@ export const FRAGMENT_SHADER = `
   uniform float u_glowRadius; // Tromsø glow radius tuning (1.5-2.5, default 1.85)
   uniform float u_edgeBlend; // Edge falloff softness (0.3-0.8, default 0.65)
   uniform float u_motionSpeed; // Motion multiplier (0.6-1.0, default 0.8)
+  uniform float u_mapPitch; // Map pitch normalized (0-1, where 1 = 45 degrees)
 
   // Ultra-simple hash-based noise (optimized for speed)
   float fastNoise(vec2 v) {
