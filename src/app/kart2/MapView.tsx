@@ -101,24 +101,7 @@ export default function MapView() {
 
     } catch (err) {
       console.error('[kart2] Snapshot failed:', err);
-      // Try simpler fallback: just copy the data URL as a download without processing external stylesheets
-      if (mapContainerRef.current) {
-        try {
-          const canvas = await html2canvas(mapContainerRef.current.parentElement as HTMLElement, {
-            allowTaint: true,
-            useCORS: false, // Disable CORS to allow tainted canvas
-            logging: false,
-            backgroundColor: '#000000'
-          });
-          const link = document.createElement('a');
-          link.download = `nordlys-snapshot-${new Date().toISOString().slice(0,16)}.png`;
-          link.href = canvas.toDataURL();
-          link.click();
-        } catch (fallbackErr) {
-          console.error('[kart2] Snapshot fallback also failed:', fallbackErr);
-          alert('📷 Snapshot kunne ikke genereres. Prøv å refresh siden.');
-        }
-      }
+      alert('📷 Snapshot kunne ikke genereres. Vennligst prøv igjen eller refresh siden.');
     } finally {
       setIsSnapshotting(false);
       isSnapshottingRef.current = false;
