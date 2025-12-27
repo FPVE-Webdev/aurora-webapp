@@ -65,11 +65,15 @@ export const FRAGMENT_SHADER = `
     float shimmer = sin(u_time * 0.003 * u_motionSpeed + noiseCoord.x * 5.0) * 0.1 + 0.9;
     float auroraPattern = ((noise1 * 0.6 + noise2 * 0.4) * 0.5 + 0.5) * shimmer;
 
-    // Radial expansion waves - creates moving bands radiating from Tromsø
-    float waves = sin((distToTromso * 10.0 - u_time * 0.0005 * u_motionSpeed)) * 0.1 + 0.9;
+    // Vertical stretch for sky projection (Tromsø glow projects upward, not flat)
+    float verticalStretch = mix(0.6, 1.2, skyFactor);
+    float stretchedDist = distToTromso * verticalStretch;
 
-    // Radial falloff from Tromsø center - tuned edge blending
-    float radialFalloff = smoothstep(u_edgeBlend, 0.0, distToTromso) * waves;
+    // Radial expansion waves - creates moving bands radiating from Tromsø
+    float waves = sin((stretchedDist * 10.0 - u_time * 0.0005 * u_motionSpeed)) * 0.1 + 0.9;
+
+    // Radial falloff from Tromsø center - tuned edge blending with vertical stretch
+    float radialFalloff = smoothstep(u_edgeBlend, 0.0, stretchedDist) * waves;
     // Minimum visibility guarantee near center
     radialFalloff = max(radialFalloff, 0.12);
 
