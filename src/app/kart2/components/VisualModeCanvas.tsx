@@ -254,9 +254,9 @@ export default function VisualModeCanvas({
 
     // Render loop with adaptive FPS capping and idle pause support
     const render = () => {
-      // Idle pause: skip rendering if page is not visible
+      // Idle pause: completely pause rendering if page is not visible
       if (!isPageVisible) {
-        animationFrameRef.current = requestAnimationFrame(render);
+        // Don't schedule next frame - will resume when page becomes visible
         return;
       }
 
