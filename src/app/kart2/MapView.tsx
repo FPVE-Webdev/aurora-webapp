@@ -291,6 +291,72 @@ export default function MapView() {
           });
         });
 
+        // Helper function to dim map layers when visual mode is active
+        const dimMapForVisualMode = (isDimmed: boolean) => {
+          if (!map) return;
+
+          try {
+            // Dim road layers
+            const roadLayers = [
+              'road-primary', 'road-secondary-tertiary', 'road-street',
+              'road-motorway-trunk', 'road-minor', 'road-path'
+            ];
+            roadLayers.forEach(layerId => {
+              if (map.getLayer(layerId)) {
+                map.setPaintProperty(
+                  layerId,
+                  'line-opacity',
+                  isDimmed ? 0.15 : 0.5 // Dimmed vs normal
+                );
+              }
+            });
+
+            // Dim label layers (POI, place names)
+            const labelLayers = [
+              'place-city-label', 'place-town-label', 'place-village-label',
+              'poi-label', 'road-label'
+            ];
+            labelLayers.forEach(layerId => {
+              if (map.getLayer(layerId)) {
+                map.setPaintProperty(
+                  layerId,
+                  'text-opacity',
+                  isDimmed ? 0.2 : 0.8
+                );
+              }
+            });
+
+            // Reduce water brightness
+            if (map.getLayer('water')) {
+              map.setPaintProperty(
+                'water',
+                'fill-opacity',
+                isDimmed ? 0.3 : 0.5
+              );
+            }
+
+            // Dim landuse layers (parks, industrial, etc.)
+            const landuseLayers = ['landuse', 'landcover'];
+            landuseLayers.forEach(layerId => {
+              if (map.getLayer(layerId)) {
+                map.setPaintProperty(
+                  layerId,
+                  'fill-opacity',
+                  isDimmed ? 0.2 : 0.4
+                );
+              }
+            });
+          } catch (err) {
+            // Silently fail if layer doesn't exist (style may vary)
+            if (!IS_PRODUCTION) {
+              console.warn('[MapView] Failed to dim layer:', err);
+            }
+          }
+        };
+
+        // Store reference for cleanup
+        (mapRef.current as any).dimMapForVisualMode = dimMapForVisualMode;
+
         map.on('error', (e) => {
           const error = (e as any)?.error;
 
