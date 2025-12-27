@@ -348,9 +348,7 @@ export default function MapView() {
             });
           } catch (err) {
             // Silently fail if layer doesn't exist (style may vary)
-            if (!IS_PRODUCTION) {
-              console.warn('[MapView] Failed to dim layer:', err);
-            }
+            console.warn('[MapView] Failed to dim layer:', err);
           }
         };
 
