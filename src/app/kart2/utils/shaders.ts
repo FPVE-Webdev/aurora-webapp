@@ -80,8 +80,8 @@ export const FRAGMENT_SHADER = `
     );
 
     // Tromsø radial glow - optimized with pow() instead of exp() for cheaper computation
-    // Creates a smooth, cheap focal point glow
-    float tromsoGlow = pow(1.0 - clamp(distToTromso, 0.0, 1.0), 2.0) * u_auroraIntensity * 4.5;
+    // Creates a smooth, cheap focal point glow - tuned radius
+    float tromsoGlow = pow(1.0 - clamp(distToTromso, 0.0, 1.0), u_glowRadius) * u_auroraIntensity * 4.5;
 
     // Pulsing effect (3-4 sec cycle)
     float pulse = sin(u_time * 0.002) * 0.15 + 0.85;
