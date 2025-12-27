@@ -166,7 +166,6 @@ export default function MapView() {
 
         // Stable orientation
         map.setBearing(0);
-        map.setPitchBounds(0, 45);
 
         map.on('load', () => {
 
