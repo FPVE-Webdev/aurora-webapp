@@ -373,11 +373,23 @@ export default function MapView() {
 
     return () => {
       if (mapRef.current) {
+        // Restore map before removing
+        if ((mapRef.current as any).dimMapForVisualMode) {
+          (mapRef.current as any).dimMapForVisualMode(false);
+        }
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
   }, []);
+
+  // Watch visual mode toggle and dim/restore map accordingly
+  useEffect(() => {
+    if (!mapRef.current || !(mapRef.current as any).dimMapForVisualMode) return;
+
+    // Dim map when visual mode is enabled
+    (mapRef.current as any).dimMapForVisualMode(visualMode.isEnabled);
+  }, [visualMode.isEnabled]);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
