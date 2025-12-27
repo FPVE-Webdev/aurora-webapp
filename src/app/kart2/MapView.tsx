@@ -64,7 +64,6 @@ export default function MapView() {
       const dataUrl = await toPng(clonedElement, {
         cacheBust: true,
         pixelRatio: 3, // High-DPI capture (Task 1)
-        allowTaint: true, // Allow tainted canvas to bypass CORS restrictions on cross-origin stylesheets
         filter: (node) => {
           // Skip snapshot button in case cloning didn't catch it
           const nodeElement = node as HTMLElement;
