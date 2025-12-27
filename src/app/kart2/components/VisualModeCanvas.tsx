@@ -236,6 +236,7 @@ export default function VisualModeCanvas({
     const glowRadiusLocation = gl.getUniformLocation(program, 'u_glowRadius');
     const edgeBlendLocation = gl.getUniformLocation(program, 'u_edgeBlend');
     const motionSpeedLocation = gl.getUniformLocation(program, 'u_motionSpeed');
+    const mapPitchLocation = gl.getUniformLocation(program, 'u_mapPitch');
 
     // Enable alpha blending
     gl.enable(gl.BLEND);
