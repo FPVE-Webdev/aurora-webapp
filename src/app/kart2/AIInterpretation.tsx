@@ -15,7 +15,6 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
   const [text, setText] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const hasFetchedRef = useRef(false);
-  const controllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // Reset on each effect run (for StrictMode safety)
@@ -25,16 +24,14 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
 
+    // Create a fresh controller for this effect run (prevents StrictMode double-invoke issues)
+    const controller = new AbortController();
+
     const fetchInterpretation = async () => {
       try {
-        // Only create controller if we haven't already (prevent double-invoke issues)
-        if (!controllerRef.current) {
-          controllerRef.current = new AbortController();
-        }
-
         const timeoutId = setTimeout(() => {
-          if (controllerRef.current && isMountedRef.current) {
-            controllerRef.current.abort();
+          if (isMountedRef.current && !controller.signal.aborted) {
+            controller.abort();
           }
         }, 8000);
 
@@ -42,7 +39,7 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ kp, probability, tromsoCloud, bestRegion }),
-          signal: controllerRef.current.signal,
+          signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
@@ -79,13 +76,9 @@ export default function AIInterpretation({ kp, probability, tromsoCloud, bestReg
 
     return () => {
       isMountedRef.current = false;
-      // Only abort if component is still mounted and controller exists
-      if (controllerRef.current && !controllerRef.current.signal.aborted) {
-        try {
-          controllerRef.current.abort();
-        } catch {
-          // Suppress any errors from abort
-        }
+      // Abort the fetch request on cleanup (safe to call multiple times with check)
+      if (!controller.signal.aborted) {
+        controller.abort();
       }
     };
   }, []);
