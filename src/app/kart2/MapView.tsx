@@ -444,6 +444,39 @@ export default function MapView() {
                 );
               }
             });
+
+            // ===== TERRAIN & CITY LIGHTS VISUAL MODE ADJUSTMENTS =====
+
+            // Hillshade: reduce opacity when Visual Mode is ON (aurora dominates)
+            if (map.getLayer('hillshade')) {
+              map.setPaintProperty(
+                'hillshade',
+                'hillshade-exaggeration',
+                isDimmed ? 0.15 : 0.3 // Even more subtle when aurora is visible
+              );
+            }
+
+            // City glow layers: keep visible but slightly reduce when Visual Mode is ON
+            // (provides human scale contrast to aurora)
+            const cityGlowLayers = [
+              'tromso-glow-outer',
+              'tromso-glow-middle',
+              'tromso-glow-core'
+            ];
+            cityGlowLayers.forEach(layerId => {
+              if (map.getLayer(layerId)) {
+                const currentOpacity = map.getPaintProperty(layerId, 'circle-opacity');
+                // When Visual Mode ON: maintain glow but slightly reduce
+                // When OFF: restore to full brightness
+                const baseOpacity = layerId === 'tromso-glow-outer' ? 0.08 :
+                                   layerId === 'tromso-glow-middle' ? 0.12 : 0.2;
+                map.setPaintProperty(
+                  layerId,
+                  'circle-opacity',
+                  isDimmed ? baseOpacity * 0.8 : baseOpacity
+                );
+              }
+            });
           } catch (err) {
             // Silently fail if layer doesn't exist (style may vary)
             console.warn('[MapView] Failed to dim layer:', err);
