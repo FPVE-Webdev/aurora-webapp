@@ -34,7 +34,10 @@ export default function MapView() {
 
   // Fixed "scene" camera: Tromsø viewpoint (not a navigable world map)
   const SCENE_CENTER: [number, number] = [18.95, 69.65];
-  const SCENE_ZOOM = 8.0;
+  // ZOOM OPTIMIZATION (2025-12-28): Increased from 8.0 to 8.7
+  // Goal: Close-up cinematic view, eliminates need for manual zoom
+  // User can still fine-tune with +/- buttons if needed
+  const SCENE_ZOOM = 8.7;
   // Side-view (cinematic horizon) - MAX TILT. User rotates horizontally to "look around".
   const SCENE_PITCH = 85; // Mapbox maximum pitch for full side-view
   // User should feel they are in Tromsø looking north
@@ -42,8 +45,8 @@ export default function MapView() {
 
   // Manual zoom + expand presets (still locked to Tromsø)
   const ZOOM_STEP = 0.1;
-  const ZOOM_SCENE_MIN = 7.8;
-  const ZOOM_SCENE_MAX = 8.0;
+  const ZOOM_SCENE_MIN = 8.2;  // Allow slight zoom out from new default
+  const ZOOM_SCENE_MAX = 9.0;  // Allow zoom in for close inspection
   const ZOOM_EXPANDED_TARGET = 5.4;
   const ZOOM_EXPANDED_MIN = 5.2;
   const ZOOM_EXPANDED_MAX = 8.0;
@@ -650,6 +653,32 @@ export default function MapView() {
     (mapRef.current as any).dimMapForVisualMode(visualMode.isEnabled);
   }, [visualMode.isEnabled]);
 
+  // Keyboard shortcuts for zoom testing (DEV MODE ONLY)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    if (!mapRef.current) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Only respond to number keys 0-9
+      if (e.key >= '0' && e.key <= '9') {
+        const level = parseInt(e.key, 10);
+
+        // Map 0-9 to zoom range 5.0-9.0
+        // 0 = 5.0 (widest), 9 = 9.0 (closest)
+        const targetZoom = 5.0 + (level * 0.4444);  // 5.0 + (0-9) * 0.4444 ≈ 5.0-9.0
+
+        easeToZoom(targetZoom);
+
+        // Console log for testing
+        // eslint-disable-next-line no-console
+        console.log(`[Zoom Test] Key: ${level} → Zoom: ${targetZoom.toFixed(2)}`);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   return (
     <div className="relative w-full h-full overflow-hidden">
       {/* Mapbox container - base layer */}
@@ -861,6 +890,16 @@ export default function MapView() {
             <div className="bg-orange-500/90 text-white p-3 rounded shadow text-xs">
               <p className="font-semibold">Høyt skydekke over Tromsø</p>
               <p className="text-[10px] mt-1 opacity-90">Alternative steder markert på kart</p>
+            </div>
+          )}
+
+          {/* Zoom level indicator (DEV MODE ONLY) */}
+          {process.env.NODE_ENV !== 'production' && mapRef.current && (
+            <div className="bg-gray-900/90 backdrop-blur-md text-white text-xs p-2 rounded shadow-lg">
+              <p className="font-mono">
+                Zoom: {mapRef.current.getZoom?.()?.toFixed(2) ?? 'N/A'}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-1">Press 0-9 to test</p>
             </div>
           )}
         </div>
