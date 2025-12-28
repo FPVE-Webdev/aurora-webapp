@@ -27,8 +27,8 @@ export default function MapView() {
   // Fixed "scene" camera: Tromsø viewpoint (not a navigable world map)
   const SCENE_CENTER: [number, number] = [18.95, 69.65];
   const SCENE_ZOOM = 8.0;
-  // Side-view (cinematic horizon). User rotates horizontally to "look around".
-  const SCENE_PITCH = 60;
+  // Side-view (cinematic horizon) - MAX TILT. User rotates horizontally to "look around".
+  const SCENE_PITCH = 85; // Mapbox maximum pitch for full side-view
   // User should feel they are in Tromsø looking north
   const SCENE_BEARING = 0;
 
