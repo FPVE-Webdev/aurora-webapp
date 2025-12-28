@@ -56,7 +56,7 @@ export default function VisualModeToggle({ isEnabled, onToggle }: VisualModeTogg
 
       {/* Toggle Switch */}
       <div className="flex items-center justify-between mb-2">
-        <span className="text-gray-200 font-medium">Visual mode</span>
+        <span className="text-gray-200 font-medium">Aurora mode</span>
         <button
           onClick={handleToggle}
           className={`

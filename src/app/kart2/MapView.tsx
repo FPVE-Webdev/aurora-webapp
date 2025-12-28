@@ -431,6 +431,10 @@ export default function MapView() {
           addLightsLayer('tromso-lights-medium', 'medium', '#ffdd88');
           addLightsLayer('tromso-lights-bright', 'bright', '#ffeeaa');
 
+          // Initialize ocean appearance on load
+          const initialPitch = map.getPitch?.() ?? SCENE_PITCH;
+          configureOcean(false, initialPitch); // Visual mode is off by default
+
           // Add Tromsø dimming overlay (shown when shouldExpandMap is true)
           map.addSource('tromso-dim', {
             type: 'geojson',
@@ -523,6 +527,60 @@ export default function MapView() {
           });
         });
 
+        // Helper function to configure ocean appearance (cold, deep Arctic aesthetic)
+        const configureOcean = (isVisualMode: boolean, currentPitch: number) => {
+          if (!map) return;
+
+          try {
+            // Check if water layer exists
+            if (!map.getLayer('water')) {
+              // Water layer not loaded yet - will be applied when dimMapForVisualMode is called
+              return;
+            }
+
+            // Base Arctic water color: cold blue-green (#102a36)
+            const baseColor = '#102a36';
+
+            // Calculate pitch-responsive darkening (pitch 0-85°)
+            // At high pitch (>50°), darken water by ~12% to push focus upward
+            const pitchFactor = currentPitch > 50 ? 0.88 : 1.0;
+
+            // Base opacity: reduced from default to lower contrast vs land
+            const baseOpacity = 0.87;
+
+            // Visual Mode: add subtle cyan tint (max 0.05 opacity)
+            // This creates a hint of reflection without being a full reflection
+            const visualModeTint = isVisualMode ? 0.03 : 0.0;
+
+            // Final opacity combines base, pitch, and visual mode
+            const finalOpacity = baseOpacity * pitchFactor * (1 - visualModeTint);
+
+            // If Visual Mode is active, add subtle cyan overlay via water-color interpolation
+            if (isVisualMode && visualModeTint > 0) {
+              // Mix base color with subtle cyan (#00ffff at 3% strength)
+              map.setPaintProperty('water', 'fill-color', [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                5, '#102a36',  // Base Arctic color at far zoom
+                12, '#0f3540' // Slightly lighter cyan-tinted at close zoom
+              ]);
+            } else {
+              // Set water color (cold Arctic tone)
+              map.setPaintProperty('water', 'fill-color', baseColor);
+            }
+
+            // Set water opacity (reduced contrast)
+            map.setPaintProperty('water', 'fill-opacity', finalOpacity);
+
+          } catch (err) {
+            if (process.env.NODE_ENV !== 'production') {
+              // eslint-disable-next-line no-console
+              console.warn('[MapView] Failed to configure ocean:', err);
+            }
+          }
+        };
+
         // Helper function to dim map layers when visual mode is active
         const dimMapForVisualMode = (isDimmed: boolean) => {
           if (!map) return;
@@ -558,14 +616,10 @@ export default function MapView() {
               }
             });
 
-            // Reduce water brightness
-            if (map.getLayer('water')) {
-              map.setPaintProperty(
-                'water',
-                'fill-opacity',
-                isDimmed ? 0.3 : 0.5
-              );
-            }
+            // Ocean configuration is now handled by configureOcean()
+            // Apply ocean settings based on current state
+            const currentPitch = map.getPitch?.() ?? SCENE_PITCH;
+            configureOcean(isDimmed, currentPitch);
 
             // Dim landuse layers (parks, industrial, etc.)
             const landuseLayers = ['landuse', 'landcover'];
@@ -601,8 +655,9 @@ export default function MapView() {
           }
         };
 
-        // Store reference on map object for cleanup
+        // Store references on map object for cleanup and external access
         (map as any).dimMapForVisualMode = dimMapForVisualMode;
+        (map as any).configureOcean = configureOcean;
 
         map.on('error', (e) => {
           const error = (e as any)?.error;

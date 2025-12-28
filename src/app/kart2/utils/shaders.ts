@@ -58,6 +58,10 @@ export const FRAGMENT_SHADER = `
   uniform float u_weatherType;        // Encoded: 0=clear, 1=fair, 2=cloudy, 3=rain, 4=snow, 5=fog
   uniform float u_precipitation;      // 0-10mm
 
+  // ===== TOGGLE CONTROLS =====
+  uniform float u_auroraEnabled;      // 1.0 = aurora on, 0.0 = aurora off
+  uniform float u_weatherEnabled;     // 1.0 = weather on, 0.0 = weather off
+
   // ===== 3D SIMPLEX NOISE IMPLEMENTATION =====
   // Based on Stefan Gustavson's implementation
   // https://github.com/ashima/webgl-noise
@@ -602,10 +606,28 @@ export const FRAGMENT_SHADER = `
     float skyBoostMask = smoothstep(0.35, 0.50, uv.y); // Only boost upper half
     finalColor *= mix(1.0, auroraLift * sideViewBoost, skyBoostMask);
     
+    // ===== TOGGLE MASKING =====
+    // Apply toggle masks to separate aurora and weather layers
+    vec3 auroraOnlyColor = finalColor - cloudColor;  // Extract aurora portion
+
+    // Mask aurora based on u_auroraEnabled
+    auroraOnlyColor *= u_auroraEnabled;
+
+    // Mask clouds based on u_weatherEnabled
+    vec3 maskedCloudColor = cloudColor * u_weatherEnabled;
+
+    // Recombine masked layers
+    finalColor = maskedCloudColor + auroraOnlyColor;
+
+    // Adjust alpha based on what's actually visible
+    float auroraAlphaContribution = (finalAlpha - cloudAlpha) * u_auroraEnabled;
+    float cloudAlphaContribution = cloudAlpha * u_weatherEnabled;
+    finalAlpha = cloudAlphaContribution + auroraAlphaContribution;
+
     // ===== FINAL OUTPUT =====
-    
+
     finalAlpha = clamp(finalAlpha, 0.0, 0.95) * u_alphaTune;
-    
+
     gl_FragColor = vec4(finalColor, finalAlpha);
   }
 `;

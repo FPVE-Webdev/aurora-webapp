@@ -351,6 +351,10 @@ export default function VisualModeCanvas({
     const weatherTypeLocation = gl.getUniformLocation(program, 'u_weatherType');
     const precipitationLocation = gl.getUniformLocation(program, 'u_precipitation');
 
+    // Toggle control uniform locations
+    const auroraEnabledLocation = gl.getUniformLocation(program, 'u_auroraEnabled');
+    const weatherEnabledLocation = gl.getUniformLocation(program, 'u_weatherEnabled');
+
     // Enable alpha blending
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -439,8 +443,8 @@ export default function VisualModeCanvas({
         }
       }
 
-      // Early exit optimization: skip rendering if aurora is too dim to be visible
-      if (auroraIntensity < 0.05) {
+      // Early exit optimization: skip rendering if both toggles are off
+      if (!isEnabled && !weatherModeEnabled) {
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
@@ -468,10 +472,11 @@ export default function VisualModeCanvas({
       // Set core uniforms
       gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
       gl.uniform1f(timeLocation, currentTime);
+      // Aurora intensity: always pass real value (toggle handled in shader)
       gl.uniform1f(auroraIntensityLocation, auroraIntensity);
       gl.uniform2f(tromsoCenterLocation, screenX, screenY);
-      // Cloud coverage: set to 0 if weather mode is disabled, otherwise use real value
-      gl.uniform1f(cloudCoverageLocation, weatherModeEnabled ? cloudCoverage / 100 : 0.0);
+      // Cloud coverage: always pass real value (toggle handled in shader)
+      gl.uniform1f(cloudCoverageLocation, cloudCoverage / 100);
 
       // Map pitch for aurora tilt alignment
       const pitch = mapInstance.getPitch(); // 0-85 degrees (Mapbox maximum)
@@ -499,6 +504,10 @@ export default function VisualModeCanvas({
       gl.uniform1f(windDirectionLocation, weatherData?.windDirection ?? 270.0);
       gl.uniform1f(weatherTypeLocation, weatherData?.weatherType ?? 2.0);
       gl.uniform1f(precipitationLocation, weatherData?.precipitation ?? 0.0);
+
+      // Toggle controls - send to shader
+      gl.uniform1f(auroraEnabledLocation, isEnabled ? 1.0 : 0.0);
+      gl.uniform1f(weatherEnabledLocation, weatherModeEnabled ? 1.0 : 0.0);
 
       // Draw fullscreen quad
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

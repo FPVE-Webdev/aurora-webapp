@@ -17,7 +17,7 @@ export default function WeatherModeToggle({ isEnabled, onToggle }: WeatherModeTo
     <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs max-w-[260px]">
       {/* Toggle Switch */}
       <div className="flex items-center justify-between mb-2">
-        <span className="text-gray-200 font-medium">Weather mode</span>
+        <span className="text-gray-200 font-medium">Weather animation</span>
         <button
           onClick={onToggle}
           className={`
@@ -38,7 +38,7 @@ export default function WeatherModeToggle({ isEnabled, onToggle }: WeatherModeTo
       {/* Description */}
       <div className="text-[10px] text-gray-400 border-t border-gray-700 pt-2">
         <p className="leading-tight">
-          Cloud layer from MET.no weather data. Shows real-time conditions.
+          Toggles cloud/weather layer. Real-time data from MET.no.
         </p>
       </div>
     </div>
