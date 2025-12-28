@@ -437,60 +437,76 @@ export const FRAGMENT_SHADER = `
     // Virtual camera setup
     float cameraAltitude = u_cameraAltitude; // 0.0 km (ground observer)
 
-    // ===== CLOUD LAYER RENDERING (0-12km) - RENDERED FIRST (BENEATH AURORA) =====
+    // ===== CLOUD LAYER RENDERING (0-12km) - LOWER SCREEN ZONE =====
+    // VERTICAL MASK: Clouds appear in lower 65% of screen (land/weather zone)
     vec3 cloudColor = vec3(0.0);
     float cloudAlpha = 0.0;
 
     // Only render clouds if coverage > 5%
     if (u_cloudCoverage > 0.05) {
-      int cloudLayers = int(4.0 * u_qualityScale);  // 4 layers desktop, 2 mobile
-      if (cloudLayers < 2) cloudLayers = 2;
+      // Vertical mask: clouds in lower screen (land/horizon zone)
+      // Full strength y < 0.45, fade 0.45-0.65, gone y > 0.65
+      float cloudVerticalMask = 1.0 - smoothstep(0.45, 0.65, uv.y);
 
-      for (int i = 0; i < 4; i++) {
-        if (i >= cloudLayers) break;
+      if (cloudVerticalMask > 0.01) {
+        int cloudLayers = int(4.0 * u_qualityScale);  // 4 layers desktop, 2 mobile
+        if (cloudLayers < 2) cloudLayers = 2;
 
-        float t = float(i) / float(cloudLayers - 1);
-        float altitude = mix(0.5, 12.0, t);  // Cloud altitude range 0.5-12km
+        for (int i = 0; i < 4; i++) {
+          if (i >= cloudLayers) break;
 
-        // Parallax for cloud layer (much closer than aurora)
-        vec2 cloudParallax = computeParallax(uv, altitude, pitchFactor);
-        vec2 cloudSamplePos = uv + cloudParallax;
+          float t = float(i) / float(cloudLayers - 1);
+          float altitude = mix(0.5, 12.0, t);  // Cloud altitude range 0.5-12km
 
-        // Guard against out-of-bounds
-        if (cloudSamplePos.x < 0.0 || cloudSamplePos.x > 1.0 ||
-            cloudSamplePos.y < 0.0 || cloudSamplePos.y > 1.0) {
-          continue;
+          // Parallax for cloud layer (much closer than aurora)
+          vec2 cloudParallax = computeParallax(uv, altitude, pitchFactor);
+          vec2 cloudSamplePos = uv + cloudParallax;
+
+          // Guard against out-of-bounds
+          if (cloudSamplePos.x < 0.0 || cloudSamplePos.x > 1.0 ||
+              cloudSamplePos.y < 0.0 || cloudSamplePos.y > 1.0) {
+            continue;
+          }
+
+          // Sample cloud density
+          float cloudDensity = sampleCloudLayer(cloudSamplePos, altitude, u_time);
+
+          // Get cloud color
+          vec3 layerColor = getCloudColor(altitude, cloudDensity);
+
+          // Layer alpha (clouds are more opaque than aurora)
+          float layerAlpha = cloudDensity * 0.4;  // 40% max opacity per layer
+
+          // Accumulate (front-to-back)
+          cloudColor += layerColor * layerAlpha * (1.0 - cloudAlpha);
+          cloudAlpha += layerAlpha * (1.0 - cloudAlpha);
+
+          if (cloudAlpha >= 0.95) break;
         }
 
-        // Sample cloud density
-        float cloudDensity = sampleCloudLayer(cloudSamplePos, altitude, u_time);
+        // Apply vertical mask to keep clouds in lower zone
+        cloudColor *= cloudVerticalMask;
+        cloudAlpha *= cloudVerticalMask;
 
-        // Get cloud color
-        vec3 layerColor = getCloudColor(altitude, cloudDensity);
-
-        // Layer alpha (clouds are more opaque than aurora)
-        float layerAlpha = cloudDensity * 0.4;  // 40% max opacity per layer
-
-        // Accumulate (front-to-back)
-        cloudColor += layerColor * layerAlpha * (1.0 - cloudAlpha);
-        cloudAlpha += layerAlpha * (1.0 - cloudAlpha);
-
-        if (cloudAlpha >= 0.95) break;
+        // Ground fade for clouds (bottom edge softness)
+        float cloudGroundFade = smoothstep(0.0, 0.25, uv.y);
+        cloudColor *= cloudGroundFade;
+        cloudAlpha *= cloudGroundFade;
       }
-
-      // Ground fade for clouds
-      float cloudGroundFade = smoothstep(0.0, 0.3, uv.y);
-      cloudColor *= cloudGroundFade;
-      cloudAlpha *= cloudGroundFade;
     }
 
-    // ===== AURORA RENDERING (80-300km) - COMPOSITED ON TOP OF CLOUDS =====
+    // ===== AURORA RENDERING (80-300km) - UPPER SCREEN ZONE =====
+    // VERTICAL MASK: Aurora appears in upper 55% of screen (sky zone)
     float minAltitude = 80.0;  // km
     float maxAltitude = 300.0; // km
 
     // Start with cloud base
     vec3 finalColor = cloudColor;
     float finalAlpha = cloudAlpha;
+
+    // Vertical mask: aurora in upper screen (sky zone)
+    // Fade in 0.40-0.50, full strength y > 0.50
+    float auroraVerticalMask = smoothstep(0.40, 0.50, uv.y);
 
     // Quality-based layer count (6 for desktop, 3 for mobile - clearer band separation)
     int layers = int(6.0 * u_qualityScale);
@@ -504,47 +520,50 @@ export const FRAGMENT_SHADER = `
     // Aurora ray-march loop
     for (int i = 0; i < 6; i++) {
       if (i >= layers) break;
-      
+
       float t = float(i) / float(layers - 1);
       float altitude = mix(minAltitude, maxAltitude, t);
-      
+
       // Parallax offset for this altitude layer
       vec2 parallaxOffset = computeParallax(uv, altitude, pitchFactor);
       vec2 samplePos = uv + parallaxOffset;
-      
+
       // Guard against out-of-bounds sampling
-      if (samplePos.x < 0.0 || samplePos.x > 1.0 || 
+      if (samplePos.x < 0.0 || samplePos.x > 1.0 ||
           samplePos.y < 0.0 || samplePos.y > 1.0) {
         continue;
       }
-      
+
       // Sample curtain density at this altitude
       float curtainValue = sampleCurtain(samplePos, altitude, u_time, pitchFactor);
-      
+
       // Apply intensity with dramatic cycle and subtle baseline pulse
       curtainValue *= u_auroraIntensity * 5.0 * cyclePhase; // Cycle modulates base intensity
       curtainValue *= baselinePulse; // Subtle baseline variation
-      
+
       // Altitude-based intensity falloff (stronger at primary band ~120km)
       float altitudeFalloff = 1.0 - abs(altitude - 120.0) / 180.0;
       altitudeFalloff = max(0.2, altitudeFalloff);
       curtainValue *= altitudeFalloff;
 
       // Screen-space vertical strength: aurora strengthens toward top of screen
-      float verticalBoost = smoothstep(0.2, 0.9, uv.y); // Weak at horizon, strong at zenith
+      float verticalBoost = smoothstep(0.5, 0.95, uv.y); // Starts at mid-screen, strong at zenith
       verticalBoost = mix(1.0, verticalBoost * 1.8, pitchFactor); // More dramatic when tilted
       curtainValue *= verticalBoost;
-      
+
+      // Apply vertical mask to keep aurora in upper zone
+      curtainValue *= auroraVerticalMask;
+
       // Get color for this altitude
       vec3 layerColor = getAuroraColor(altitude, curtainValue);
-      
+
       // Depth-based alpha (layers blend together)
       float layerAlpha = curtainValue * 0.25; // Increased from 0.15 to 0.25 for more opacity
-      
+
       // Accumulate color with depth blending (front-to-back)
       finalColor += layerColor * layerAlpha * (1.0 - finalAlpha);
       finalAlpha += layerAlpha * (1.0 - finalAlpha);
-      
+
       // Early exit if fully opaque
       if (finalAlpha >= 0.95) break;
     }
@@ -566,25 +585,22 @@ export const FRAGMENT_SHADER = `
     finalAlpha += tromsoGlow * 0.2;
     
     // ===== ATMOSPHERIC EFFECTS =====
-    
-    // Cloud coverage dimming
+
+    // Cloud coverage dimming (only affects aurora, not clouds themselves)
     float cloudDim = 1.0 - (u_cloudCoverage * 0.2);
-    finalColor *= cloudDim;
-    
-    // Ground fade (suppress aurora near horizon)
-    // When tilted, ground takes up less screen space
-    float groundStart = mix(0.05, 0.0, pitchFactor * 0.8);
-    float groundEnd = mix(0.45, 0.30, pitchFactor * 0.6);
-    float groundFade = smoothstep(groundStart, groundEnd, uv.y);
-    finalColor *= groundFade;
-    
-    // Sky lift and depth visibility boost
+    // Apply cloud dimming only to aurora portion (not cloud colors)
+    vec3 auroraPortion = finalColor - cloudColor;
+    auroraPortion *= cloudDim;
+    finalColor = cloudColor + auroraPortion;
+
+    // Sky visibility boost when pitched (aurora in upper zone)
     // When pitched, aurora becomes more visible due to better viewing angle
     float auroraLift = mix(skyFactor * 0.8, skyFactor * 1.6, pitchFactor);
 
-    // Boost overall visibility when viewing from side
+    // Boost overall visibility when viewing from side (only in aurora zone y > 0.45)
     float sideViewBoost = 1.0 + (pitchFactor * 0.8);
-    finalColor *= auroraLift * sideViewBoost;
+    float skyBoostMask = smoothstep(0.35, 0.50, uv.y); // Only boost upper half
+    finalColor *= mix(1.0, auroraLift * sideViewBoost, skyBoostMask);
     
     // ===== FINAL OUTPUT =====
     

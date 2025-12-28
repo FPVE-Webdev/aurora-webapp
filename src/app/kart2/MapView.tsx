@@ -89,10 +89,9 @@ export default function MapView() {
 
   // Fixed "scene" camera: Tromsø viewpoint (not a navigable world map)
   const SCENE_CENTER: [number, number] = [18.95, 69.65];
-  // ZOOM OPTIMIZATION (2025-12-28): Increased from 8.0 to 8.7
-  // Goal: Close-up cinematic view, eliminates need for manual zoom
-  // User can still fine-tune with +/- buttons if needed
-  const SCENE_ZOOM = 8.7;
+  // ZOOM OPTIMIZATION (2025-12-28): Close-up view of Tromsø
+  // Increased to 10.0 for maximum proximity while maintaining terrain visibility
+  const SCENE_ZOOM = 10.0;
   // Side-view (cinematic horizon) - MAX TILT. User rotates horizontally to "look around".
   const SCENE_PITCH = 85; // Mapbox maximum pitch for full side-view
   // User should feel they are in Tromsø looking north
@@ -100,8 +99,8 @@ export default function MapView() {
 
   // Manual zoom + expand presets (still locked to Tromsø)
   const ZOOM_STEP = 0.1;
-  const ZOOM_SCENE_MIN = 8.2;  // Allow slight zoom out from new default
-  const ZOOM_SCENE_MAX = 9.0;  // Allow zoom in for close inspection
+  const ZOOM_SCENE_MIN = 8.2;  // Allow zoom out
+  const ZOOM_SCENE_MAX = 12.0; // Allow extreme close-up for testing
   const ZOOM_EXPANDED_TARGET = 5.4;
   const ZOOM_EXPANDED_MIN = 5.2;
   const ZOOM_EXPANDED_MAX = 8.0;

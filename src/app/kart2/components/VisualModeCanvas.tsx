@@ -471,8 +471,8 @@ export default function VisualModeCanvas({
       gl.uniform1f(cloudCoverageLocation, cloudCoverage / 100);
 
       // Map pitch for aurora tilt alignment
-      const pitch = mapInstance.getPitch(); // 0-45 degrees
-      gl.uniform1f(mapPitchLocation, Math.max(0, Math.min(1, pitch / 45.0)));
+      const pitch = mapInstance.getPitch(); // 0-85 degrees (Mapbox maximum)
+      gl.uniform1f(mapPitchLocation, Math.max(0, Math.min(1, pitch / 85.0)));
 
       // 3D Rendering uniforms
       gl.uniform1f(cameraAltitudeLocation, VISUAL_MODE_CONFIG.cameraAltitude);
