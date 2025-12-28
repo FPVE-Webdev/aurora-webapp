@@ -50,6 +50,7 @@ interface WeatherData {
 
 interface VisualModeCanvasProps {
   isEnabled: boolean;
+  weatherModeEnabled: boolean; // Controls cloud/weather layer visibility
   kpIndex: number;
   auroraProbability: number;
   cloudCoverage: number;
@@ -63,6 +64,7 @@ interface VisualModeCanvasProps {
 
 export default function VisualModeCanvas({
   isEnabled,
+  weatherModeEnabled,
   kpIndex,
   auroraProbability,
   cloudCoverage,
@@ -468,7 +470,8 @@ export default function VisualModeCanvas({
       gl.uniform1f(timeLocation, currentTime);
       gl.uniform1f(auroraIntensityLocation, auroraIntensity);
       gl.uniform2f(tromsoCenterLocation, screenX, screenY);
-      gl.uniform1f(cloudCoverageLocation, cloudCoverage / 100);
+      // Cloud coverage: set to 0 if weather mode is disabled, otherwise use real value
+      gl.uniform1f(cloudCoverageLocation, weatherModeEnabled ? cloudCoverage / 100 : 0.0);
 
       // Map pitch for aurora tilt alignment
       const pitch = mapInstance.getPitch(); // 0-85 degrees (Mapbox maximum)

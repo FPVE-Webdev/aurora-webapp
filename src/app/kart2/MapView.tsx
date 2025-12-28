@@ -7,7 +7,9 @@ import { CHASE_REGIONS } from './map.config';
 import AIInterpretation from './AIInterpretation';
 import VisualModeCanvas from './components/VisualModeCanvas';
 import VisualModeToggle from './components/VisualModeToggle';
+import WeatherModeToggle from './components/WeatherModeToggle';
 import { useVisualMode } from './hooks/useVisualMode';
+import { useWeatherMode } from './hooks/useWeatherMode';
 import VisualModeErrorBoundary from './components/VisualModeErrorBoundary';
 import { generateTromsoCityLights } from './utils/cityLights';
 
@@ -38,6 +40,7 @@ export default function MapView() {
   const { data, isLoading, error } = useAuroraData();
   const chaseState = useChaseRegions();
   const visualMode = useVisualMode();
+  const weatherMode = useWeatherMode();
 
   // Weather data for cloud layer rendering (REAL MET.NO DATA)
   const [weatherData, setWeatherData] = useState({
@@ -750,6 +753,7 @@ export default function MapView() {
           >
             <VisualModeCanvas
               isEnabled={visualMode.isEnabled}
+              weatherModeEnabled={weatherMode.isEnabled}
               kpIndex={data.kp}
               auroraProbability={data.probability}
               cloudCoverage={chaseState.tromsoCloudCoverage}
@@ -927,7 +931,7 @@ export default function MapView() {
             />
           )}
 
-          {/* Visual Mode Toggle */}
+          {/* Visual Mode Toggle (Aurora) */}
           {visualMode.isClient && (
             <VisualModeToggle
               isEnabled={visualMode.isEnabled}
@@ -936,6 +940,14 @@ export default function MapView() {
                 setVisualModeError(null);
                 visualMode.toggle();
               }}
+            />
+          )}
+
+          {/* Weather Mode Toggle (Clouds) */}
+          {visualMode.isClient && (
+            <WeatherModeToggle
+              isEnabled={weatherMode.isEnabled}
+              onToggle={weatherMode.toggle}
             />
           )}
 
