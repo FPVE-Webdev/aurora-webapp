@@ -24,6 +24,14 @@ export default function MapView() {
   const chaseState = useChaseRegions();
   const visualMode = useVisualMode();
 
+  // Weather data for cloud layer rendering (TEST VALUES - will be replaced with real MET.no data)
+  const [weatherData] = useState({
+    windSpeed: 8.0,          // 8 m/s westerly wind
+    windDirection: 270.0,    // Westerly (from west)
+    weatherType: 2.0,        // Cloudy
+    precipitation: 0.0,      // No precipitation
+  });
+
   // Fixed "scene" camera: Tromsø viewpoint (not a navigable world map)
   const SCENE_CENTER: [number, number] = [18.95, 69.65];
   const SCENE_ZOOM = 8.0;
@@ -665,6 +673,7 @@ export default function MapView() {
               timestamp={data.timestamp}
               tromsoCoords={[18.95, 69.65]}
               mapInstance={mapRef.current}
+              weatherData={weatherData}
               onFatalError={() => setVisualModeError('Nordlysanimasjon (Visual Mode) feilet')}
             />
           </VisualModeErrorBoundary>

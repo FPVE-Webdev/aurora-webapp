@@ -41,6 +41,13 @@ const isMobileDevice = (): boolean => {
   return window.innerWidth <= 768 || 'ontouchstart' in window;
 };
 
+interface WeatherData {
+  windSpeed: number;        // m/s
+  windDirection: number;    // degrees (default 270 = westerly)
+  weatherType: number;      // encoded: 0-5
+  precipitation: number;    // mm
+}
+
 interface VisualModeCanvasProps {
   isEnabled: boolean;
   kpIndex: number;
@@ -49,6 +56,7 @@ interface VisualModeCanvasProps {
   timestamp: string; // ISO 8601 timestamp
   tromsoCoords: [number, number];
   mapInstance: any; // Mapbox map instance
+  weatherData?: WeatherData; // Optional weather data for cloud rendering
   /** Called if the visual mode renderer hits an unrecoverable runtime error. */
   onFatalError?: (error: unknown) => void;
 }
@@ -61,6 +69,7 @@ export default function VisualModeCanvas({
   timestamp,
   tromsoCoords,
   mapInstance,
+  weatherData,
   onFatalError
 }: VisualModeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -334,6 +343,12 @@ export default function VisualModeCanvas({
     const motionSpeedLocation = gl.getUniformLocation(program, 'u_motionSpeed');
     const qualityScaleLocation = gl.getUniformLocation(program, 'u_qualityScale');
 
+    // Cloud layer uniform locations
+    const windSpeedLocation = gl.getUniformLocation(program, 'u_windSpeed');
+    const windDirectionLocation = gl.getUniformLocation(program, 'u_windDirection');
+    const weatherTypeLocation = gl.getUniformLocation(program, 'u_weatherType');
+    const precipitationLocation = gl.getUniformLocation(program, 'u_precipitation');
+
     // Enable alpha blending
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -475,6 +490,12 @@ export default function VisualModeCanvas({
       gl.uniform1f(edgeBlendLocation, VISUAL_MODE_CONFIG.groundFadeEnd);
       gl.uniform1f(motionSpeedLocation, VISUAL_MODE_CONFIG.motionSpeedBase);
       gl.uniform1f(qualityScaleLocation, qualityConfig.qualityScale);
+
+      // Cloud layer uniforms (with defaults if weatherData not provided)
+      gl.uniform1f(windSpeedLocation, weatherData?.windSpeed ?? 5.0);
+      gl.uniform1f(windDirectionLocation, weatherData?.windDirection ?? 270.0);
+      gl.uniform1f(weatherTypeLocation, weatherData?.weatherType ?? 2.0);
+      gl.uniform1f(precipitationLocation, weatherData?.precipitation ?? 0.0);
 
       // Draw fullscreen quad
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

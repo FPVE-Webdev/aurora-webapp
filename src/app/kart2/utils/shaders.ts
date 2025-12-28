@@ -52,6 +52,12 @@ export const FRAGMENT_SHADER = `
   uniform float u_motionSpeed;        // Motion speed multiplier
   uniform float u_qualityScale;       // LOD quality (0.5-1.0)
 
+  // ===== CLOUD LAYER UNIFORMS =====
+  uniform float u_windSpeed;          // m/s (0-30 typical)
+  uniform float u_windDirection;      // Degrees (0=N, 90=E, 180=S, 270=W)
+  uniform float u_weatherType;        // Encoded: 0=clear, 1=fair, 2=cloudy, 3=rain, 4=snow, 5=fog
+  uniform float u_precipitation;      // 0-10mm
+
   // ===== 3D SIMPLEX NOISE IMPLEMENTATION =====
   // Based on Stefan Gustavson's implementation
   // https://github.com/ashima/webgl-noise
@@ -161,6 +167,106 @@ export const FRAGMENT_SHADER = `
       float t = (altitude - 120.0) / 180.0;
       return mix(colorMid, colorHigh, smoothstep(0.0, 1.0, t));
     }
+  }
+
+  // ===== CLOUD LAYER SAMPLING =====
+  // Clouds exist at 0-12km altitude (beneath aurora at 80-300km)
+  // Uses layered noise for realistic cumulus/stratus formations
+
+  float sampleCloudLayer(vec2 uv, float altitude, float time) {
+    // Wind-driven drift (default 270° = westerly)
+    vec2 windVector = vec2(
+      sin(u_windDirection * 0.01745),  // degrees to radians
+      cos(u_windDirection * 0.01745)
+    );
+    vec2 drift = windVector * u_windSpeed * time * 0.0001;
+
+    // 3D position (clouds are low altitude)
+    vec3 pos = vec3(
+      (uv.x + drift.x) * 2.0,
+      (uv.y + drift.y) * 2.0,
+      altitude * 0.1
+    );
+
+    // Multi-octave noise for cloud texture
+    float cloud = 0.0;
+    float amplitude = 1.0;
+    float frequency = 1.0;
+
+    // Weather-type dependent octaves (more complex for storm clouds)
+    int octaves = int(mix(2.0, 4.0, u_weatherType / 5.0));
+
+    for (int i = 0; i < 4; i++) {
+      if (i >= octaves) break;
+      cloud += snoise(pos * frequency) * amplitude;
+      frequency *= 2.0;
+      amplitude *= 0.5;
+    }
+
+    // Shape into cloud formations
+    float cloudDensity = smoothstep(0.3, 0.7, cloud * 0.5 + 0.5);
+
+    // Weather-type modulation
+    if (u_weatherType >= 3.0) {
+      // Rain/snow: darker, denser clouds
+      cloudDensity *= 1.3;
+    } else if (u_weatherType >= 2.0) {
+      // Cloudy: medium density
+      cloudDensity *= 1.1;
+    } else if (u_weatherType <= 1.0) {
+      // Clear/fair: sparse, wispy clouds
+      cloudDensity *= 0.6;
+    }
+
+    // NON-LINEAR cloud coverage scaling (per user requirement)
+    // <40% coverage: thin, aurora visible through clouds
+    // 40-70%: gradual increase
+    // >70%: thick, blocks aurora completely
+    float coverageFactor;
+    if (u_cloudCoverage < 0.4) {
+      // Thin clouds - subtle
+      coverageFactor = u_cloudCoverage * 0.6;  // Max 24% opacity
+    } else if (u_cloudCoverage < 0.7) {
+      // Moderate clouds - linear ramp
+      float t = (u_cloudCoverage - 0.4) / 0.3;
+      coverageFactor = mix(0.24, 0.8, t);
+    } else {
+      // Thick clouds - exponential cutoff blocks aurora
+      float excess = (u_cloudCoverage - 0.7) / 0.3;
+      coverageFactor = 0.8 + (excess * excess * 0.2);  // 0.8 → 1.0 (exponential)
+    }
+
+    cloudDensity *= coverageFactor;
+
+    return cloudDensity;
+  }
+
+  // ===== CLOUD COLOR =====
+  vec3 getCloudColor(float altitude, float density) {
+    // Base cloud colors
+    vec3 cloudWhite = vec3(0.95, 0.95, 0.98);     // High white
+    vec3 cloudGray = vec3(0.6, 0.62, 0.65);       // Mid gray
+    vec3 cloudDark = vec3(0.25, 0.27, 0.30);      // Dark storm
+
+    // Weather-dependent color
+    vec3 baseColor;
+    if (u_weatherType >= 3.0) {
+      // Rain/snow: dark storm clouds
+      baseColor = mix(cloudDark, cloudGray, density * 0.5);
+    } else if (u_weatherType >= 2.0) {
+      // Cloudy: gray clouds
+      baseColor = mix(cloudGray, cloudWhite, density * 0.7);
+    } else {
+      // Clear/fair: white wispy clouds
+      baseColor = cloudWhite;
+    }
+
+    // Altitude-based shading (lower = darker due to aurora glow above)
+    float altitudeFactor = altitude / 12.0;
+    vec3 auroraGlow = vec3(0.3, 0.9, 0.4) * 0.15;  // Subtle green tint from aurora above
+    baseColor = mix(baseColor - auroraGlow, baseColor, altitudeFactor);
+
+    return baseColor;
   }
 
   // ===== MAGNETIC FIELD COMPUTATION =====
@@ -330,23 +436,72 @@ export const FRAGMENT_SHADER = `
     
     // Virtual camera setup
     float cameraAltitude = u_cameraAltitude; // 0.0 km (ground observer)
+
+    // ===== CLOUD LAYER RENDERING (0-12km) - RENDERED FIRST (BENEATH AURORA) =====
+    vec3 cloudColor = vec3(0.0);
+    float cloudAlpha = 0.0;
+
+    // Only render clouds if coverage > 5%
+    if (u_cloudCoverage > 0.05) {
+      int cloudLayers = int(4.0 * u_qualityScale);  // 4 layers desktop, 2 mobile
+      if (cloudLayers < 2) cloudLayers = 2;
+
+      for (int i = 0; i < 4; i++) {
+        if (i >= cloudLayers) break;
+
+        float t = float(i) / float(cloudLayers - 1);
+        float altitude = mix(0.5, 12.0, t);  // Cloud altitude range 0.5-12km
+
+        // Parallax for cloud layer (much closer than aurora)
+        vec2 cloudParallax = computeParallax(uv, altitude, pitchFactor);
+        vec2 cloudSamplePos = uv + cloudParallax;
+
+        // Guard against out-of-bounds
+        if (cloudSamplePos.x < 0.0 || cloudSamplePos.x > 1.0 ||
+            cloudSamplePos.y < 0.0 || cloudSamplePos.y > 1.0) {
+          continue;
+        }
+
+        // Sample cloud density
+        float cloudDensity = sampleCloudLayer(cloudSamplePos, altitude, u_time);
+
+        // Get cloud color
+        vec3 layerColor = getCloudColor(altitude, cloudDensity);
+
+        // Layer alpha (clouds are more opaque than aurora)
+        float layerAlpha = cloudDensity * 0.4;  // 40% max opacity per layer
+
+        // Accumulate (front-to-back)
+        cloudColor += layerColor * layerAlpha * (1.0 - cloudAlpha);
+        cloudAlpha += layerAlpha * (1.0 - cloudAlpha);
+
+        if (cloudAlpha >= 0.95) break;
+      }
+
+      // Ground fade for clouds
+      float cloudGroundFade = smoothstep(0.0, 0.3, uv.y);
+      cloudColor *= cloudGroundFade;
+      cloudAlpha *= cloudGroundFade;
+    }
+
+    // ===== AURORA RENDERING (80-300km) - COMPOSITED ON TOP OF CLOUDS =====
     float minAltitude = 80.0;  // km
     float maxAltitude = 300.0; // km
-    
-    // Ray-march through altitude layers
-    vec3 finalColor = vec3(0.0);
-    float finalAlpha = 0.0;
-    
+
+    // Start with cloud base
+    vec3 finalColor = cloudColor;
+    float finalAlpha = cloudAlpha;
+
     // Quality-based layer count (6 for desktop, 3 for mobile - clearer band separation)
     int layers = int(6.0 * u_qualityScale);
     if (layers < 2) layers = 2;
-    
+
     // Aurora cycle phase (40s cycle: calm → build → peak → return)
     float cyclePhase = getAuroraCyclePhase(u_time);
     // Soft baseline pulse for subtle variation
     float baselinePulse = getPulse(u_time) * 0.5 + 0.5; // Softer: 0.5-1.0 range
-    
-    // Ray-march loop
+
+    // Aurora ray-march loop
     for (int i = 0; i < 6; i++) {
       if (i >= layers) break;
       
