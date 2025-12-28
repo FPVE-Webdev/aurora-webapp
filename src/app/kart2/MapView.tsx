@@ -11,6 +11,21 @@ import { useVisualMode } from './hooks/useVisualMode';
 import VisualModeErrorBoundary from './components/VisualModeErrorBoundary';
 import { generateTromsoCityLights } from './utils/cityLights';
 
+/**
+ * Encode MET.no weather symbol code to shader weather type
+ * 0=clear, 1=fair, 2=cloudy, 3=rain, 4=snow, 5=fog
+ */
+function encodeWeatherType(symbolCode: string): number {
+  const code = symbolCode.toLowerCase();
+  if (code.includes('clearsky')) return 0;
+  if (code.includes('fair') || code.includes('partlycloudy')) return 1;
+  if (code.includes('cloudy')) return 2;
+  if (code.includes('rain') || code.includes('sleet') || code.includes('lightrain') || code.includes('heavyrain')) return 3;
+  if (code.includes('snow') || code.includes('lightsnow') || code.includes('heavysnow')) return 4;
+  if (code.includes('fog')) return 5;
+  return 2; // Default to cloudy
+}
+
 export default function MapView() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -24,13 +39,53 @@ export default function MapView() {
   const chaseState = useChaseRegions();
   const visualMode = useVisualMode();
 
-  // Weather data for cloud layer rendering (TEST VALUES - will be replaced with real MET.no data)
-  const [weatherData] = useState({
-    windSpeed: 8.0,          // 8 m/s westerly wind
-    windDirection: 270.0,    // Westerly (from west)
-    weatherType: 2.0,        // Cloudy
-    precipitation: 0.0,      // No precipitation
+  // Weather data for cloud layer rendering (REAL MET.NO DATA)
+  const [weatherData, setWeatherData] = useState({
+    windSpeed: 5.0,          // Default: 5 m/s westerly wind
+    windDirection: 270.0,    // Default: Westerly (from west)
+    weatherType: 2.0,        // Default: Cloudy
+    precipitation: 0.0,      // Default: No precipitation
   });
+
+  // Fetch real weather data from MET.no API
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        const res = await fetch('/api/weather/69.65/18.95'); // Tromsø coordinates
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+
+        setWeatherData({
+          windSpeed: data.windSpeed ?? 5.0,
+          windDirection: 270.0,  // Default westerly (MET.no doesn't provide direction in simple API)
+          weatherType: encodeWeatherType(data.symbolCode ?? 'cloudy'),
+          precipitation: data.precipitation ?? 0.0,
+        });
+
+        // eslint-disable-next-line no-console
+        console.log('[Weather] Updated:', {
+          windSpeed: data.windSpeed,
+          symbolCode: data.symbolCode,
+          weatherType: encodeWeatherType(data.symbolCode ?? 'cloudy'),
+          cloudCoverage: data.cloudCoverage,
+        });
+      } catch (err) {
+        // Silent fallback to defaults on error
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.warn('[Weather] Failed to fetch, using defaults:', err);
+        }
+      }
+    };
+
+    // Initial fetch
+    fetchWeather();
+
+    // Refresh every 15 minutes (MET.no update frequency)
+    const interval = setInterval(fetchWeather, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fixed "scene" camera: Tromsø viewpoint (not a navigable world map)
   const SCENE_CENTER: [number, number] = [18.95, 69.65];
