@@ -437,6 +437,11 @@ export const FRAGMENT_SHADER = `
     // Virtual camera setup
     float cameraAltitude = u_cameraAltitude; // 0.0 km (ground observer)
 
+    // Aurora cycle phase (40s cycle: calm → build → peak → return) - DECLARE EARLY FOR GLOBAL USE
+    float cyclePhase = getAuroraCyclePhase(u_time);
+    // Soft baseline pulse for subtle variation
+    float baselinePulse = getPulse(u_time) * 0.5 + 0.5; // Softer: 0.5-1.0 range
+
     // ===== CLOUD LAYER RENDERING (0-12km) - LOWER SCREEN ZONE =====
     // VERTICAL MASK: Clouds appear in lower 65% of screen (land/weather zone)
     vec3 cloudColor = vec3(0.0);
@@ -512,12 +517,7 @@ export const FRAGMENT_SHADER = `
     int layers = int(6.0 * u_qualityScale);
     if (layers < 2) layers = 2;
 
-    // Aurora cycle phase (40s cycle: calm → build → peak → return)
-    float cyclePhase = getAuroraCyclePhase(u_time);
-    // Soft baseline pulse for subtle variation
-    float baselinePulse = getPulse(u_time) * 0.5 + 0.5; // Softer: 0.5-1.0 range
-
-    // Aurora ray-march loop
+    // Aurora ray-march loop (cyclePhase and baselinePulse declared earlier)
     for (int i = 0; i < 6; i++) {
       if (i >= layers) break;
 
