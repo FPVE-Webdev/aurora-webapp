@@ -152,22 +152,22 @@ export const FRAGMENT_SHADER = `
   // Scientific aurora colors based on atmospheric emission wavelengths
 
   vec3 getAuroraColor(float altitude, float intensity) {
-    // Color bands (in kilometers)
-    // 80-100km:  Blue-purple (N2+ 427.8nm)
-    // 100-150km: Bright green (O 557.7nm) - primary band
-    // 200-300km: Red (O 630.0nm) - high altitude
+    // NATURAL POLAR PALETTE (cinematic, non-neon colors)
+    // 80-100km:  Subtle violet hints (low alpha)
+    // 100-150km: Deep green → cyan (primary band) - #3cff9e / #4ddcff
+    // 200-300km: Cyan tones (high altitude)
 
-    vec3 colorLow = vec3(0.6, 0.3, 1.0);     // Vibrant blue-purple (stronger)
-    vec3 colorMid = vec3(0.3, 1.0, 0.4);     // Bright vivid green (more saturated)
-    vec3 colorHigh = vec3(1.0, 0.3, 0.3);    // Bright red (more visible)
+    vec3 colorLow = vec3(0.48, 0.36, 1.0);   // Subtle violet #7a5cff (hint only)
+    vec3 colorMid = vec3(0.24, 1.0, 0.62);   // Deep green-cyan #3cff9e (primary)
+    vec3 colorHigh = vec3(0.30, 0.86, 1.0);  // Cyan #4ddcff (high altitude)
 
-    // Smooth transitions between color bands
+    // Smooth, natural transitions between color bands
     if (altitude < 120.0) {
-      // Transition from blue to green (80-120km)
+      // Transition from subtle violet to deep green (80-120km)
       float t = (altitude - 80.0) / 40.0;
       return mix(colorLow, colorMid, smoothstep(0.0, 1.0, t));
     } else {
-      // Transition from green to red (120-300km)
+      // Transition from deep green to cyan (120-300km)
       float t = (altitude - 120.0) / 180.0;
       return mix(colorMid, colorHigh, smoothstep(0.0, 1.0, t));
     }
@@ -330,14 +330,14 @@ export const FRAGMENT_SHADER = `
       altitude * 0.01
     );
     
-    // Time-based motion along magnetic field
-    // Different altitudes drift at different speeds (higher = slower)
-    float altitudeFactor = 1.0 - (altitude / 300.0) * 0.5;
-    float timeOffset = time * 0.00005 * u_motionSpeed * altitudeFactor;
+    // CINEMATIC motion: slow, fluid drift along magnetic field
+    // Different altitudes drift at different speeds (higher = slower, more majestic)
+    float altitudeFactor = 1.0 - (altitude / 300.0) * 0.6; // More variation by altitude
+    float timeOffset = time * 0.00003 * u_motionSpeed * altitudeFactor; // Slower base speed
     pos.z += timeOffset;
-    
-    // Horizontal drift (east-west)
-    pos.x += time * 0.00001 * u_motionSpeed;
+
+    // Gentle horizontal drift (east-west) - smooth, continuous
+    pos.x += time * 0.000008 * u_motionSpeed; // Slightly slower for fluidity
     
     // Multi-octave noise for detail
     float n = 0.0;
@@ -355,9 +355,10 @@ export const FRAGMENT_SHADER = `
       amplitude *= 0.5;
     }
     
-    // Vertical wave motion (curtains undulate)
-    float wave = sin(time * 0.0003 * u_motionSpeed + uv.x * 5.0) * 0.5;
-    n += wave * 0.2;
+    // Gentle vertical wave motion (elegant curtain undulation)
+    // Slow, smooth waves - no jitter
+    float wave = sin(time * 0.00018 * u_motionSpeed + uv.x * 4.0) * 0.5; // Slower frequency
+    n += wave * 0.15; // Reduced amplitude for smoothness
     
     // Shape into vertical curtains with sharp edges
     float curtain = smoothstep(0.4, 0.65, n * 0.5 + 0.5); // Sharper thresholds for clearer bands
@@ -385,34 +386,36 @@ export const FRAGMENT_SHADER = `
   }
 
   float getAuroraCyclePhase(float time) {
-    // Aurora cycle: ~40 second period with distinct phases
-    // Returns: phase multiplier (0.2 calm → 1.0 peak)
-    float cycleDuration = 40000.0; // 40 seconds
+    // CINEMATIC aurora cycle: 35 second period with smooth, natural rhythm
+    // Returns: phase multiplier (0.3 calm → 1.0 peak)
+    float cycleDuration = 35000.0; // 35 seconds (natural, slow)
     float cycleTime = mod(time, cycleDuration);
     float t = cycleTime / cycleDuration; // 0.0 to 1.0
 
-    // Phase timing:
-    // 0.0 - 0.4: Calm (0.2 intensity)
-    // 0.4 - 0.5: Build-up (0.2 → 1.0)
-    // 0.5 - 0.7: Peak (1.0 intensity, 8 seconds)
-    // 0.7 - 1.0: Return to calm (1.0 → 0.2)
+    // Phase timing (smooth, cinematic):
+    // 0.0 - 0.5: Calm phase (0.3 intensity, gentle breathing)
+    // 0.5 - 0.6: Build-up (0.3 → 1.0, gradual increase)
+    // 0.6 - 0.75: Peak (1.0 intensity, sustained glow)
+    // 0.75 - 1.0: Return to calm (1.0 → 0.3, gentle fade)
 
     float intensity;
-    if (t < 0.4) {
-      // Calm phase with subtle variation
-      intensity = 0.2 + sin(t * 15.708) * 0.05;
-    } else if (t < 0.5) {
-      // Build-up phase
-      float buildT = (t - 0.4) / 0.1;
-      intensity = mix(0.2, 1.0, smoothstep(0.0, 1.0, buildT));
-    } else if (t < 0.7) {
-      // Peak phase with micro-variations
-      float peakT = (t - 0.5) / 0.2;
-      intensity = 1.0 + sin(peakT * 31.416) * 0.1; // 1.0 ± 0.1
+    if (t < 0.5) {
+      // Long calm phase with gentle breathing
+      float breathCycle = sin(t * 12.566) * 0.08; // Subtle ±8% variation
+      intensity = 0.3 + breathCycle;
+    } else if (t < 0.6) {
+      // Smooth build-up phase (10% of cycle)
+      float buildT = (t - 0.5) / 0.1;
+      intensity = mix(0.3, 1.0, smoothstep(0.0, 1.0, buildT));
+    } else if (t < 0.75) {
+      // Peak phase with shimmer (±10% variation)
+      float peakT = (t - 0.6) / 0.15;
+      float shimmer = sin(peakT * 25.132) * 0.1; // Subtle shimmer
+      intensity = 1.0 + shimmer;
     } else {
-      // Return to calm
-      float returnT = (t - 0.7) / 0.3;
-      intensity = mix(1.0, 0.2, smoothstep(0.0, 1.0, returnT));
+      // Gentle return to calm
+      float returnT = (t - 0.75) / 0.25;
+      intensity = mix(1.0, 0.3, smoothstep(0.0, 1.0, returnT));
     }
 
     return intensity;
@@ -513,9 +516,10 @@ export const FRAGMENT_SHADER = `
     vec3 finalColor = cloudColor;
     float finalAlpha = cloudAlpha;
 
-    // Vertical mask: aurora in upper screen (sky zone)
-    // Fade in 0.40-0.50, full strength y > 0.50
-    float auroraVerticalMask = smoothstep(0.40, 0.50, uv.y);
+    // CINEMATIC VERTICAL MASK: Aurora strictly in upper 50-55% of screen (sky zone)
+    // Fade in 0.45-0.50, full strength y > 0.50
+    // This ensures aurora feels like it's above the viewer, never competing with land/UI
+    float auroraVerticalMask = smoothstep(0.45, 0.50, uv.y);
 
     // Quality-based layer count (6 for desktop, 3 for mobile - clearer band separation)
     int layers = int(6.0 * u_qualityScale);
@@ -572,26 +576,29 @@ export const FRAGMENT_SHADER = `
       if (finalAlpha >= 0.95) break;
     }
     
-    // ===== TROMSØ FOCAL GLOW (legacy, subtle in 3D mode) =====
-    
+    // ===== TROMSØ FOCAL GLOW (subtle, warm epicenter) =====
+
     vec2 toTromso = uv - u_tromsoCenter;
     float distToTromso = length(toTromso);
-    
-    // Subtle ground-level glow with slow pulse, intensifies during aurora peak
-    float tromsoGlow = pow(1.0 - clamp(distToTromso, 0.0, 1.0), u_glowRadius);
+
+    // VERY subtle warm glow - no hard halo, just gentle warmth
+    // Only visible when aurora is active, scales with intensity
+    float tromsoGlow = pow(1.0 - clamp(distToTromso, 0.0, 1.0), u_glowRadius * 1.2);
     float tromsoPulse = getTromsoPulse(u_time); // Dedicated 7s pulse cycle
-    tromsoGlow *= u_auroraIntensity * 1.5; // Reduced base for subtlety
-    tromsoGlow *= tromsoPulse;
-    tromsoGlow *= mix(0.5, 1.5, cyclePhase); // Glow intensifies during aurora peak
-    
-    vec3 tromsoColor = vec3(1.0, 0.8, 0.0); // Warm gold
-    finalColor += tromsoColor * tromsoGlow * 0.3; // Reduced contribution
-    finalAlpha += tromsoGlow * 0.2;
+    tromsoGlow *= u_auroraIntensity * 0.8; // Very subtle base
+    tromsoGlow *= tromsoPulse * 0.7; // Gentle pulsing
+    tromsoGlow *= mix(0.3, 1.0, cyclePhase); // Sync with aurora cycle
+
+    // Warm, natural gold (not harsh yellow)
+    vec3 tromsoColor = vec3(1.0, 0.85, 0.5);
+    finalColor += tromsoColor * tromsoGlow * 0.15; // Very subtle contribution
+    finalAlpha += tromsoGlow * 0.1;
     
     // ===== ATMOSPHERIC EFFECTS =====
 
-    // Cloud coverage dimming (only affects aurora, not clouds themselves)
-    float cloudDim = 1.0 - (u_cloudCoverage * 0.2);
+    // Cloud coverage dimming (subtle, aurora still visible through clouds)
+    // Never fully block aurora - clouds drift below, aurora above
+    float cloudDim = 1.0 - (u_cloudCoverage * 0.15); // Reduced from 0.2 for subtlety
     // Apply cloud dimming only to aurora portion (not cloud colors)
     vec3 auroraPortion = finalColor - cloudColor;
     auroraPortion *= cloudDim;

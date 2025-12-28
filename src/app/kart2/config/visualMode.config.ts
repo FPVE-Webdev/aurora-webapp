@@ -24,19 +24,19 @@ export const VISUAL_MODE_CONFIG = {
   altitudePrimary: 120,
   
   // ===== COLOR PARAMETERS (RGB) =====
-  // Based on atmospheric emission wavelengths
-  
-  /** Low altitude color (80-100km): Blue-purple (427.8nm N2+ emission) */
-  colorLow: [0.4, 0.2, 0.8] as [number, number, number],
-  
-  /** Mid altitude color (100-150km): Bright green (557.7nm O emission) */
-  colorMid: [0.2, 1.0, 0.3] as [number, number, number],
-  
-  /** High altitude color (200-300km): Red (630.0nm O emission) */
-  colorHigh: [1.0, 0.2, 0.2] as [number, number, number],
-  
-  /** Tromsø focal glow color (warm gold) */
-  colorTromsoGlow: [1.0, 0.8, 0.0] as [number, number, number],
+  // Natural polar palette: deep green → cyan, subtle violet hints
+
+  /** Low altitude color (80-100km): Subtle violet (hint only) */
+  colorLow: [0.48, 0.36, 1.0] as [number, number, number],  // #7a5cff
+
+  /** Mid altitude color (100-150km): Deep green → cyan (primary band) */
+  colorMid: [0.24, 1.0, 0.62] as [number, number, number],  // #3cff9e
+
+  /** High altitude color (200-300km): Cyan tones */
+  colorHigh: [0.30, 0.86, 1.0] as [number, number, number],  // #4ddcff
+
+  /** Tromsø focal glow color (warm subtle gold) */
+  colorTromsoGlow: [1.0, 0.85, 0.5] as [number, number, number],  // Warmer, less harsh
   
   // ===== CURTAIN STRUCTURE =====
   
