@@ -673,52 +673,8 @@ export default function MapView() {
 
         mapRef.current = map;
 
-        // --- Subtle cinematic drift (no user navigation) ---
-        // Gentle alternating easeTo (no per-frame JS).
-        const drift = {
-          t: 0,
-          timer: null as null | ReturnType<typeof setInterval>,
-          lastUserInteraction: 0,
-          isUserRotating: false,
-        };
-        const markUserInteraction = () => {
-          drift.lastUserInteraction = Date.now();
-        };
-        // Pause drift while user is actively rotating / shortly after
-        map.on('rotatestart', () => {
-          drift.isUserRotating = true;
-          markUserInteraction();
-        });
-        map.on('rotate', markUserInteraction);
-        map.on('rotateend', () => {
-          drift.isUserRotating = false;
-          markUserInteraction();
-        });
-
-        const applyDrift = () => {
-          if (!mapRef.current) return;
-          // Don't fight the user; wait a bit after interaction.
-          if (drift.isUserRotating) return;
-          if (Date.now() - drift.lastUserInteraction < 4500) return;
-
-          drift.t = (drift.t + 1) % 2;
-          const sign = drift.t === 0 ? 1 : -1;
-          const currentBearing = mapRef.current.getBearing?.() ?? SCENE_BEARING;
-          mapRef.current.easeTo({
-            center: [SCENE_CENTER[0] + sign * 0.02, SCENE_CENTER[1] + sign * 0.01],
-            // Preserve user's current bearing (look-around)
-            bearing: currentBearing,
-            pitch: SCENE_PITCH,
-            duration: 11000,
-            easing: (t: number) => t * t * (3 - 2 * t), // smoothstep
-            essential: true,
-          });
-        };
-        map.once('idle', () => {
-          applyDrift();
-          drift.timer = setInterval(applyDrift, 12000);
-        });
-        (map as any).__kart2_drift = drift;
+        // Map is completely static - no automatic drift or animation
+        // User controls view manually via rotation/zoom buttons only
       })
       .catch((err) => {
         if (process.env.NODE_ENV !== 'production') {
