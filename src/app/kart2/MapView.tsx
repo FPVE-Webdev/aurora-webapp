@@ -262,8 +262,8 @@ export default function MapView() {
         map.dragPan.disable();
         map.scrollZoom.disable();
         map.doubleClickZoom.disable();
-        // ZOOM LOCKED: All zoom controls disabled (zoom fixed at 11.16)
-        map.touchZoomRotate.disableZoom(); // Disable pinch-zoom, keep rotation
+        // ZOOM LOCKED: Disable all zoom controls (zoom fixed at 11.16)
+        map.touchZoomRotate.disable(); // Disable pinch-zoom and touch rotation
         // Allow horizontal look-around via rotation (bearing)
         map.dragRotate.enable();
         map.keyboard.disable();
