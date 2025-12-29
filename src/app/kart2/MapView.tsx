@@ -672,31 +672,7 @@ export default function MapView() {
     (mapRef.current as any).dimMapForVisualMode(visualMode.isEnabled);
   }, [visualMode.isEnabled]);
 
-  // Keyboard shortcuts for zoom testing (DEV MODE ONLY)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
-    if (!mapRef.current) return;
-
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Only respond to number keys 0-9
-      if (e.key >= '0' && e.key <= '9') {
-        const level = parseInt(e.key, 10);
-
-        // Map 0-9 to zoom range 5.0-9.0
-        // 0 = 5.0 (widest), 9 = 9.0 (closest)
-        const targetZoom = 5.0 + (level * 0.4444);  // 5.0 + (0-9) * 0.4444 ≈ 5.0-9.0
-
-        easeToZoom(targetZoom);
-
-        // Console log for testing
-        // eslint-disable-next-line no-console
-        console.log(`[Zoom Test] Key: ${level} → Zoom: ${targetZoom.toFixed(2)}`);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+  // Zoom is locked at 11.16 - keyboard zoom testing removed
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -909,9 +885,8 @@ export default function MapView() {
           {process.env.NODE_ENV !== 'production' && mapRef.current && (
             <div className="bg-gray-900/90 backdrop-blur-md text-white text-xs p-2 rounded shadow-lg">
               <p className="font-mono">
-                Zoom: {mapRef.current.getZoom?.()?.toFixed(2) ?? 'N/A'}
+                Zoom: {mapRef.current.getZoom?.()?.toFixed(2) ?? 'N/A'} (locked)
               </p>
-              <p className="text-[10px] text-gray-400 mt-1">Press 0-9 to test</p>
             </div>
           )}
         </div>
