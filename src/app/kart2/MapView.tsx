@@ -92,58 +92,21 @@ export default function MapView() {
 
   // Fixed "scene" camera: Tromsø viewpoint (not a navigable world map)
   const SCENE_CENTER: [number, number] = [18.95, 69.65];
-  // ZOOM OPTIMIZATION (2025-12-28): Close-up view of Tromsø
-  // Increased to 10.0 for maximum proximity while maintaining terrain visibility
-  const SCENE_ZOOM = 10.0;
+  // LOCKED ZOOM: Fixed at 11.16 for optimal aurora viewing
+  const SCENE_ZOOM = 11.16;
   // Side-view (cinematic horizon) - MAX TILT. User rotates horizontally to "look around".
   const SCENE_PITCH = 85; // Mapbox maximum pitch for full side-view
   // User should feel they are in Tromsø looking north
   const SCENE_BEARING = 0;
 
-  // Manual zoom + expand presets (still locked to Tromsø)
-  const ZOOM_STEP = 0.1;
-  const ZOOM_SCENE_MIN = 8.2;  // Allow zoom out
-  const ZOOM_SCENE_MAX = 12.0; // Allow extreme close-up for testing
+  // Zoom locked at 11.16 for optimal aurora viewing
+  const ZOOM_SCENE_MIN = 11.16;  // Locked zoom
+  const ZOOM_SCENE_MAX = 11.16;  // Locked zoom
   const ZOOM_EXPANDED_TARGET = 5.4;
   const ZOOM_EXPANDED_MIN = 5.2;
   const ZOOM_EXPANDED_MAX = 8.0;
 
-  const getZoomBounds = () => (isExpanded
-    ? { min: ZOOM_EXPANDED_MIN, max: ZOOM_EXPANDED_MAX }
-    : { min: ZOOM_SCENE_MIN, max: ZOOM_SCENE_MAX }
-  );
-
-  const clampZoom = (z: number) => {
-    const b = getZoomBounds();
-    return Math.min(b.max, Math.max(b.min, z));
-  };
-
-  const easeToZoom = (targetZoom: number) => {
-    if (!mapRef.current) return;
-    const currentBearing = mapRef.current.getBearing?.() ?? SCENE_BEARING;
-    mapRef.current.easeTo({
-      center: SCENE_CENTER,
-      zoom: clampZoom(targetZoom),
-      pitch: SCENE_PITCH,
-      // Preserve user's current bearing (horizontal look-around)
-      bearing: currentBearing,
-      duration: 650,
-      easing: (t: number) => t * t * (3 - 2 * t),
-      essential: true,
-    });
-  };
-
-  const zoomIn = () => {
-    if (!mapRef.current) return;
-    const next = (mapRef.current.getZoom?.() ?? SCENE_ZOOM) + ZOOM_STEP;
-    easeToZoom(next);
-  };
-
-  const zoomOut = () => {
-    if (!mapRef.current) return;
-    const next = (mapRef.current.getZoom?.() ?? SCENE_ZOOM) - ZOOM_STEP;
-    easeToZoom(next);
-  };
+  // Zoom is locked at 11.16 - no zoom functions needed
 
   const rotateBy = (deltaDeg: number) => {
     if (!mapRef.current) return;
@@ -300,9 +263,10 @@ export default function MapView() {
         map.dragPan.disable();
         map.scrollZoom.disable();
         map.doubleClickZoom.disable();
-        // Allow horizontal look-around via rotation (bearing). Zoom is constrained by min/max.
+        // ZOOM LOCKED: All zoom controls disabled (zoom fixed at 11.16)
+        map.touchZoomRotate.disableZoom(); // Disable pinch-zoom, keep rotation
+        // Allow horizontal look-around via rotation (bearing)
         map.dragRotate.enable();
-        map.touchZoomRotate.enable();
         map.keyboard.disable();
         map.boxZoom.disable();
         map.touchPitch.disable();
@@ -821,22 +785,6 @@ export default function MapView() {
                 title="Se mot høyre"
               >
                 <span className="text-base">↻</span>
-              </button>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={zoomIn}
-                className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
-                title="Zoom inn"
-              >
-                <span className="text-lg">+</span>
-              </button>
-              <button
-                onClick={zoomOut}
-                className="bg-gray-900/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:bg-black transition-colors text-gray-200 flex items-center justify-center w-10 h-10"
-                title="Zoom ut"
-              >
-                <span className="text-lg">−</span>
               </button>
             </div>
           </div>
