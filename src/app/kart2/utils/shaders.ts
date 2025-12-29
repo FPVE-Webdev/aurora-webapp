@@ -320,8 +320,10 @@ export const FRAGMENT_SHADER = `
   // ===== CURTAIN SAMPLING WITH 3D NOISE =====
 
   float sampleCurtain(vec2 uv, float altitude, float time, float pitch) {
-    // Center aurora sampling around Tromsø
-    vec2 centeredUV = uv - u_tromsoCenter;
+    // Center aurora sampling around Tromsø (offset from center for geographic accuracy)
+    // Use a small offset rather than direct subtraction to keep aurora visible
+    vec2 offset = (u_tromsoCenter - vec2(0.5, 0.5)) * 0.3; // 30% influence
+    vec2 centeredUV = uv - offset;
 
     // 3D position for noise sampling
     // When viewing from side, adjust sampling to show curtain depth
@@ -519,10 +521,10 @@ export const FRAGMENT_SHADER = `
     vec3 finalColor = cloudColor;
     float finalAlpha = cloudAlpha;
 
-    // CINEMATIC VERTICAL MASK: Aurora strictly in upper 50-55% of screen (sky zone)
-    // Fade in 0.45-0.50, full strength y > 0.50
-    // This ensures aurora feels like it's above the viewer, never competing with land/UI
-    float auroraVerticalMask = smoothstep(0.45, 0.50, uv.y);
+    // CINEMATIC VERTICAL MASK: Aurora in upper portion of screen (sky zone)
+    // Fade in 0.35-0.45, full strength y > 0.45
+    // This ensures aurora feels like it's above the viewer, while remaining visible
+    float auroraVerticalMask = smoothstep(0.35, 0.45, uv.y);
 
     // ===== AURORA DIRECTIONAL TILT (toward observer) =====
     // Physical approximation: aurora curtains lean toward observer
