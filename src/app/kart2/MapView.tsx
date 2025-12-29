@@ -662,19 +662,7 @@ export default function MapView() {
   }, []);
 
   // Expand toggle: widen zoom range + ease to expanded target, still locked center/bounds.
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const b = getZoomBounds();
-    mapRef.current.setMinZoom?.(b.min);
-    mapRef.current.setMaxZoom?.(b.max);
-
-    if (isExpanded) {
-      easeToZoom(ZOOM_EXPANDED_TARGET);
-    } else {
-      easeToZoom(SCENE_ZOOM);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isExpanded]);
+  // Zoom is locked - no expand/collapse zoom changes needed
 
   // Watch visual mode toggle and dim/restore map accordingly
   useEffect(() => {
