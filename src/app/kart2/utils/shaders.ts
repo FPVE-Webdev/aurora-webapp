@@ -320,13 +320,16 @@ export const FRAGMENT_SHADER = `
   // ===== CURTAIN SAMPLING WITH 3D NOISE =====
 
   float sampleCurtain(vec2 uv, float altitude, float time, float pitch) {
+    // Center aurora sampling around Tromsø
+    vec2 centeredUV = uv - u_tromsoCenter;
+
     // 3D position for noise sampling
     // When viewing from side, adjust sampling to show curtain depth
     float depthFactor = mix(1.0, 1.5, pitch); // Stretch curtains when tilted
 
     vec3 pos = vec3(
-      uv.x * 3.0 * u_curtainDensity,
-      uv.y * 2.0 * depthFactor,
+      centeredUV.x * 3.0 * u_curtainDensity,
+      centeredUV.y * 2.0 * depthFactor,
       altitude * 0.01
     );
     
