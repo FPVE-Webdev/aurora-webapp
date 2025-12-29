@@ -111,10 +111,9 @@ export default function MapView() {
   const rotateBy = (deltaDeg: number) => {
     if (!mapRef.current) return;
     const currentBearing = mapRef.current.getBearing?.() ?? SCENE_BEARING;
-    const currentZoom = mapRef.current.getZoom?.() ?? SCENE_ZOOM;
     mapRef.current.easeTo({
       center: SCENE_CENTER,
-      zoom: clampZoom(currentZoom),
+      zoom: SCENE_ZOOM, // Locked at 11.16
       pitch: SCENE_PITCH,
       bearing: currentBearing + deltaDeg,
       duration: 650,
