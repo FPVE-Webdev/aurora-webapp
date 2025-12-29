@@ -570,10 +570,14 @@ export const FRAGMENT_SHADER = `
 
       vec2 curtainBaseUV = uv + vec2(0.0, verticalOffset);
 
-      // Forward motion toward user (screen-up)
+      // Forward motion toward user (screen-up) - CYCLICAL
+      // Use mod() to create infinite loop: curtain approaches, then resets
+      float motionCycle = 45000.0; // 45 second cycle (slow, majestic)
+      float cyclicTime = mod(u_time, motionCycle);
+
       vec2 forwardMotion =
           auroraTowardUserDir *
-          u_time *
+          cyclicTime *
           approachSpeed *
           mix(0.6, 1.3, bandPhase);
 
