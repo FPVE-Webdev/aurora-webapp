@@ -521,6 +521,29 @@ export const FRAGMENT_SHADER = `
     // This ensures aurora feels like it's above the viewer, never competing with land/UI
     float auroraVerticalMask = smoothstep(0.45, 0.50, uv.y);
 
+    // ===== AURORA DIRECTIONAL TILT (toward observer) =====
+    // Physical approximation: aurora curtains lean toward observer
+    // ~25-30° apparent tilt depending on pitch, intensity, and cloud cover
+
+    float baseTilt = 0.44; // ≈25 degrees in radians
+
+    float pitchInfluence = clamp(pitchFactor, 0.0, 1.0);
+    float intensityInfluence = clamp(u_auroraIntensity * 1.5, 0.0, 1.0); // Use intensity as proxy for KP
+    float cloudDamp = 1.0 - clamp(u_cloudCoverage, 0.0, 1.0);
+
+    float auroraTilt = baseTilt
+                     * mix(0.6, 1.0, pitchInfluence)
+                     * mix(0.7, 1.1, intensityInfluence)
+                     * mix(0.5, 1.0, cloudDamp);
+
+    // Directional drift vector (aurora leans toward observer)
+    vec2 auroraDriftDir = normalize(vec2(
+        1.0,
+        -tan(auroraTilt)
+    ));
+
+    float driftSpeed = 0.00015; // Slow directional drift
+
     // Quality-based layer count (6 for desktop, 3 for mobile - clearer band separation)
     int layers = int(6.0 * u_qualityScale);
     if (layers < 2) layers = 2;
@@ -534,7 +557,11 @@ export const FRAGMENT_SHADER = `
 
       // Parallax offset for this altitude layer
       vec2 parallaxOffset = computeParallax(uv, altitude, pitchFactor);
-      vec2 samplePos = uv + parallaxOffset;
+
+      // Apply directional tilt drift
+      vec2 tiltDrift = auroraDriftDir * u_time * driftSpeed;
+
+      vec2 samplePos = uv + parallaxOffset + tiltDrift;
 
       // Guard against out-of-bounds sampling
       if (samplePos.x < 0.0 || samplePos.x > 1.0 ||
