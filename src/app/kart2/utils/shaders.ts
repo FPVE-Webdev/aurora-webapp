@@ -526,8 +526,23 @@ export const FRAGMENT_SHADER = `
     // This ensures aurora feels like it's above the viewer, while remaining visible
     float auroraVerticalMask = smoothstep(0.35, 0.45, uv.y);
 
-    // ===== AURORA RENDERING LOOP =====
-    // Drift motion is handled internally in sampleCurtain() to remain contained
+    // --------------------------------------------------
+    // AURORA VIEW MODEL
+    // User stands south of Tromsø, looking north.
+    // Aurora curtains move TOWARD observer:
+    //  - originate lower in aurora field
+    //  - rise upward in screen-space
+    //  - grow larger / stronger as they approach
+    // --------------------------------------------------
+
+    // Screen-space vertical direction (toward user = screen-up)
+    vec2 auroraTowardUserDir = normalize(vec2(0.0, -1.0));
+
+    // Motion speed scales with activity (KP index) & pitch
+    float approachSpeed =
+        0.00018 *
+        mix(0.7, 1.4, clamp(u_auroraIntensity * 1.5, 0.0, 1.0)) *
+        mix(0.8, 1.2, pitchFactor);
 
     // Quality-based layer count (6 for desktop, 3 for mobile - clearer band separation)
     int layers = int(6.0 * u_qualityScale);
@@ -540,10 +555,32 @@ export const FRAGMENT_SHADER = `
       float t = float(i) / float(layers - 1);
       float altitude = mix(minAltitude, maxAltitude, t);
 
+      // Vertical curtain progression: lower bands appear first, upper later
+      float bandPhase = float(i) / float(layers - 1);
+
       // Parallax offset for this altitude layer
       vec2 parallaxOffset = computeParallax(uv, altitude, pitchFactor);
 
-      vec2 samplePos = uv + parallaxOffset;
+      // --------------------------------------------------
+      // Standing aurora curtains moving toward observer
+      // --------------------------------------------------
+
+      // Curtains originate slightly LOWER in aurora field
+      float verticalOffset = mix(0.18, 0.0, bandPhase);
+
+      vec2 curtainBaseUV = uv + vec2(0.0, verticalOffset);
+
+      // Forward motion toward user (screen-up)
+      vec2 forwardMotion =
+          auroraTowardUserDir *
+          u_time *
+          approachSpeed *
+          mix(0.6, 1.3, bandPhase);
+
+      vec2 samplePos =
+          curtainBaseUV +
+          parallaxOffset +
+          forwardMotion;
 
       // Guard against out-of-bounds sampling
       if (samplePos.x < 0.0 || samplePos.x > 1.0 ||
@@ -567,6 +604,19 @@ export const FRAGMENT_SHADER = `
       float verticalBoost = smoothstep(0.5, 0.95, uv.y); // Starts at mid-screen, strong at zenith
       verticalBoost = mix(1.0, verticalBoost * 1.8, pitchFactor); // More dramatic when tilted
       curtainValue *= verticalBoost;
+
+      // Curtain amplification as it approaches observer
+      float proximityBoost =
+          smoothstep(0.35, 0.75, uv.y) *
+          mix(0.6, 1.4, bandPhase);
+
+      curtainValue *= proximityBoost;
+
+      // Additional vertical curtain sharpening
+      float verticalCurtain =
+          smoothstep(0.0, 0.12, abs(fract(samplePos.x * 6.0) - 0.5));
+
+      curtainValue *= verticalCurtain;
 
       // Apply vertical mask to keep aurora in upper zone
       curtainValue *= auroraVerticalMask;
