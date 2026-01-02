@@ -62,7 +62,8 @@ BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = '';
 
 CREATE TRIGGER update_organizations_updated_at
   BEFORE UPDATE ON organizations
@@ -286,7 +287,8 @@ BEGIN
 
   RETURN QUERY SELECT v_id, v_key, v_prefix;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Function: Verify API Key
 CREATE OR REPLACE FUNCTION verify_api_key(p_key TEXT)
@@ -317,7 +319,8 @@ BEGIN
   SET last_used_at = NOW()
   WHERE key_hash = v_hash;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Comments
 COMMENT ON TABLE api_keys IS 'API keys for authentication and usage tracking';
@@ -464,7 +467,8 @@ BEGIN
     p_metadata
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Materialized View: Daily Usage Summary
 CREATE MATERIALIZED VIEW daily_usage_summary AS
@@ -492,7 +496,8 @@ RETURNS VOID AS $$
 BEGIN
   REFRESH MATERIALIZED VIEW CONCURRENTLY daily_usage_summary;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = '';
 
 -- Comments
 COMMENT ON TABLE usage_analytics IS 'Track API usage for billing and analytics';
@@ -622,7 +627,8 @@ BEGIN
 
   RETURN v_subscription_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Function: Upgrade Subscription
 CREATE OR REPLACE FUNCTION upgrade_subscription(
@@ -680,7 +686,8 @@ BEGIN
 
   RETURN (SELECT id FROM subscriptions WHERE organization_id = p_organization_id);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Function: Check Usage Quota
 CREATE OR REPLACE FUNCTION check_usage_quota(p_organization_id UUID)
@@ -718,7 +725,8 @@ BEGIN
     GREATEST(0, v_used - COALESCE(v_limit, 999999999)) AS overage,
     (v_limit IS NOT NULL AND v_used > v_limit) AS quota_exceeded;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Comments
 COMMENT ON TABLE subscriptions IS 'Subscription plans and billing cycles';
@@ -834,7 +842,8 @@ BEGIN
 
   RETURN v_number;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = '';
 
 -- Function: Create Monthly Invoice
 CREATE OR REPLACE FUNCTION create_monthly_invoice(p_organization_id UUID)
@@ -935,7 +944,8 @@ BEGIN
 
   RETURN v_invoice_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Function: Mark Invoice as Paid
 CREATE OR REPLACE FUNCTION mark_invoice_paid(
@@ -954,7 +964,8 @@ BEGIN
     updated_at = NOW()
   WHERE id = p_invoice_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Comments
 COMMENT ON TABLE invoices IS 'Invoice records for billing';
@@ -1094,7 +1105,8 @@ BEGIN
 
   RETURN v_widget_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Function: Update Widget Stats
 CREATE OR REPLACE FUNCTION update_widget_stats()
@@ -1127,7 +1139,8 @@ BEGIN
   WHERE last_seen_at < NOW() - INTERVAL '7 days'
     AND status = 'active';
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Comments
 COMMENT ON TABLE widget_instances IS 'Track deployed widget instances';
@@ -1242,7 +1255,8 @@ BEGIN
   WHERE u.organization_id = p_organization_id
     AND u.status = 'active';
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Function: Mark Notification as Read
 CREATE OR REPLACE FUNCTION mark_notification_read(p_notification_id UUID)
@@ -1255,7 +1269,8 @@ BEGIN
   WHERE id = p_notification_id
     AND user_id = (SELECT id FROM users WHERE auth_id = auth.uid() LIMIT 1);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Function: Mark All Notifications as Read
 CREATE OR REPLACE FUNCTION mark_all_notifications_read()
@@ -1268,7 +1283,8 @@ BEGIN
   WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid() LIMIT 1)
     AND read = FALSE;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = '';
 
 -- Trigger: Auto-notify on usage quota warning
 CREATE OR REPLACE FUNCTION notify_usage_quota_warning()
@@ -1318,7 +1334,8 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = '';
 
 -- Attach trigger (fires on widget impressions)
 CREATE TRIGGER trigger_usage_quota_warning
