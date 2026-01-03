@@ -51,8 +51,11 @@ function isWebGL2(gl: WebGLRenderingContext): boolean {
 
 export function createAurora3DLayer(mapboxgl: any, opts: Aurora3DLayerOptions) {
   const id = opts.id ?? 'aurora-3d';
-  const altitudeMeters = opts.altitudeMeters ?? 110_000;
-  const latSpanDeg = opts.latSpanDeg ?? 1.0;
+  const altitudeMeters = opts.altitudeMeters ?? 110_000; // treated as TOP altitude
+  // Aurora is a vertical curtain: use a bottom altitude well below the top so it reads in a side-on scene.
+  const bottomAltitudeMeters = Math.max(70_000, altitudeMeters - 180_000);
+  // Curtain latitude "thickness" (degrees). Keep small; this is a vertical plane, not a horizontal sheet.
+  const latSpanDeg = opts.latSpanDeg ?? 0.08;
   const lonSpanDeg = opts.lonSpanDeg ?? 3.2;
   const northOffsetDeg = opts.northOffsetDeg ?? 0.55;
   const intensity = Math.max(0, Math.min(1, opts.intensity ?? 0.85));
@@ -104,7 +107,9 @@ export function createAurora3DLayer(mapboxgl: any, opts: Aurora3DLayerOptions) {
                      + sin((v_uv.x * 13.0) - t * 3.1) * 0.12;
           float shimmer = sin((v_uv.x * 28.0) + (y * 9.0) + t * 6.0) * 0.08;
           float n = 0.55 + wave + shimmer;
-          float alpha = band * smoothstep(0.30, 0.92, n) * u_intensity * 1.6;
+          // Visibility boost: Mapbox 3D scene + additive blending can make subtle alpha vanish.
+          // Clamp to avoid blowing out highlights.
+          float alpha = clamp(band * smoothstep(0.22, 0.92, n) * u_intensity * 6.0, 0.0, 1.0);
 
           // Color ramp: teal -> cyan -> violet hint
           vec3 c1 = vec3(0.10, 0.95, 0.75);
@@ -147,7 +152,7 @@ export function createAurora3DLayer(mapboxgl: any, opts: Aurora3DLayerOptions) {
                      + sin((v_uv.x * 13.0) - t * 3.1) * 0.12;
           float shimmer = sin((v_uv.x * 28.0) + (y * 9.0) + t * 6.0) * 0.08;
           float n = 0.55 + wave + shimmer;
-          float alpha = band * smoothstep(0.30, 0.92, n) * u_intensity * 1.6;
+          float alpha = clamp(band * smoothstep(0.22, 0.92, n) * u_intensity * 6.0, 0.0, 1.0);
 
           vec3 c1 = vec3(0.10, 0.95, 0.75);
           vec3 c2 = vec3(0.20, 0.95, 1.00);
@@ -171,19 +176,25 @@ export function createAurora3DLayer(mapboxgl: any, opts: Aurora3DLayerOptions) {
       uTime = gl.getUniformLocation(program, 'u_time');
       uIntensity = gl.getUniformLocation(program, 'u_intensity');
 
-      // Build a simple rectangle "curtain" north of Tromsø, at high altitude.
+      // Build a vertical "curtain" north of Tromsø.
+      // Using a vertical plane (instead of a horizontal sheet) is critical for visibility at pitch=85.
       const [lng0, lat0] = opts.centerLngLat;
       const latCenter = lat0 + northOffsetDeg;
-      const latMin = latCenter - latSpanDeg * 0.5;
-      const latMax = latCenter + latSpanDeg * 0.5;
       const lonMin = lng0 - lonSpanDeg * 0.5;
       const lonMax = lng0 + lonSpanDeg * 0.5;
 
       // MercatorCoordinate gives world-space units Mapbox expects for u_matrix.
-      const p00 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, latMin], altitudeMeters);
-      const p10 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, latMin], altitudeMeters);
-      const p01 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, latMax], altitudeMeters);
-      const p11 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, latMax], altitudeMeters);
+      // Two vertical edges at a fixed latitude (latCenter), from bottomAltitude -> topAltitude.
+      // We add a tiny latSpanDeg to avoid precision issues when the plane is perfectly flat.
+      const latA = latCenter - latSpanDeg * 0.5;
+      const latB = latCenter + latSpanDeg * 0.5;
+
+      // Bottom edge (lower altitude)
+      const p00 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, latA], bottomAltitudeMeters);
+      const p10 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, latA], bottomAltitudeMeters);
+      // Top edge (upper altitude)
+      const p01 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, latB], altitudeMeters);
+      const p11 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, latB], altitudeMeters);
 
       // Positions: 4 corners (two triangles), UV mapped.
       const positions = new Float32Array([
@@ -221,9 +232,10 @@ export function createAurora3DLayer(mapboxgl: any, opts: Aurora3DLayerOptions) {
 
       gl.useProgram(program);
 
-      // Depth test enabled so terrain/buildings can occlude the aurora.
-      gl.enable(gl.DEPTH_TEST);
-      gl.depthFunc(gl.LEQUAL);
+      // IMPORTANT:
+      // In Mapbox's 3D pipeline the depth buffer can fully occlude far geometry (esp. at low horizon angles).
+      // For the "wow" aurora effect we prefer guaranteed visibility over perfect occlusion.
+      gl.disable(gl.DEPTH_TEST);
       gl.depthMask(false); // Don't write depth (transparent layer).
 
       gl.enable(gl.BLEND);

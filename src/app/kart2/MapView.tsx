@@ -1313,7 +1313,8 @@ export default function MapView() {
       </div>
 
       {/* Visual Mode Canvas Overlay - wrapped for proper z-index stacking */}
-      {data && visualMode.isClient && mapRef.current && !aurora3DActive && (
+      {/* Production fallback: keep the 2D overlay available even if 3D layers are enabled but not visible on some GPUs/drivers. */}
+      {data && visualMode.isClient && mapRef.current && (!aurora3DActive || process.env.NODE_ENV === 'production') && (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
           <VisualModeErrorBoundary
             resetKey={`${visualMode.isEnabled}-${data.timestamp}`}
@@ -1321,8 +1322,10 @@ export default function MapView() {
           >
             <VisualModeCanvas
               isEnabled={visualMode.isEnabled}
-              // If we have 3D clouds, disable shader-clouds to avoid double rendering.
-              weatherModeEnabled={weatherMode.isEnabled && !clouds3DActive}
+              // In production we allow shader-clouds as a fallback if 3D clouds are enabled but not visible.
+              weatherModeEnabled={
+                weatherMode.isEnabled && (process.env.NODE_ENV === 'production' || !clouds3DActive)
+              }
               kpIndex={data.kp}
               auroraProbability={data.probability}
               cloudCoverage={chaseState.tromsoCloudCoverage}
