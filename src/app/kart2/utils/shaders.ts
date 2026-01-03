@@ -282,7 +282,7 @@ export const FRAGMENT_SHADER = `
     // === DEPTH-BASED DENSITY GRADIENT ===
     // Clouds are denser "in the background" (upper part of cloud zone)
     // This creates realistic perspective depth
-    float depthGradient = smoothstep(0.0, CLOUD_TOP_Y, uv.y); // 0 at bottom, 1 at top
+    float depthGradient = smoothstep(0.0, CLOUD_TOP, uv.y); // 0 at bottom, 1 at top
     float densityBoost = mix(0.7, 1.3, depthGradient); // Less dense near ground, denser at horizon
     cloudDensity *= densityBoost;
 
