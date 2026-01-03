@@ -95,7 +95,7 @@ export const VISUAL_MODE_CONFIG = {
   // ===== VERTEX DISPLACEMENT PARAMETERS (NEW) =====
 
   /** Curtain wave amplitude (vertical displacement strength) */
-  curtainWaveAmplitude: 0.08, // Moderate wave height
+  curtainWaveAmplitude: 0.15, // TESTING: Increased for visibility
 
   /** Curtain wave frequency (number of wave peaks across screen) */
   curtainWaveFrequency: 8.0, // Creates 8 major curtain bands
@@ -125,19 +125,19 @@ export const VISUAL_MODE_CONFIG = {
   // ===== INTENSITY & VISIBILITY =====
   
   /** KP weight in intensity formula */
-  intensityKpWeight: 0.7,  // Increased from 0.5 for stronger effect
+  intensityKpWeight: 2.0,  // TESTING: Much higher for visibility
 
   /** Probability weight in intensity formula */
-  intensityProbabilityWeight: 0.35,  // Increased from 0.25
+  intensityProbabilityWeight: 1.0,  // TESTING: Much higher for visibility
   
   /** Minimum intensity threshold (below this, aurora not rendered) */
   intensityMinThreshold: 0.05,
   
   /** Alpha tuning multiplier (global transparency) */
-  alphaTune: 0.85,  // Increased from 0.75 for more vivid curtains
+  alphaTune: 2.5,  // TESTING: Dramatically increased for visibility
 
   /** Layer alpha contribution */
-  layerAlpha: 0.25,  // Increased from 0.15
+  layerAlpha: 0.8,  // TESTING: Much higher for visibility
   
   /** Cloud coverage impact multiplier */
   cloudImpact: 0.2,

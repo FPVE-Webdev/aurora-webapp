@@ -548,7 +548,9 @@ export const FRAGMENT_SHADER = `
         vec3 cloudFarColor  = vec3(0.03, 0.05, 0.07); // dark horizon clouds
 
         cloudColor = mix(cloudNearColor, cloudFarColor, distanceFade);
-        cloudAlpha = cloudOpacity;
+
+        // TESTING: Boost cloud visibility (3x multiplier)
+        cloudAlpha = cloudOpacity * 3.0;
       }
     }
 

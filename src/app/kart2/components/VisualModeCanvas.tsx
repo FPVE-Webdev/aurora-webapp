@@ -414,6 +414,11 @@ export default function VisualModeCanvas({
         auroraIntensity,
         curtainDensity
       });
+      console.log('[VisualMode] Weather data:', {
+        weatherEnabled,
+        cloudCoverage,
+        cloudImpact: VISUAL_MODE_CONFIG.cloudImpact
+      });
     }
 
     // Adaptive quality: detect device and set FPS targets
