@@ -415,7 +415,7 @@ export default function VisualModeCanvas({
         curtainDensity
       });
       console.log('[VisualMode] Weather data:', {
-        weatherEnabled,
+        weatherModeEnabled,
         cloudCoverage,
         cloudImpact: VISUAL_MODE_CONFIG.cloudImpact
       });
