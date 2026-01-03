@@ -194,8 +194,8 @@ export default function MapView() {
     if (!map || !isMapReady) return;
 
     const layerId = 'clouds-3d';
-    const clouds3DFeatureEnabled =
-      process.env.NEXT_PUBLIC_KART2_CLOUDS3D === '1' || process.env.NODE_ENV !== 'production';
+    // Production default: ON (disable only via NEXT_PUBLIC_KART2_CLOUDS3D=0)
+    const clouds3DFeatureEnabled = process.env.NEXT_PUBLIC_KART2_CLOUDS3D !== '0';
 
     let cancelled = false;
     let idleHandler: (() => void) | null = null;
@@ -220,9 +220,9 @@ export default function MapView() {
     };
 
     // Cloud deck for the 3D pipeline:
-    // - Only show when Visual Mode is enabled AND Aurora3D is active (i.e. we are not using the old overlay canvas)
     // - Controlled by Weather toggle
-    const shouldShowClouds3D = visualMode.isEnabled && aurora3DActive && weatherMode.isEnabled;
+    // - Independent of aurora-3d so we can replace the old 2D cloud shader in production.
+    const shouldShowClouds3D = visualMode.isEnabled && weatherMode.isEnabled;
 
     if (!clouds3DFeatureEnabled || !shouldShowClouds3D) {
       removeLayer();
@@ -1322,10 +1322,8 @@ export default function MapView() {
           >
             <VisualModeCanvas
               isEnabled={visualMode.isEnabled}
-              // In production we allow shader-clouds as a fallback if 3D clouds are enabled but not visible.
-              weatherModeEnabled={
-                weatherMode.isEnabled && (process.env.NODE_ENV === 'production' || !clouds3DActive)
-              }
+              // If we have 3D clouds, disable shader-clouds to avoid the old "screen-space" cloud band.
+              weatherModeEnabled={weatherMode.isEnabled && !clouds3DActive}
               kpIndex={data.kp}
               auroraProbability={data.probability}
               cloudCoverage={chaseState.tromsoCloudCoverage}
