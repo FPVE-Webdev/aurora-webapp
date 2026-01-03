@@ -981,17 +981,17 @@ export default function MapView() {
                   'interpolate',
                   ['linear'],
                   ['zoom'],
-                  7, 'rgba(120,255,200,0.03)',
-                  10, 'rgba(140,255,220,0.06)',
-                  12, 'rgba(160,255,230,0.08)'
+                  7, 'rgba(80,255,210,0.015)',
+                  10, 'rgba(90,255,220,0.025)',
+                  12, 'rgba(110,255,230,0.035)'
                 ],
                 'fill-opacity': [
                   'interpolate',
                   ['linear'],
                   ['zoom'],
-                  7, 0.15,
-                  10, 0.35,
-                  12, 0.5
+                  7, 0.10,
+                  10, 0.22,
+                  12, 0.30
                 ]
               }
             });
@@ -1104,24 +1104,25 @@ export default function MapView() {
             }
 
             // === OCEAN CONTRAST ENHANCEMENT ===
-            // Zoom-responsive color gradient for depth perception
+            // Zoom-responsive color gradient for depth perception.
+            // In Visual Mode (aurora ON) we keep the ocean MUCH darker to preserve night contrast at zoom=12.
             map.setPaintProperty('water', 'fill-color', [
               'interpolate',
               ['linear'],
               ['zoom'],
-                6, '#06121a',   // deep arctic night
-                9, '#0b2733',   // mid depth
-                12, '#123a4b'   // near: more visible teal
+              6, isVisualMode ? '#010509' : '#06121a', // near-black in aurora mode
+              9, isVisualMode ? '#021018' : '#0b2733',
+              12, isVisualMode ? '#03202b' : '#123a4b' // still a hint of teal to separate from land
             ]);
 
-            // Zoom-responsive opacity for clarity
+            // Opacity: slightly lower in Visual Mode to avoid the sea reading "flat bright".
             map.setPaintProperty('water', 'fill-opacity', [
               'interpolate',
               ['linear'],
               ['zoom'],
-                6, 0.60,
-                9, 0.78,
-                12, 0.92
+              6, isVisualMode ? 0.48 : 0.60,
+              9, isVisualMode ? 0.58 : 0.78,
+              12, isVisualMode ? 0.72 : 0.92
             ]);
 
               // Coastline / shore glow (if present)
@@ -1131,8 +1132,8 @@ export default function MapView() {
                 // Keep subtle: we only want a hint of shoreline readability.
                 if (layerId.includes('waterway')) {
                   try {
-                    map.setPaintProperty(layerId, 'line-color', '#2aa5c8');
-                    map.setPaintProperty(layerId, 'line-opacity', 0.25);
+                    map.setPaintProperty(layerId, 'line-color', isVisualMode ? '#3dd6ff' : '#2aa5c8');
+                    map.setPaintProperty(layerId, 'line-opacity', isVisualMode ? 0.20 : 0.25);
                     map.setPaintProperty(layerId, 'line-width', [
                       'interpolate', ['linear'], ['zoom'],
                       6, 0.2,
@@ -1141,8 +1142,8 @@ export default function MapView() {
                   } catch {}
                 } else {
                   try {
-                    map.setPaintProperty(layerId, 'fill-color', 'rgba(40,170,200,0.18)');
-                    map.setPaintProperty(layerId, 'fill-opacity', 0.35);
+                    map.setPaintProperty(layerId, 'fill-color', isVisualMode ? 'rgba(80,220,255,0.12)' : 'rgba(40,170,200,0.18)');
+                    map.setPaintProperty(layerId, 'fill-opacity', isVisualMode ? 0.28 : 0.35);
                   } catch {}
                 }
               });
@@ -1194,6 +1195,19 @@ export default function MapView() {
             // Apply ocean settings based on current state
             const currentPitch = map.getPitch?.() ?? SCENE_PITCH;
             configureOcean(isDimmed, currentPitch);
+
+            // Also dim aurora reflection on water when Visual Mode is active,
+            // otherwise the reflection can make the sea read too bright at zoom=12.
+            if (map.getLayer('aurora-water-reflection')) {
+              map.setPaintProperty('aurora-water-reflection', 'fill-opacity', [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                7, isDimmed ? 0.06 : 0.10,
+                10, isDimmed ? 0.12 : 0.22,
+                12, isDimmed ? 0.18 : 0.30
+              ]);
+            }
 
             // Dim landuse layers (parks, industrial, etc.)
             const landuseLayers = ['landuse', 'landcover'];
