@@ -97,12 +97,12 @@ export const FRAGMENT_SHADER = `
   uniform float u_weatherEnabled;     // 1.0 = weather on, 0.0 = weather off
 
   // ===== VERTICAL ZONE BOUNDARIES =====
-  // CLOUD LAYER PLACEMENT – LANDSCAPE + HORIZON COVER
+  // CLOUD LAYER PLACEMENT – AT HORIZON LINE
   // Assumptions: uv.y = 0.0 (near user), uv.y = 1.0 (far horizon/sky)
-  const float CLOUD_BOTTOM  = 0.00; // Bottom of screen (foreground)
-  const float CLOUD_TOP     = 0.45; // Top of cloud zone (below horizon)
+  const float CLOUD_BOTTOM  = 0.35; // Cloud layer starts (lower third)
+  const float CLOUD_TOP     = 0.55; // Cloud layer ends (AT horizon line)
   const float AURORA_BOTTOM = 0.50; // Aurora above horizon (flat band in sky)
-  const float AURORA_TOP    = 0.85; // Aurora band top (50-85% screen height)
+  const float AURORA_TOP    = 0.90; // Aurora band top (higher in sky)
 
   // ===== 3D SIMPLEX NOISE IMPLEMENTATION =====
   // Based on Stefan Gustavson's implementation
@@ -572,18 +572,16 @@ export const FRAGMENT_SHADER = `
                                smoothstep(AURORA_TOP + 0.05, AURORA_TOP - 0.15, uv.y);
 
     // --------------------------------------------------
-    // AURORA VIEW MODEL
-    // User stands south of Tromsø, looking north.
-    // Aurora curtains move TOWARD observer:
-    //  - originate lower in aurora field
-    //  - rise upward in screen-space
-    //  - grow larger / stronger as they approach
+    // AURORA VIEW MODEL (REVISED)
+    // User looks north at aurora over horizon.
+    // Aurora moves HORIZONTALLY toward user (right to left drift).
+    // No vertical "rising" motion - stays flat above horizon.
     // --------------------------------------------------
 
-    // Screen-space vertical direction (toward user = screen-up)
-    vec2 auroraTowardUserDir = normalize(vec2(0.0, -1.0));
+    // Horizontal drift direction (toward user from right)
+    vec2 auroraTowardUserDir = normalize(vec2(-1.0, 0.0));
 
-    // Motion speed scales with activity (KP index) & pitch
+    // Motion speed - very slow horizontal drift
     // 85% slower for majestic, slow-moving aurora
     float approachSpeed =
         0.000027 *  // Reduced by 85% (was 0.00018)
