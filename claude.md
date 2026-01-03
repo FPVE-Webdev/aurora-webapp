@@ -18,4 +18,9 @@ Alle samtaler og oppgaver i dette prosjektet skal gjennomføres i rekkefølgen:
 - Verifiser resultatet (build/lints/tests og/eller browser-sjekk når relevant).
 - Oppsummer endringene kort, med hva som ble gjort og hva som bør sjekkes i prod.
 
+## Push-policy (localhost før `main`/Vercel)
+
+- **Før enhver push til `main`**: endringen skal verifiseres lokalt på **localhost** (relevant side/feature, og med samme toggles/modus som endringen påvirker).
+- **Deretter**: push til `main` (som trigger deploy på Vercel).
+
 
