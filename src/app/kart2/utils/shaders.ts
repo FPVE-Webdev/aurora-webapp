@@ -21,6 +21,8 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
  */
 
 export const VERTEX_SHADER = `
+  precision mediump float;
+
   attribute vec2 a_position;
   varying vec2 v_uv;
 
