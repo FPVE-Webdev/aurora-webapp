@@ -553,9 +553,9 @@ export const FRAGMENT_SHADER = `
     float minAltitude = 80.0;  // km
     float maxAltitude = 300.0; // km
 
-    // Start with cloud base
-    vec3 finalColor = cloudColor;
-    float finalAlpha = cloudAlpha;
+    // Render aurora SEPARATELY from clouds (proper Z-ordering)
+    vec3 auroraColor = vec3(0.0);
+    float auroraAlpha = 0.0;
 
     // === WORLD-SPACE AURORA POSITIONING ===
     // Project 3D altitude (80-300km) to screen Y based on camera pitch
@@ -646,7 +646,8 @@ export const FRAGMENT_SHADER = `
       curtainValue *= altitudeFalloff;
 
       // === AURORA HORIZONTAL DRIFT (slow, majestic movement) ===
-      float auroraY = smoothstep(AURORA_BOTTOM, AURORA_TOP, uv.y);
+      // Use dynamic world-space projection (not static constants)
+      float auroraY = smoothstep(auroraBottomScreen, auroraTopScreen, uv.y);
       float driftSpeed = u_time * 0.0000081; // 85% slower (was 0.000054)
       float driftPhase = uv.x * 14.0 - driftSpeed;
 
@@ -673,14 +674,14 @@ export const FRAGMENT_SHADER = `
       // Depth-based alpha (layers blend together)
       float layerAlpha = curtainValue * 0.25 * verticalGradient; // Apply vertical gradient
 
-      // Accumulate color with depth blending (front-to-back)
-      finalColor += layerColor * layerAlpha * (1.0 - finalAlpha);
-      finalAlpha += layerAlpha * (1.0 - finalAlpha);
+      // Accumulate aurora layers (depth blending)
+      auroraColor += layerColor * layerAlpha * (1.0 - auroraAlpha);
+      auroraAlpha += layerAlpha * (1.0 - auroraAlpha);
 
       // Early exit if fully opaque
-      if (finalAlpha >= 0.95) break;
+      if (auroraAlpha >= 0.95) break;
     }
-    
+
     // ===== TROMSØ FOCAL GLOW (subtle, warm epicenter) =====
 
     vec2 toTromso = uv - u_tromsoCenter;
@@ -696,45 +697,42 @@ export const FRAGMENT_SHADER = `
 
     // Warm, natural gold (not harsh yellow)
     vec3 tromsoColor = vec3(1.0, 0.85, 0.5);
-    finalColor += tromsoColor * tromsoGlow * 0.15; // Very subtle contribution
-    finalAlpha += tromsoGlow * 0.1;
+    auroraColor += tromsoColor * tromsoGlow * 0.15; // Very subtle contribution
+    auroraAlpha += tromsoGlow * 0.1;
     
-    // ===== ATMOSPHERIC EFFECTS =====
+    // ===== LAYER COMPOSITING (Z-ORDER: Aurora OVER Clouds) =====
 
-    // Cloud coverage dimming (subtle, aurora still visible through clouds)
-    // Never fully block aurora - clouds drift below, aurora above
-    float cloudDim = 1.0 - (u_cloudCoverage * 0.15); // Reduced from 0.2 for subtlety
-    // Apply cloud dimming only to aurora portion (not cloud colors)
-    vec3 auroraPortion = finalColor - cloudColor;
-    auroraPortion *= cloudDim;
-    finalColor = cloudColor + auroraPortion;
+    // Apply toggle masks
+    vec3 maskedAuroraColor = auroraColor * u_auroraEnabled;
+    float maskedAuroraAlpha = auroraAlpha * u_auroraEnabled;
+
+    vec3 maskedCloudColor = cloudColor * u_weatherEnabled;
+    float maskedCloudAlpha = cloudAlpha * u_weatherEnabled;
+
+    // === PROPER Z-ORDER COMPOSITING ===
+    // Aurora (80-300km) renders OVER clouds (0-12km)
+    // Standard alpha blending: Over compositing operator
+
+    // Start with background (transparent black)
+    vec3 finalColor = vec3(0.0);
+    float finalAlpha = 0.0;
+
+    // 1. Composite clouds first (back layer)
+    finalColor = maskedCloudColor;
+    finalAlpha = maskedCloudAlpha;
+
+    // 2. Composite aurora OVER clouds (front layer)
+    // Standard "over" operator: C_out = C_a + C_b * (1 - alpha_a)
+    finalColor = maskedAuroraColor + finalColor * (1.0 - maskedAuroraAlpha);
+    finalAlpha = maskedAuroraAlpha + finalAlpha * (1.0 - maskedAuroraAlpha);
+
+    // === ATMOSPHERIC EFFECTS ===
 
     // Sky visibility boost when pitched (aurora in upper zone)
-    // When pitched, aurora becomes more visible due to better viewing angle
     float auroraLift = mix(skyFactor * 0.8, skyFactor * 1.6, pitchFactor);
-
-    // Boost overall visibility when viewing from side (only in aurora zone y > 0.45)
     float sideViewBoost = 1.0 + (pitchFactor * 0.8);
     float skyBoostMask = smoothstep(0.35, 0.50, uv.y); // Only boost upper half
     finalColor *= mix(1.0, auroraLift * sideViewBoost, skyBoostMask);
-    
-    // ===== TOGGLE MASKING =====
-    // Apply toggle masks to separate aurora and weather layers
-    vec3 auroraOnlyColor = finalColor - cloudColor;  // Extract aurora portion
-
-    // Mask aurora based on u_auroraEnabled
-    auroraOnlyColor *= u_auroraEnabled;
-
-    // Mask clouds based on u_weatherEnabled
-    vec3 maskedCloudColor = cloudColor * u_weatherEnabled;
-
-    // Recombine masked layers
-    finalColor = maskedCloudColor + auroraOnlyColor;
-
-    // Adjust alpha based on what's actually visible
-    float auroraAlphaContribution = (finalAlpha - cloudAlpha) * u_auroraEnabled;
-    float cloudAlphaContribution = cloudAlpha * u_weatherEnabled;
-    finalAlpha = cloudAlphaContribution + auroraAlphaContribution;
 
     // ===== FINAL OUTPUT =====
 
