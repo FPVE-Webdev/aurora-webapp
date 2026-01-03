@@ -684,8 +684,10 @@ export default function MapView() {
           // Must be safe across style variations (only set if layer exists).
           const configureSnowLandscape = () => {
             try {
-              const set = (layerId: string, prop: string, value: any) => {
-                if (map.getLayer(layerId)) map.setPaintProperty(layerId, prop, value);
+              // Mapbox typings for setPaintProperty are strict (prop is a large string-literal union).
+              // We intentionally pass dynamic paint properties across multiple styles, so use `any`.
+              const set = (layerId: string, prop: any, value: any) => {
+                if (map.getLayer(layerId)) (map as any).setPaintProperty(layerId, prop, value);
               };
 
               // Base land surface: cold snow-blue gradient
