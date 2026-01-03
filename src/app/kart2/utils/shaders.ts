@@ -192,7 +192,7 @@ export const FRAGMENT_SHADER = `
 
     // Shift clouds toward horizon (over Tromsø, away from viewer)
     // Offset uv.y upward to position clouds further back in scene
-    vec2 cloudUV = vec2(uv.x, uv.y + 0.15); // Push clouds up 15% in screen space
+    vec2 cloudUV = vec2(uv.x, uv.y + 0.40); // Push clouds up 40% in screen space
 
     // 3D position (clouds are low altitude)
     vec3 pos = vec3(
