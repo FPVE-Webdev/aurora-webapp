@@ -333,12 +333,6 @@ export default function VisualModeCanvas({
           triangles: mesh.indexCount / 3,
           isMobile: isMobileRef.current
         });
-        console.log('[VisualMode] Aurora data:', {
-          kpIndex,
-          auroraProbability,
-          auroraIntensity,
-          curtainDensity
-        });
       }
 
       // Create vertex buffer
@@ -412,7 +406,15 @@ export default function VisualModeCanvas({
     // Calculate curtain density based on KP index
     const curtainDensity = calculateCurtainDensity(kpIndex);
 
-    // Silent initialization - only log if there's an issue
+    // Log aurora data in dev mode (after calculation)
+    if (!IS_PRODUCTION) {
+      console.log('[VisualMode] Aurora data:', {
+        kpIndex,
+        auroraProbability,
+        auroraIntensity,
+        curtainDensity
+      });
+    }
 
     // Adaptive quality: detect device and set FPS targets
     isMobileRef.current = isMobileDevice();
