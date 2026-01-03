@@ -3,12 +3,12 @@
 type Clouds3DLayerOptions = {
   id?: string;
   centerLngLat: [number, number];
-  /** Bottom altitude for the cloud wall (meters). */
+  /** Cloud deck altitude (meters). */
   altitudeMeters?: number;
-  /** Top altitude for the cloud wall (meters). */
-  topAltitudeMeters?: number;
+  /** Cloud deck "depth" (degrees latitude). */
+  latSpanDeg?: number;
   lonSpanDeg?: number;
-  /** How far north the cloud wall is placed (degrees latitude). */
+  /** How far north the cloud deck is placed (degrees latitude). */
   northOffsetDeg?: number;
   cloudCoverage?: number; // 0..100
   windSpeed?: number; // m/s
@@ -53,13 +53,15 @@ function isWebGL2(gl: WebGLRenderingContext): boolean {
 
 export function createClouds3DLayer(mapboxgl: any, opts: Clouds3DLayerOptions) {
   const id = opts.id ?? 'clouds-3d';
-  // IMPORTANT: Clouds must be visible in a pitched camera.
-  // A horizontal plane at fixed altitude becomes a thin edge; instead we render a vertical wall
-  // at the horizon with z varying from bottom->top altitude.
-  const bottomAlt = opts.altitudeMeters ?? 2_000;
-  const topAlt = opts.topAltitudeMeters ?? 12_000;
+  // Cloud deck: a horizontal sheet placed near the horizon (far north of Tromsø).
+  // This makes the “cloud cover line” read as a flat deck aligned with the horizon.
+  const cloudAlt = opts.altitudeMeters ?? 7_000;
+  const latSpanDeg = opts.latSpanDeg ?? 0.18;
   const lonSpanDeg = opts.lonSpanDeg ?? 4.8;
-  const northOffsetDeg = opts.northOffsetDeg ?? 0.22;
+  const northOffsetDeg = opts.northOffsetDeg ?? 0.35;
+  // IMPORTANT: For a readable effect:
+  // - Clouds should sit “on the horizon” (flat deck)
+  // - Aurora should be clearly above (handled by aurora-3d)
 
   let program: WebGLProgram | null = null;
   let posBuffer: WebGLBuffer | null = null;
@@ -146,10 +148,9 @@ export function createClouds3DLayer(mapboxgl: any, opts: Clouds3DLayerOptions) {
         }
 
         void main() {
-          // Cloud vertical distribution (v_uv.y = bottom->top of wall).
-          // Keep it broad so it's visible across the pitched view.
-          float y = v_uv.y;
-          float band = smoothstep(0.00, 0.06, y) * (1.0 - smoothstep(0.92, 1.00, y));
+      // Cloud deck edge shaping (v_uv.y = near->far across the deck)
+      float y = v_uv.y;
+      float band = smoothstep(0.00, 0.20, y) * (1.0 - smoothstep(0.85, 1.00, y));
 
           // Wind drift (very subtle)
           vec2 windVec = vec2(sin(u_wind.x), cos(u_wind.x));
@@ -169,19 +170,19 @@ export function createClouds3DLayer(mapboxgl: any, opts: Clouds3DLayerOptions) {
           float thresh = mix(0.78, 0.40, u_coverage);
           float cloud = smoothstep(thresh, thresh - 0.18, density);
 
-          // Soft edges + subtle vertical fade
-          float edge = smoothstep(0.0, 0.18, v_uv.x) * (1.0 - smoothstep(0.82, 1.0, v_uv.x));
-          float alpha = cloud * band * edge;
+      // Soft edges + subtle depth fade
+      float edge = smoothstep(0.0, 0.18, v_uv.x) * (1.0 - smoothstep(0.82, 1.0, v_uv.x));
+      float alpha = cloud * band * edge;
 
-          // Always show some sky-deck haze at higher coverage (visibility-first).
-          float haze = band * edge * (u_coverage * u_coverage) * 0.22;
+      // Always show some deck haze at higher coverage (visibility-first).
+      float haze = band * edge * (u_coverage * u_coverage) * 0.24;
           alpha = max(alpha, haze);
 
-          // Scale alpha by coverage and keep it clearly visible at high coverage.
-          alpha *= (0.25 + u_coverage * 1.10);
+      // Scale alpha by coverage and keep it clearly visible at high coverage.
+      alpha *= (0.22 + u_coverage * 1.15);
           alpha = clamp(alpha, 0.0, 0.92);
 
-          // Cloud color (night) - slightly brighter for visibility
+      // Cloud color (night) - slightly brighter for readability
           vec3 cDark = vec3(0.10, 0.12, 0.16);
           vec3 cLight = vec3(0.78, 0.82, 0.86);
           vec3 col = mix(cDark, cLight, cloud);
@@ -275,15 +276,17 @@ export function createClouds3DLayer(mapboxgl: any, opts: Clouds3DLayerOptions) {
       uWind = gl.getUniformLocation(program, 'u_wind');
 
       const [lng0, lat0] = opts.centerLngLat;
-      const wallLat = lat0 + northOffsetDeg;
+      const latCenter = lat0 + northOffsetDeg;
+      const latMin = latCenter - latSpanDeg * 0.5;
+      const latMax = latCenter + latSpanDeg * 0.5;
       const lonMin = lng0 - lonSpanDeg * 0.5;
       const lonMax = lng0 + lonSpanDeg * 0.5;
 
-      // Vertical wall: same lng/lat for bottom & top points, only altitude differs.
-      const p00 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, wallLat], bottomAlt);
-      const p10 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, wallLat], bottomAlt);
-      const p01 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, wallLat], topAlt);
-      const p11 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, wallLat], topAlt);
+      // Horizontal deck: 4 corners at a single altitude.
+      const p00 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, latMin], cloudAlt);
+      const p10 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, latMin], cloudAlt);
+      const p01 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, latMax], cloudAlt);
+      const p11 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, latMax], cloudAlt);
 
       const positions = new Float32Array([
         p00.x, p00.y, p00.z,

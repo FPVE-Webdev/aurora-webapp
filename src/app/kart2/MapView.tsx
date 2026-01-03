@@ -150,13 +150,13 @@ export default function MapView() {
                 const auroraLayer = createAurora3DLayer(mapboxgl, {
                   id: layerId,
                   centerLngLat: [18.95, 69.65],
-                  // NOTE: Prototype: keep altitude within Mapbox camera frustum.
-                  // We can raise this later once visibility + occlusion look right.
-                  altitudeMeters: 15_000,
-                  // Tuned for Tromsø scene: wide band close to the horizon.
-                  latSpanDeg: 0.7,
+                  // Aurora is physically MUCH higher than clouds (80–300km).
+                  // This uses true altitude in meters.
+                  altitudeMeters: 300_000,
+                  // Keep the band within view: closer to the horizon and not too far north.
+                  latSpanDeg: 0.55,
                   lonSpanDeg: 4.5,
-                  northOffsetDeg: 0.25,
+                  northOffsetDeg: 0.18,
                   intensity: 1.0
                 });
 
@@ -280,11 +280,11 @@ export default function MapView() {
               const cloudsLayer = createClouds3DLayer(mapboxgl, {
                 id: layerId,
                 centerLngLat: [18.95, 69.65],
-                altitudeMeters: 2_000,
-                topAltitudeMeters: 12_000,
+                altitudeMeters: 7_000,
+                latSpanDeg: 0.16,
                 lonSpanDeg: 5.0,
-                // Place closer for guaranteed visibility in pitched view
-                northOffsetDeg: 0.06,
+                // Place the deck on the horizon line (far enough to read as “horizon clouds”)
+                northOffsetDeg: 0.35,
                 cloudCoverage: chaseState.tromsoCloudCoverage ?? 0,
                 windSpeed: weatherData.windSpeed ?? 5,
                 windDirection: weatherData.windDirection ?? 270
@@ -679,6 +679,90 @@ export default function MapView() {
             }
           }
 
+          // ===== SNOW-COVERED LANDSCAPE (SURFACE PALETTE) =====
+          // We override key land/landcover/landuse layers to read as winter snow.
+          // Must be safe across style variations (only set if layer exists).
+          const configureSnowLandscape = () => {
+            try {
+              const set = (layerId: string, prop: string, value: any) => {
+                if (map.getLayer(layerId)) map.setPaintProperty(layerId, prop, value);
+              };
+
+              // Base land surface: cold snow-blue gradient
+              // (kept slightly dark to preserve night mood, but clearly "snow")
+              set('land', 'background-color', 'rgba(0,0,0,0)'); // harmless if land is background
+              set('land', 'fill-color', [
+                'interpolate', ['linear'], ['zoom'],
+                6, '#2b3a4a',   // far: cold dark blue
+                9, '#5f7b93',   // mid: steel blue
+                12, '#b7c7d6'   // near: snow-blue
+              ]);
+              set('land', 'fill-opacity', 0.95);
+
+              // Landcover (forests, grass, etc.) – shift toward snow.
+              const snowCover = [
+                'match',
+                ['get', 'class'],
+                'wood', '#7f8f9a',          // frosty forest
+                'scrub', '#98a7b1',
+                'grass', '#aabac6',
+                'tundra', '#b7c7d6',
+                'snow', '#dfe9f2',
+                'glacier', '#d8e6f3',
+                /* default */ '#aabac6'
+              ];
+              set('landcover', 'fill-color', snowCover);
+              set('landcover', 'fill-opacity', 0.65);
+
+              // Landuse (parks, residential, etc.) – de-saturate and lift.
+              const snowUse = [
+                'match',
+                ['get', 'class'],
+                'park', '#93a6b3',
+                'national_park', '#93a6b3',
+                'cemetery', '#98aab7',
+                'pitch', '#9fb1bd',
+                'school', '#9fb1bd',
+                'hospital', '#9fb1bd',
+                'residential', '#a8b9c6',
+                'industrial', '#8799a6',
+                /* default */ '#9fb1bd'
+              ];
+              set('landuse', 'fill-color', snowUse);
+              set('landuse', 'fill-opacity', 0.45);
+
+              // Buildings: add a subtle "snowy" cold tint while keeping emissive warmth.
+              if (map.getLayer('3d-buildings')) {
+                map.setPaintProperty('3d-buildings', 'fill-extrusion-color', [
+                  'interpolate',
+                  ['linear'],
+                  ['get', 'height'],
+                  0, '#2b3340',
+                  8, '#4a5563',
+                  15, '#7a6a55', // keep warm midtones
+                  30, '#b8935a',
+                  100, '#FFD700'
+                ]);
+                map.setPaintProperty('3d-buildings', 'fill-extrusion-opacity', 0.90);
+              }
+
+              // Hillshade accent: colder highlights to read as snow ridges.
+              if (map.getLayer('tromso-hillshade')) {
+                map.setPaintProperty('tromso-hillshade', 'hillshade-exaggeration', 0.55);
+                map.setPaintProperty('tromso-hillshade', 'hillshade-highlight-color', '#e2f2ff');
+                map.setPaintProperty('tromso-hillshade', 'hillshade-accent-color', '#7dd3fc');
+                map.setPaintProperty('tromso-hillshade', 'hillshade-shadow-color', '#020617');
+              }
+            } catch (err) {
+              if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.warn('[MapView] Failed to apply snow palette:', err);
+              }
+            }
+          };
+
+          configureSnowLandscape();
+
           // ===== CITY LIGHTS – AIRPLANE VIEW =====
           // Deterministic point lights (no per-frame JS)
           const cityLights = generateTromsoCityLights(1337);
@@ -692,24 +776,30 @@ export default function MapView() {
           // Base opacities (OFF = fully visible, ON = *0.8 in dimMapForVisualMode)
           // Microscopic airplane lights: no glow, no halo — just tiny light sources.
           const CITY_LIGHTS_BASE_OPACITY: Record<'dim' | 'medium' | 'bright', number> = {
-            dim: 0.10,
-            medium: 0.14,
-            bright: 0.20,
+            dim: 0.14,
+            medium: 0.18,
+            bright: 0.26,
           };
 
           const addLightsLayer = (id: string, tier: 'dim' | 'medium' | 'bright', color: string) => {
             if (map.getLayer(id)) return;
-            map.addLayer({
+            const styleLayers = map.getStyle?.()?.layers || [];
+            const firstSymbolLayerId =
+              styleLayers.find((l: any) => l?.type === 'symbol')?.id || undefined;
+            const beforeId = map.getLayer('road-label') ? 'road-label' : firstSymbolLayerId;
+
+            const layer: any = {
               id,
               type: 'circle',
               source: 'tromso-city-lights',
               filter: ['==', ['get', 'tier'], tier],
               paint: {
-                // Microscopic radii, zoom-responsive up to 8
+                // Small light sources, tuned for locked zoom=12
                 'circle-radius': [
                   'interpolate', ['linear'], ['zoom'],
                   5.2, tier === 'bright' ? 0.9 : tier === 'medium' ? 0.75 : 0.6,
                   8.0, tier === 'bright' ? 1.6 : tier === 'medium' ? 1.3 : 1.0,
+                  12.0, tier === 'bright' ? 2.6 : tier === 'medium' ? 2.2 : 1.8,
                 ],
                 'circle-color': color,
                 'circle-blur': 0.0,
@@ -719,12 +809,86 @@ export default function MapView() {
                 'circle-pitch-alignment': 'map',
                 'circle-pitch-scale': 'map',
               }
-            });
+            };
+
+            // Insert below labels when possible; otherwise append safely.
+            if (beforeId) map.addLayer(layer, beforeId);
+            else map.addLayer(layer);
           };
+
+          // Subtle glow layer (very faint) to make lights read at high pitch without looking like halos.
+          const addGlowLayer = (id: string, tier: 'dim' | 'medium' | 'bright', color: string) => {
+            if (map.getLayer(id)) return;
+            const styleLayers = map.getStyle?.()?.layers || [];
+            const firstSymbolLayerId =
+              styleLayers.find((l: any) => l?.type === 'symbol')?.id || undefined;
+            const beforeId = map.getLayer('road-label') ? 'road-label' : firstSymbolLayerId;
+
+            const layer: any = {
+              id,
+              type: 'circle',
+              source: 'tromso-city-lights',
+              filter: ['==', ['get', 'tier'], tier],
+              paint: {
+                'circle-radius': [
+                  'interpolate', ['linear'], ['zoom'],
+                  5.2, tier === 'bright' ? 2.2 : tier === 'medium' ? 1.9 : 1.6,
+                  8.0, tier === 'bright' ? 4.0 : tier === 'medium' ? 3.2 : 2.7,
+                  12.0, tier === 'bright' ? 7.0 : tier === 'medium' ? 6.0 : 5.0,
+                ],
+                'circle-color': color,
+                'circle-blur': 0.85,
+                'circle-opacity': tier === 'bright' ? 0.10 : tier === 'medium' ? 0.08 : 0.06,
+                'circle-stroke-width': 0,
+                'circle-pitch-alignment': 'map',
+                'circle-pitch-scale': 'map',
+              }
+            };
+
+            if (beforeId) map.addLayer(layer, beforeId);
+            else map.addLayer(layer);
+          };
+
+          addGlowLayer('tromso-lights-dim-glow', 'dim', '#ffcc66');
+          addGlowLayer('tromso-lights-medium-glow', 'medium', '#ffdd88');
+          addGlowLayer('tromso-lights-bright-glow', 'bright', '#ffeeaa');
 
           addLightsLayer('tromso-lights-dim', 'dim', '#ffcc66');
           addLightsLayer('tromso-lights-medium', 'medium', '#ffdd88');
           addLightsLayer('tromso-lights-bright', 'bright', '#ffeeaa');
+
+          // Very subtle "city haze" to ensure Tromsø reads as inhabited at zoom=12 + high pitch.
+          // This is intentionally faint to avoid a cartoon glow.
+          if (!map.getLayer('tromso-lights-haze')) {
+            const styleLayers = map.getStyle?.()?.layers || [];
+            const firstSymbolLayerId =
+              styleLayers.find((l: any) => l?.type === 'symbol')?.id || undefined;
+            const beforeId = map.getLayer('road-label') ? 'road-label' : firstSymbolLayerId;
+
+            const layer: any = {
+              id: 'tromso-lights-haze',
+              type: 'circle',
+              source: 'tromso-city-lights',
+              // Only the brightest points contribute to haze
+              filter: ['==', ['get', 'tier'], 'bright'],
+              paint: {
+                'circle-radius': [
+                  'interpolate', ['linear'], ['zoom'],
+                  8.0, 10,
+                  12.0, 18,
+                ],
+                'circle-color': '#ffefbf',
+                'circle-blur': 1.0,
+                'circle-opacity': 0.035,
+                'circle-stroke-width': 0,
+                'circle-pitch-alignment': 'map',
+                'circle-pitch-scale': 'map',
+              },
+            };
+
+            if (beforeId) map.addLayer(layer, beforeId);
+            else map.addLayer(layer);
+          }
 
           // ===== STARRY NIGHT ATMOSPHERE (FOG) =====
           // Cinematic fog with stars visible in clear sky
@@ -943,9 +1107,9 @@ export default function MapView() {
               'interpolate',
               ['linear'],
               ['zoom'],
-              7, '#0b1f2a',
-              10, '#123645',
-              12, '#1a4b5f'
+                6, '#06121a',   // deep arctic night
+                9, '#0b2733',   // mid depth
+                12, '#123a4b'   // near: more visible teal
             ]);
 
             // Zoom-responsive opacity for clarity
@@ -953,10 +1117,33 @@ export default function MapView() {
               'interpolate',
               ['linear'],
               ['zoom'],
-              7, 0.55,
-              10, 0.75,
-              12, 0.9
+                6, 0.60,
+                9, 0.78,
+                12, 0.92
             ]);
+
+              // Coastline / shore glow (if present)
+              const shoreLayers = ['water-shadow', 'waterway', 'waterway-shadow', 'waterline', 'waterway-label'];
+              shoreLayers.forEach((layerId) => {
+                if (!map.getLayer(layerId)) return;
+                // Keep subtle: we only want a hint of shoreline readability.
+                if (layerId.includes('waterway')) {
+                  try {
+                    map.setPaintProperty(layerId, 'line-color', '#2aa5c8');
+                    map.setPaintProperty(layerId, 'line-opacity', 0.25);
+                    map.setPaintProperty(layerId, 'line-width', [
+                      'interpolate', ['linear'], ['zoom'],
+                      6, 0.2,
+                      12, 0.8
+                    ]);
+                  } catch {}
+                } else {
+                  try {
+                    map.setPaintProperty(layerId, 'fill-color', 'rgba(40,170,200,0.18)');
+                    map.setPaintProperty(layerId, 'fill-opacity', 0.35);
+                  } catch {}
+                }
+              });
 
           } catch (err) {
             if (process.env.NODE_ENV !== 'production') {
@@ -1021,9 +1208,13 @@ export default function MapView() {
             // ===== CITY LIGHTS VISUAL MODE ADJUSTMENTS =====
             // Dim city lights slightly when Visual Mode is ON (no flicker: fixed values).
             const cityLayers: Array<[string, number]> = [
-              ['tromso-lights-dim', 0.10],
-              ['tromso-lights-medium', 0.14],
-              ['tromso-lights-bright', 0.20],
+              ['tromso-lights-dim-glow', 0.06],
+              ['tromso-lights-medium-glow', 0.08],
+              ['tromso-lights-bright-glow', 0.10],
+              ['tromso-lights-haze', 0.035],
+              ['tromso-lights-dim', 0.14],
+              ['tromso-lights-medium', 0.18],
+              ['tromso-lights-bright', 0.26],
             ];
             const scale = isDimmed ? 0.8 : 1.0;
             cityLayers.forEach(([layerId, base]) => {
