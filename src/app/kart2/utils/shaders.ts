@@ -100,9 +100,9 @@ export const FRAGMENT_SHADER = `
   // CLOUD LAYER PLACEMENT – LANDSCAPE + HORIZON COVER
   // Assumptions: uv.y = 0.0 (near user), uv.y = 1.0 (far horizon/sky)
   const float CLOUD_BOTTOM  = 0.00; // Bottom of screen (foreground)
-  const float CLOUD_TOP     = 0.30; // Top of cloud zone (lower for visibility)
-  const float AURORA_BOTTOM = 0.30; // Aurora at horizon level (flat band)
-  const float AURORA_TOP    = 0.60; // Aurora band top (30-60% screen height)
+  const float CLOUD_TOP     = 0.45; // Top of cloud zone (below horizon)
+  const float AURORA_BOTTOM = 0.50; // Aurora above horizon (flat band in sky)
+  const float AURORA_TOP    = 0.85; // Aurora band top (50-85% screen height)
 
   // ===== 3D SIMPLEX NOISE IMPLEMENTATION =====
   // Based on Stefan Gustavson's implementation
@@ -565,11 +565,11 @@ export const FRAGMENT_SHADER = `
     vec3 finalColor = cloudColor;
     float finalAlpha = cloudAlpha;
 
-    // HORIZON-LEVEL AURORA BAND: Flat band across horizon (30-60%)
-    // Creates the appearance of aurora lying flat over distant horizon
-    // Fade in at bottom, fade out at top for natural band appearance
-    float auroraVerticalMask = smoothstep(AURORA_BOTTOM - 0.05, AURORA_BOTTOM + 0.05, uv.y) *
-                               smoothstep(AURORA_TOP + 0.10, AURORA_TOP - 0.10, uv.y);
+    // AURORA BAND ABOVE HORIZON: Flat band in sky (50-85%)
+    // Creates the appearance of aurora lying flat above distant horizon
+    // Fade in at bottom (horizon), fade out at top for natural band
+    float auroraVerticalMask = smoothstep(AURORA_BOTTOM - 0.05, AURORA_BOTTOM + 0.10, uv.y) *
+                               smoothstep(AURORA_TOP + 0.05, AURORA_TOP - 0.15, uv.y);
 
     // --------------------------------------------------
     // AURORA VIEW MODEL
