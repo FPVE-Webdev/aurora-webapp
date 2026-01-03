@@ -146,28 +146,28 @@ export default function MapView() {
 
   // Fixed "scene" camera: Tromsø viewpoint (not a navigable world map)
   const SCENE_CENTER: [number, number] = [18.95, 69.65];
-  // LOCKED ZOOM: Fixed at 11.16 for optimal aurora viewing
-  const SCENE_ZOOM = 11.16;
+  // LOCKED ZOOM: Fixed at 12.0 for closer city view and 3D buildings
+  const SCENE_ZOOM = 12.0;
   // Side-view (cinematic horizon) - MAX TILT. User rotates horizontally to "look around".
   const SCENE_PITCH = 85; // Mapbox maximum pitch for full side-view
   // User should feel they are in Tromsø looking north
   const SCENE_BEARING = 0;
 
-  // Zoom locked at 11.16 for optimal aurora viewing
-  const ZOOM_SCENE_MIN = 11.16;  // Locked zoom
-  const ZOOM_SCENE_MAX = 11.16;  // Locked zoom
+  // Zoom locked at 12.0 for optimal city view
+  const ZOOM_SCENE_MIN = 12.0;  // Locked zoom
+  const ZOOM_SCENE_MAX = 12.0;  // Locked zoom
   const ZOOM_EXPANDED_TARGET = 5.4;
   const ZOOM_EXPANDED_MIN = 5.2;
   const ZOOM_EXPANDED_MAX = 8.0;
 
-  // Zoom is locked at 11.16 - no zoom functions needed
+  // Zoom is locked at 12.0 - no zoom functions needed
 
   const rotateBy = (deltaDeg: number) => {
     if (!mapRef.current) return;
     const currentBearing = mapRef.current.getBearing?.() ?? SCENE_BEARING;
     mapRef.current.easeTo({
       center: SCENE_CENTER,
-      zoom: SCENE_ZOOM, // Locked at 11.16
+      zoom: SCENE_ZOOM, // Locked at 12.0
       pitch: SCENE_PITCH,
       bearing: currentBearing + deltaDeg,
       duration: 650,
