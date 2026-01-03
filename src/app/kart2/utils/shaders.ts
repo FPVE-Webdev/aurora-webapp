@@ -63,9 +63,9 @@ export const FRAGMENT_SHADER = `
   uniform float u_weatherEnabled;     // 1.0 = weather on, 0.0 = weather off
 
   // ===== VERTICAL ZONE BOUNDARIES =====
-  // Screen-space vertical zones (clouds below, aurora above)
-  const float CLOUD_TOP_Y   = 0.50; // Upper limit for clouds (lower half)
-  const float AURORA_BOTTOM = 0.50; // Lower limit for aurora (upper half)
+  // Screen-space vertical zones (clouds at horizon, aurora above)
+  const float CLOUD_TOP_Y   = 0.70; // Upper limit for clouds (horizon level)
+  const float AURORA_BOTTOM = 0.55; // Lower limit for aurora (above horizon)
 
   // ===== 3D SIMPLEX NOISE IMPLEMENTATION =====
   // Based on Stefan Gustavson's implementation
@@ -191,8 +191,8 @@ export const FRAGMENT_SHADER = `
     vec2 drift = windVector * u_windSpeed * time * 0.0000004; // 5% of previous (0.000008)
 
     // Shift clouds toward horizon (over Tromsø, away from viewer)
-    // Offset uv.y upward to position clouds further back in scene
-    vec2 cloudUV = vec2(uv.x, uv.y + 0.40); // Push clouds up 40% in screen space
+    // Offset uv.y upward to position clouds at horizon level with mountains
+    vec2 cloudUV = vec2(uv.x, uv.y + 0.25); // Push clouds to horizon (mountain level)
 
     // 3D position (clouds are low altitude)
     vec3 pos = vec3(
@@ -468,15 +468,16 @@ export const FRAGMENT_SHADER = `
     // Soft baseline pulse for subtle variation
     float baselinePulse = getPulse(u_time) * 0.5 + 0.5; // Softer: 0.5-1.0 range
 
-    // ===== CLOUD LAYER RENDERING (0-12km) - LOWER HALF OF SCREEN =====
-    // VERTICAL MASK: Clouds strictly in lower half (y < 0.50)
+    // ===== CLOUD LAYER RENDERING (0-12km) - HORIZON LEVEL =====
+    // VERTICAL MASK: Clouds at horizon level (mountain tops)
     vec3 cloudColor = vec3(0.0);
     float cloudAlpha = 0.0;
 
     // Only render clouds if coverage > 5%
     if (u_cloudCoverage > 0.05) {
-      // Vertical mask: only below CLOUD_TOP_Y (0.50) with smooth fade
-      float cloudVerticalMask = 1.0 - smoothstep(CLOUD_TOP_Y - 0.08, CLOUD_TOP_Y, uv.y);
+      // Vertical mask: clouds concentrated at horizon (0.35-0.70)
+      // Fade in from lower screen, peak at horizon, fade out above
+      float cloudVerticalMask = smoothstep(0.30, 0.45, uv.y) * (1.0 - smoothstep(0.65, CLOUD_TOP_Y, uv.y));
 
       if (cloudVerticalMask > 0.01) {
         int cloudLayers = int(5.0 * u_qualityScale);  // 5 layers for better depth
@@ -505,32 +506,27 @@ export const FRAGMENT_SHADER = `
           vec3 layerColor = getCloudColor(altitude, cloudDensity);
 
           // Layer alpha - reduced for landscape visibility
-          float layerAlpha = cloudDensity * 0.32;  // 32% max opacity per layer
+          float layerAlpha = cloudDensity * 0.28;  // Reduced opacity for horizon clouds
 
           // Accumulate (front-to-back)
           cloudColor += layerColor * layerAlpha * (1.0 - cloudAlpha);
           cloudAlpha += layerAlpha * (1.0 - cloudAlpha);
 
-          if (cloudAlpha >= 0.88) break;  // Allow some transparency even with dense clouds
+          if (cloudAlpha >= 0.85) break;  // Allow more transparency for horizon
         }
 
-        // === DEPTH GRADIENT: Denser clouds at horizon (upper part of cloud zone) ===
-        // Creates realistic perspective: background clouds denser, foreground thinner
-        float cloudDepth = smoothstep(0.0, CLOUD_TOP_Y, uv.y);
-        float cloudDensityGradient = mix(0.65, 1.0, cloudDepth); // Thinner near ground, denser at horizon
+        // === DEPTH GRADIENT: Denser at horizon center ===
+        // Creates realistic perspective: clouds densest at mountain level
+        float horizonDistance = abs(uv.y - 0.50); // Distance from horizon center
+        float horizonDensity = 1.0 - smoothstep(0.0, 0.25, horizonDistance);
 
-        cloudColor *= cloudDensityGradient;
+        cloudColor *= mix(0.7, 1.0, horizonDensity);
         cloudAlpha *= cloudVerticalMask;
-
-        // Ground fade for clouds (bottom edge softness for landscape visibility)
-        float cloudGroundFade = smoothstep(0.0, 0.18, uv.y);
-        cloudColor *= cloudGroundFade;
-        cloudAlpha *= cloudGroundFade;
       }
     }
 
-    // ===== AURORA RENDERING (80-300km) - UPPER HALF OF SCREEN =====
-    // VERTICAL MASK: Aurora strictly in upper half (y > 0.50)
+    // ===== AURORA RENDERING (80-300km) - UPPER SCREEN =====
+    // VERTICAL MASK: Aurora above horizon and clouds
     float minAltitude = 80.0;  // km
     float maxAltitude = 300.0; // km
 
@@ -538,10 +534,10 @@ export const FRAGMENT_SHADER = `
     vec3 finalColor = cloudColor;
     float finalAlpha = cloudAlpha;
 
-    // SHARP VERTICAL MASK: Aurora only above AURORA_BOTTOM (0.50) with smooth fade-in
-    // Fade in 0.50-0.58, full strength y > 0.58
-    // Clean separation: clouds below 0.50, aurora above 0.50
-    float auroraVerticalMask = smoothstep(AURORA_BOTTOM, 0.58, uv.y);
+    // SHARP VERTICAL MASK: Aurora above horizon (y > 0.55)
+    // Fade in 0.55-0.65, full strength y > 0.65
+    // Starts above cloud layer for clean separation
+    float auroraVerticalMask = smoothstep(AURORA_BOTTOM, 0.65, uv.y);
 
     // --------------------------------------------------
     // AURORA VIEW MODEL
