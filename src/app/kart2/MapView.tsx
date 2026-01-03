@@ -448,6 +448,71 @@ export default function MapView() {
           addLightsLayer('tromso-lights-medium', 'medium', '#ffdd88');
           addLightsLayer('tromso-lights-bright', 'bright', '#ffeeaa');
 
+          // ===== STARRY NIGHT ATMOSPHERE (FOG) =====
+          // Cinematic fog with stars visible in clear sky
+          try {
+            map.setFog({
+              color: 'rgb(10, 15, 25)', // Dark blue-black night sky
+              'high-color': 'rgb(5, 10, 20)', // Even darker at horizon
+              'horizon-blend': 0.05, // Sharp horizon transition
+              'space-color': 'rgb(2, 5, 12)', // Deep space color
+              'star-intensity': 0.65, // Visible stars (0-1)
+              range: [2, 12], // Fog distance range
+              'vertical-range': [0.5, 2] // Vertical fog distribution
+            } as any);
+          } catch (err) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('[MapView] Fog not supported:', err);
+            }
+          }
+
+          // ===== 3D EMISSIVE BUILDINGS (WARM CITY GLOW) =====
+          // Add 3D buildings with height-based emissive colors
+          if (!map.getLayer('3d-buildings')) {
+            const layers = map.getStyle?.()?.layers || [];
+            const labelLayerId = layers.find(
+              (layer: any) => layer.type === 'symbol' && layer.layout?.['text-field']
+            )?.id;
+
+            map.addLayer({
+              id: '3d-buildings',
+              source: 'composite',
+              'source-layer': 'building',
+              filter: ['==', 'extrude', 'true'],
+              type: 'fill-extrusion',
+              minzoom: 10,
+              paint: {
+                'fill-extrusion-color': [
+                  'interpolate',
+                  ['linear'],
+                  ['get', 'height'],
+                  0, '#2a2a35', // Low buildings: dark gray
+                  15, '#4a4555', // Medium: lighter gray
+                  30, '#8b7355', // Tall: warm brown
+                  50, '#c9a066', // Taller: gold tint
+                  100, '#FFD700' // City center: bright gold (emissive)
+                ],
+                'fill-extrusion-height': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  10, 0,
+                  10.5, ['get', 'height']
+                ],
+                'fill-extrusion-base': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  10, 0,
+                  10.5, ['get', 'min_height']
+                ],
+                'fill-extrusion-opacity': 0.85,
+                'fill-extrusion-ambient-occlusion-intensity': 0.4,
+                'fill-extrusion-ambient-occlusion-radius': 4
+              }
+            } as any, labelLayerId);
+          }
+
           // Initialize ocean appearance on load
           const initialPitch = map.getPitch?.() ?? SCENE_PITCH;
           configureOcean(false, initialPitch); // Visual mode is off by default
@@ -864,22 +929,55 @@ export default function MapView() {
           )}
 
           {data && (
-            <div className="bg-black/80 backdrop-blur-sm text-white p-4 rounded shadow-lg">
-              <h2 className="font-bold text-lg mb-3">Nordlys Status</h2>
+            <div
+              className="text-white p-5 shadow-2xl"
+              style={{
+                background: 'rgba(20, 25, 35, 0.6)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '16px',
+                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+              }}
+            >
+              {/* KP Index Visual Gauge */}
+              <div className="mb-4">
+                <p className="text-xs text-white/70 mb-2">Kp-indeks Aktivitet</p>
+                <div className="relative h-3 rounded-full overflow-hidden bg-white/10">
+                  <div
+                    className="h-full transition-all duration-500 ease-out"
+                    style={{
+                      width: `${(data.kp / 9) * 100}%`,
+                      background: `linear-gradient(90deg,
+                        ${data.kp < 3 ? '#22c55e' : data.kp < 5 ? '#eab308' : data.kp < 7 ? '#f97316' : '#ef4444'} 0%,
+                        ${data.kp < 3 ? '#16a34a' : data.kp < 5 ? '#ca8a04' : data.kp < 7 ? '#ea580c' : '#dc2626'} 100%
+                      )`,
+                      boxShadow: `0 0 12px ${data.kp < 3 ? '#22c55e' : data.kp < 5 ? '#eab308' : data.kp < 7 ? '#f97316' : '#ef4444'}80`
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-2xl font-bold">{data.kp.toFixed(1)}</span>
+                  <span className="text-xs text-white/50">Max: 9.0</span>
+                </div>
+              </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-white/60">Kp-indeks</p>
-                  <p className="text-3xl font-bold text-primary">{data.kp.toFixed(1)}</p>
+                  <p className="text-xs text-white/70">Sannsynlighet</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-bold">{data.probability}%</p>
+                    <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-500"
+                        style={{ width: `${data.probability}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-xs text-white/60">Sannsynlighet</p>
-                  <p className="text-2xl font-bold">{data.probability}%</p>
-                </div>
-
-                <div className="pt-2 border-t border-white/20">
-                  <p className="text-xs text-white/40">
+                <div className="pt-3 border-t border-white/10">
+                  <p className="text-xs text-white/50">
                     Oppdatert: {new Date(data.timestamp).toLocaleTimeString('no-NO')}
                   </p>
                 </div>
@@ -887,26 +985,46 @@ export default function MapView() {
             </div>
           )}
 
-          <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs text-gray-300">
-            <p className="font-semibold">Tromsø, Norge</p>
-            <p>Eksperimentelt kart</p>
+          <div
+            className="p-3 text-xs text-gray-200"
+            style={{
+              background: 'rgba(20, 25, 35, 0.6)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '16px',
+              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+            }}
+          >
+            <p className="font-semibold text-white">Tromsø, Norge</p>
+            <p className="text-white/60">Eksperimentelt kart</p>
           </div>
 
           {/* Legend - Map Explanation */}
-          <div className="bg-gray-900/90 backdrop-blur-md p-3 rounded shadow-lg text-xs text-gray-200 max-w-[220px]">
-            <p className="font-semibold mb-2 text-gray-100">Kart forklaring</p>
+          <div
+            className="p-3 text-xs text-gray-200 max-w-[220px]"
+            style={{
+              background: 'rgba(20, 25, 35, 0.6)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '16px',
+              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+            }}
+          >
+            <p className="font-semibold mb-2 text-white">Kart forklaring</p>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-green-500/30 border-2 border-green-500/50"></div>
-                <span>Mulige observasjonssteder</span>
+                <span className="text-white/80">Mulige observasjonssteder</span>
               </div>
               {chaseState.bestRegion && (
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-emerald-400/40 border-2 border-emerald-400"></div>
-                  <span className="font-medium">Best synlighet</span>
+                  <span className="font-medium text-white/90">Best synlighet</span>
                 </div>
               )}
-              <p className="text-[10px] text-gray-400 mt-2 pt-2 border-t border-gray-700">
+              <p className="text-[10px] text-white/50 mt-2 pt-2 border-t border-white/10">
                 Synlighet basert på skydekke. Nordlysaktivitet antas lik i hele regionen.
               </p>
             </div>
