@@ -35,23 +35,31 @@ export const VERTEX_SHADER = `
     // Convert NDC (-1,1) to UV (0,1) for fragment shader
     v_uv = a_position * 0.5 + 0.5;
 
-    // VERTICAL CURTAIN DISPLACEMENT - Sine wave ripple effect
-    // Creates the "living, breathing" aurora curtain motion
+    // === AURORA CURTAIN WAVE DISPLACEMENT ===
+    // Creates the signature "ribbon" structure of real aurora
+    // Multiple sine waves at different frequencies simulate magnetic field lines
 
-    // Horizontal wave pattern (creates vertical curtain bands)
-    float wave1 = sin(a_position.x * u_curtainWaveFrequency + u_time * 0.0003) * u_curtainWaveAmplitude;
+    // Primary wave: Main curtain structure (slow, majestic)
+    float wave1 = sin(a_position.x * u_curtainWaveFrequency + u_time * 0.00018) * u_curtainWaveAmplitude;
 
-    // Secondary wave at different frequency (adds organic complexity)
-    float wave2 = sin(a_position.x * u_curtainWaveFrequency * 1.7 + u_time * 0.00045) * (u_curtainWaveAmplitude * 0.5);
+    // Secondary wave: Adds organic complexity (faster, smaller amplitude)
+    float wave2 = sin(a_position.x * u_curtainWaveFrequency * 1.7 + u_time * 0.00027) * (u_curtainWaveAmplitude * 0.5);
 
-    // Vertical modulation (curtains taller in center, shorter at edges)
-    float verticalMask = smoothstep(0.0, 0.3, v_uv.y) * smoothstep(1.0, 0.7, v_uv.y);
+    // Tertiary wave: Fine detail ripples (highest frequency)
+    float wave3 = sin(a_position.x * u_curtainWaveFrequency * 3.2 + u_time * 0.00036) * (u_curtainWaveAmplitude * 0.25);
 
-    // Combine waves with intensity scaling
-    float totalDisplacement = (wave1 + wave2) * verticalMask * u_auroraIntensity;
+    // Vertical modulation: curtains strongest in upper atmosphere (where aurora exists)
+    // Fade out near bottom (ground) and very top (space)
+    float verticalMask = smoothstep(0.4, 0.55, v_uv.y) * smoothstep(0.95, 0.85, v_uv.y);
 
-    // Apply displacement in Y direction (vertical curtain motion)
-    vec2 displaced = a_position + vec2(0.0, totalDisplacement);
+    // Combine waves with intensity scaling and vertical mask
+    float totalDisplacement = (wave1 + wave2 + wave3) * verticalMask * u_auroraIntensity * 1.5;
+
+    // Apply displacement in BOTH X and Y for realistic curtain "flutter"
+    vec2 displaced = a_position + vec2(
+      totalDisplacement * 0.3,  // Horizontal flutter (curtains sway left/right)
+      totalDisplacement         // Vertical ripple (curtains rise/fall)
+    );
 
     gl_Position = vec4(displaced, 0.0, 1.0);
   }
@@ -97,12 +105,12 @@ export const FRAGMENT_SHADER = `
   uniform float u_weatherEnabled;     // 1.0 = weather on, 0.0 = weather off
 
   // ===== VERTICAL ZONE BOUNDARIES =====
-  // CLOUD LAYER PLACEMENT – AT HORIZON LINE
+  // CLOUD LAYER PLACEMENT – AT HORIZON LINE (above mountains)
   // Assumptions: uv.y = 0.0 (near user), uv.y = 1.0 (far horizon/sky)
-  const float CLOUD_BOTTOM  = 0.35; // Cloud layer starts (lower third)
-  const float CLOUD_TOP     = 0.55; // Cloud layer ends (AT horizon line)
-  const float AURORA_BOTTOM = 0.50; // Aurora above horizon (flat band in sky)
-  const float AURORA_TOP    = 0.90; // Aurora band top (higher in sky)
+  const float CLOUD_BOTTOM  = 0.40; // Cloud layer starts (above mountains)
+  const float CLOUD_TOP     = 0.60; // Cloud layer ends (at horizon line)
+  const float AURORA_BOTTOM = 0.60; // Aurora ABOVE cloud layer (in sky)
+  const float AURORA_TOP    = 0.92; // Aurora band top (higher in sky)
 
   // ===== 3D SIMPLEX NOISE IMPLEMENTATION =====
   // Based on Stefan Gustavson's implementation
@@ -229,83 +237,43 @@ export const FRAGMENT_SHADER = `
     }
   }
 
-  // ===== CLOUD LAYER SAMPLING =====
-  // Clouds exist at 0-12km altitude (beneath aurora at 80-300km)
-  // Uses layered noise for realistic cumulus/stratus formations
+  // ===== CLOUD LAYER RENDERING =====
+  // Realistic static cloud bank at horizon
+  // Uses simple layered noise for natural cloud formations
 
-  float sampleCloudLayer(vec2 uv, float altitude, float time) {
-    // ULTRA-MINIMAL wind drift for nearly static cloud cover
+  float sampleCloudLayer(vec2 uv, float time) {
+    // Very slow drift for nearly static cloud cover
     vec2 windVector = vec2(
       sin(u_windDirection * 0.01745),  // degrees to radians
       cos(u_windDirection * 0.01745)
     );
-    vec2 drift = windVector * u_windSpeed * time * 0.0000004; // 5% of previous (0.000008)
+    vec2 drift = windVector * u_windSpeed * time * 0.00000015; // Minimal drift
 
-    // Shift clouds toward horizon (over Tromsø, away from viewer)
-    // Offset uv.y upward to position clouds at horizon level with mountains
-    vec2 cloudUV = vec2(uv.x, uv.y + 0.25); // Push clouds to horizon (mountain level)
+    // Cloud sampling UV
+    vec2 cloudUV = uv + drift;
 
-    // 3D position (clouds are low altitude)
-    vec3 pos = vec3(
-      (cloudUV.x + drift.x) * 3.5,  // Increased scale for larger cloud formations
-      (cloudUV.y + drift.y) * 3.5,
-      altitude * 0.1
-    );
+    // Large-scale cloud formations (scale=2.5 for realistic cloud sizes)
+    vec3 pos1 = vec3(cloudUV * 2.5, time * 0.00001);
+    float cloud1 = snoise(pos1) * 0.5 + 0.5;
 
-    // Multi-octave noise for realistic cloud texture
-    float cloud = 0.0;
-    float amplitude = 1.0;
-    float frequency = 1.0;
+    // Medium detail layer
+    vec3 pos2 = vec3(cloudUV * 5.5, time * 0.000015);
+    float cloud2 = snoise(pos2) * 0.3 + 0.5;
 
-    // Weather-type dependent octaves (more complex for storm clouds)
-    int octaves = int(mix(3.0, 5.0, u_weatherType / 5.0));
+    // Combine layers
+    float cloudDensity = cloud1 * 0.7 + cloud2 * 0.3;
 
-    for (int i = 0; i < 5; i++) {
-      if (i >= octaves) break;
-      cloud += snoise(pos * frequency) * amplitude;
-      frequency *= 2.2;
-      amplitude *= 0.5;
-    }
+    // Shape into realistic formations
+    cloudDensity = smoothstep(0.3, 0.7, cloudDensity);
 
-    // Shape into realistic cloud formations
-    float cloudDensity = smoothstep(0.25, 0.75, cloud * 0.5 + 0.5);
-
-    // Weather-type modulation
+    // Weather type modulation
     if (u_weatherType >= 3.0) {
-      // Rain/snow: darker, denser clouds
-      cloudDensity *= 1.4;
+      cloudDensity *= 1.3; // Denser for rain/snow
     } else if (u_weatherType >= 2.0) {
-      // Cloudy: medium density
-      cloudDensity *= 1.15;
-    } else if (u_weatherType <= 1.0) {
-      // Clear/fair: sparse, wispy clouds
-      cloudDensity *= 0.5;
-    }
-
-    // === DEPTH-BASED DENSITY GRADIENT ===
-    // Clouds are denser "in the background" (upper part of cloud zone)
-    // This creates realistic perspective depth
-    float depthGradient = smoothstep(0.0, CLOUD_TOP, uv.y); // 0 at bottom, 1 at top
-    float densityBoost = mix(0.7, 1.3, depthGradient); // Less dense near ground, denser at horizon
-    cloudDensity *= densityBoost;
-
-    // NON-LINEAR cloud coverage scaling
-    // Allows landscape visibility through clouds
-    float coverageFactor;
-    if (u_cloudCoverage < 0.4) {
-      // Thin clouds - landscape clearly visible
-      coverageFactor = u_cloudCoverage * 0.5;  // Max 20% opacity
-    } else if (u_cloudCoverage < 0.7) {
-      // Moderate clouds - some visibility
-      float t = (u_cloudCoverage - 0.4) / 0.3;
-      coverageFactor = mix(0.20, 0.65, t);
+      cloudDensity *= 1.1; // Medium for cloudy
     } else {
-      // Thick clouds - limited visibility
-      float excess = (u_cloudCoverage - 0.7) / 0.3;
-      coverageFactor = 0.65 + (excess * 0.25);  // 0.65 → 0.9 (still allows some view)
+      cloudDensity *= 0.6; // Lighter for clear/fair
     }
-
-    cloudDensity *= coverageFactor;
 
     return cloudDensity;
   }
@@ -353,25 +321,53 @@ export const FRAGMENT_SHADER = `
     return fieldDirection * 0.3; // Field compression factor
   }
 
+  // ===== WORLD-SPACE TO SCREEN-SPACE PROJECTION =====
+  // Projects 3D altitude to screen Y coordinate based on camera pitch
+
+  float projectAltitudeToScreenY(float altitude, float pitch) {
+    // Camera at ground level (0km) looking at horizon
+    float heightAboveGround = altitude; // km
+
+    // Pitch normalized (0-1) where 1 = 85° (max tilt)
+    float pitchRadians = pitch * 1.48353; // 85° in radians
+
+    // Viewing angle: tan(pitch) gives vertical "reach" of view
+    float viewAngle = tan(pitchRadians);
+
+    // Distance to horizon at sea level ≈ 4.7km at Tromsø latitude
+    // At max tilt (85°), we see ~200km ahead
+    float horizonDistance = 4.7 + (viewAngle * 50.0);
+
+    // Altitude projection: higher altitude = higher on screen
+    // Uses atmospheric perspective formula
+    float apparentHeight = heightAboveGround / (horizonDistance + heightAboveGround * 0.01);
+
+    // Map to screen space: 0.0 (horizon) to 1.0 (zenith)
+    // Horizon starts at ~40% screen height when pitched
+    float screenY = 0.40 + (apparentHeight * 0.55);
+
+    return clamp(screenY, 0.0, 1.0);
+  }
+
   // ===== PARALLAX COMPUTATION =====
 
   vec2 computeParallax(vec2 uv, float altitude, float pitch) {
     // Virtual camera at ground level looking up
     float heightDiff = altitude - u_cameraAltitude;
 
-    // Convert pitch to radians (0-60 degrees range for better visibility)
-    float pitchRadians = pitch * 1.0472; // 60° = π/3 ≈ 1.0472
+    // Convert pitch to radians (0-85 degrees)
+    float pitchRadians = pitch * 1.48353; // 85° in radians
 
     // Calculate viewing angle effects
     float viewAngle = tan(pitchRadians);
 
     // Vertical displacement: higher altitudes appear higher in screen space
-    float verticalShift = viewAngle * heightDiff * 0.00015;
+    float verticalShift = viewAngle * heightDiff * 0.0002; // Increased from 0.00015
 
     // Horizontal depth: when tilted, we see "into" the aurora volume
     // Objects at higher altitude appear to recede horizontally from center
     vec2 toCenter = uv - u_tromsoCenter;
-    float horizontalDepth = length(toCenter) * viewAngle * heightDiff * 0.00008;
+    float horizontalDepth = length(toCenter) * viewAngle * heightDiff * 0.0001; // Increased
 
     // Combine vertical lift with horizontal depth perspective
     vec2 parallaxOffset = vec2(
@@ -519,40 +515,36 @@ export const FRAGMENT_SHADER = `
     // Soft baseline pulse for subtle variation
     float baselinePulse = getPulse(u_time) * 0.5 + 0.5; // Softer: 0.5-1.0 range
 
-    // ===== CLOUD LAYER RENDERING – LANDSCAPE + HORIZON COVER =====
+    // ===== CLOUD LAYER RENDERING – HORIZON CLOUD BANK =====
     vec3 cloudColor = vec3(0.0);
     float cloudAlpha = 0.0;
 
     // Only render clouds if coverage > 5%
     if (u_cloudCoverage > 0.05 && u_weatherEnabled > 0.5) {
-      // --- VERTICAL MASK (WHERE CLOUDS EXIST) ---
-      // 1.0 at bottom (near user), 0.0 above CLOUD_TOP (aurora zone)
-      float cloudMask = smoothstep(CLOUD_TOP, CLOUD_BOTTOM, uv.y);
+      // Vertical mask - clouds only in their zone (CLOUD_BOTTOM to CLOUD_TOP)
+      float cloudMask = smoothstep(CLOUD_BOTTOM - 0.05, CLOUD_BOTTOM + 0.05, uv.y) *
+                        smoothstep(CLOUD_TOP + 0.05, CLOUD_TOP - 0.05, uv.y);
 
       if (cloudMask > 0.01) {
-        // --- DISTANCE DARKENING (DEPTH CUE) ---
-        // Farther away (higher uv.y) = darker clouds
-        // 0.0 near user, 1.0 at horizon
+        // Sample cloud density
+        float cloudDensity = sampleCloudLayer(uv, u_time);
+
+        // Distance fade (darker towards horizon)
         float distanceFade = smoothstep(CLOUD_BOTTOM, CLOUD_TOP, uv.y);
 
-        // --- FINAL CLOUD OPACITY ---
-        float baseCloudOpacity = u_cloudCoverage; // 0–1 from live data
-
-        // Darken with distance, keep foreground lighter
-        float cloudOpacity =
-            baseCloudOpacity *
-            cloudMask *
-            mix(1.0, 0.4, distanceFade); // far clouds darker
-
-        // --- COLOR ---
-        // Dark blue-gray to match reference image (dense cloud bank)
-        vec3 cloudNearColor = vec3(0.08, 0.12, 0.18); // Dark blue-gray (foreground)
-        vec3 cloudFarColor  = vec3(0.03, 0.06, 0.10); // Nearly black (horizon)
+        // Cloud colors - realistic gray/white gradient
+        vec3 cloudNearColor = vec3(0.50, 0.52, 0.55); // Light gray (near)
+        vec3 cloudFarColor = vec3(0.15, 0.17, 0.20);  // Dark gray (horizon)
 
         cloudColor = mix(cloudNearColor, cloudFarColor, distanceFade);
 
-        // DRAMATIC: Heavy boost for dense, structured cloud coverage
-        cloudAlpha = cloudOpacity * 8.0;
+        // Apply cloud coverage from data
+        float cloudOpacity = cloudDensity * u_cloudCoverage * cloudMask;
+
+        // Darken distant clouds
+        cloudOpacity *= mix(1.0, 0.5, distanceFade);
+
+        cloudAlpha = cloudOpacity * 3.5; // Moderate opacity boost
       }
     }
 
@@ -565,11 +557,16 @@ export const FRAGMENT_SHADER = `
     vec3 finalColor = cloudColor;
     float finalAlpha = cloudAlpha;
 
-    // AURORA BAND ABOVE HORIZON: Flat band in sky (50-85%)
-    // Creates the appearance of aurora lying flat above distant horizon
-    // Fade in at bottom (horizon), fade out at top for natural band
-    float auroraVerticalMask = smoothstep(AURORA_BOTTOM - 0.05, AURORA_BOTTOM + 0.10, uv.y) *
-                               smoothstep(AURORA_TOP + 0.05, AURORA_TOP - 0.15, uv.y);
+    // === WORLD-SPACE AURORA POSITIONING ===
+    // Project 3D altitude (80-300km) to screen Y based on camera pitch
+    // This makes aurora stay at correct height regardless of viewing angle
+
+    float auroraBottomScreen = projectAltitudeToScreenY(minAltitude, pitchFactor);
+    float auroraTopScreen = projectAltitudeToScreenY(maxAltitude, pitchFactor);
+
+    // Fade in at bottom (80km altitude), fade out at top (300km altitude)
+    float auroraVerticalMask = smoothstep(auroraBottomScreen - 0.05, auroraBottomScreen + 0.10, uv.y) *
+                               smoothstep(auroraTopScreen + 0.05, auroraTopScreen - 0.15, uv.y);
 
     // --------------------------------------------------
     // AURORA VIEW MODEL (REVISED)

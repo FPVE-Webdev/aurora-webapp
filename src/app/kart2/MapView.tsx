@@ -466,8 +466,8 @@ export default function MapView() {
             }
           }
 
-          // ===== 3D EMISSIVE BUILDINGS (WARM CITY GLOW) =====
-          // Add 3D buildings with height-based emissive colors
+          // ===== 3D EMISSIVE BUILDINGS (WINTER NIGHT CITY LIGHTS) =====
+          // Realistic building lighting: warm glow from windows and streetlights
           if (!map.getLayer('3d-buildings')) {
             const layers = map.getStyle?.()?.layers || [];
             const labelLayerId = layers.find(
@@ -482,15 +482,18 @@ export default function MapView() {
               type: 'fill-extrusion',
               minzoom: 10,
               paint: {
+                // Height-based emissive lighting
                 'fill-extrusion-color': [
                   'interpolate',
                   ['linear'],
                   ['get', 'height'],
-                  0, '#2a2a35', // Low buildings: dark gray
-                  15, '#4a4555', // Medium: lighter gray
-                  30, '#8b7355', // Tall: warm brown
-                  50, '#c9a066', // Taller: gold tint
-                  100, '#FFD700' // City center: bright gold (emissive)
+                  0, '#2a2833',    // Ground level: dark blue-gray
+                  5, '#3a3540',    // Low residential: subtle purple-gray
+                  10, '#5a4a3a',   // Medium: warm brown (inhabited)
+                  20, '#8b7355',   // Commercial: warmer brown
+                  30, '#b8935a',   // Tall: golden brown
+                  50, '#d4a860',   // High-rise: bright gold
+                  100, '#FFD700'   // Skyscrapers: pure gold (emissive glow)
                 ],
                 'fill-extrusion-height': [
                   'interpolate',
@@ -506,9 +509,13 @@ export default function MapView() {
                   10, 0,
                   10.5, ['get', 'min_height']
                 ],
-                'fill-extrusion-opacity': 0.85,
-                'fill-extrusion-ambient-occlusion-intensity': 0.4,
-                'fill-extrusion-ambient-occlusion-radius': 4
+                // Brighter opacity for visible glow
+                'fill-extrusion-opacity': 0.92,
+                // Stronger ambient occlusion for depth
+                'fill-extrusion-ambient-occlusion-intensity': 0.6,
+                'fill-extrusion-ambient-occlusion-radius': 6,
+                // Emissive strength (non-standard but works in some contexts)
+                'fill-extrusion-vertical-gradient': false
               }
             } as any, labelLayerId);
           }
