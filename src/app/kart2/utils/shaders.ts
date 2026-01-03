@@ -100,8 +100,9 @@ export const FRAGMENT_SHADER = `
   // CLOUD LAYER PLACEMENT – LANDSCAPE + HORIZON COVER
   // Assumptions: uv.y = 0.0 (near user), uv.y = 1.0 (far horizon/sky)
   const float CLOUD_BOTTOM  = 0.00; // Bottom of screen (foreground)
-  const float CLOUD_TOP     = 0.45; // Top of cloud zone (before aurora)
-  const float AURORA_BOTTOM = 0.45; // Aurora starts above clouds
+  const float CLOUD_TOP     = 0.30; // Top of cloud zone (lower for visibility)
+  const float AURORA_BOTTOM = 0.30; // Aurora at horizon level (flat band)
+  const float AURORA_TOP    = 0.60; // Aurora band top (30-60% screen height)
 
   // ===== 3D SIMPLEX NOISE IMPLEMENTATION =====
   // Based on Stefan Gustavson's implementation
@@ -544,13 +545,14 @@ export const FRAGMENT_SHADER = `
             mix(1.0, 0.4, distanceFade); // far clouds darker
 
         // --- COLOR ---
-        vec3 cloudNearColor = vec3(0.10, 0.14, 0.18); // lighter foggy blue (foreground)
-        vec3 cloudFarColor  = vec3(0.03, 0.05, 0.07); // dark horizon clouds
+        // Lighter gray-blue for better visibility against dark background
+        vec3 cloudNearColor = vec3(0.35, 0.40, 0.45); // Light foggy gray (foreground)
+        vec3 cloudFarColor  = vec3(0.15, 0.18, 0.22); // Medium gray (horizon)
 
         cloudColor = mix(cloudNearColor, cloudFarColor, distanceFade);
 
-        // TESTING: Boost cloud visibility (3x multiplier)
-        cloudAlpha = cloudOpacity * 3.0;
+        // TESTING: Heavy boost for cloud visibility (6x multiplier)
+        cloudAlpha = cloudOpacity * 6.0;
       }
     }
 
@@ -563,10 +565,11 @@ export const FRAGMENT_SHADER = `
     vec3 finalColor = cloudColor;
     float finalAlpha = cloudAlpha;
 
-    // SHARP VERTICAL MASK: Aurora above clouds (y > 0.45)
-    // Fade in 0.45-0.55, full strength y > 0.55
-    // Clean separation: clouds 0-0.45, aurora 0.45-1.0
-    float auroraVerticalMask = smoothstep(AURORA_BOTTOM, 0.55, uv.y);
+    // HORIZON-LEVEL AURORA BAND: Flat band across horizon (30-60%)
+    // Creates the appearance of aurora lying flat over distant horizon
+    // Fade in at bottom, fade out at top for natural band appearance
+    float auroraVerticalMask = smoothstep(AURORA_BOTTOM - 0.05, AURORA_BOTTOM + 0.05, uv.y) *
+                               smoothstep(AURORA_TOP + 0.10, AURORA_TOP - 0.10, uv.y);
 
     // --------------------------------------------------
     // AURORA VIEW MODEL
@@ -581,8 +584,9 @@ export const FRAGMENT_SHADER = `
     vec2 auroraTowardUserDir = normalize(vec2(0.0, -1.0));
 
     // Motion speed scales with activity (KP index) & pitch
+    // 85% slower for majestic, slow-moving aurora
     float approachSpeed =
-        0.00018 *
+        0.000027 *  // Reduced by 85% (was 0.00018)
         mix(0.7, 1.4, clamp(u_auroraIntensity * 1.5, 0.0, 1.0)) *
         mix(0.8, 1.2, pitchFactor);
 
@@ -646,13 +650,13 @@ export const FRAGMENT_SHADER = `
       altitudeFalloff = max(0.2, altitudeFalloff);
       curtainValue *= altitudeFalloff;
 
-      // === AURORA APPROACH MOTION (toward viewer) ===
-      float auroraY = smoothstep(0.40, 1.0, uv.y);
-      float approachSpeed = u_time * 0.000054; // 30% speed reduction
-      float approachPhase = auroraY * 3.5 - approachSpeed;
+      // === AURORA HORIZONTAL DRIFT (slow, majestic movement) ===
+      float auroraY = smoothstep(AURORA_BOTTOM, AURORA_TOP, uv.y);
+      float driftSpeed = u_time * 0.0000081; // 85% slower (was 0.000054)
+      float driftPhase = uv.x * 14.0 - driftSpeed;
 
-      // Standing vertical curtains
-      float verticalBands = sin((uv.x * 14.0) + approachPhase);
+      // Standing vertical curtains with slow horizontal drift
+      float verticalBands = sin(driftPhase);
       verticalBands = smoothstep(-0.4, 0.6, verticalBands);
 
       // Perspective: stronger closer to viewer

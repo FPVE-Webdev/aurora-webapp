@@ -92,10 +92,10 @@ export const VISUAL_MODE_CONFIG = {
   /** Shimmer amplitude */
   shimmerAmplitude: 0.1,
 
-  // ===== VERTEX DISPLACEMENT PARAMETERS (NEW) =====
+  // ===== VERTEX DISPLACEMENT PARAMETERS =====
 
   /** Curtain wave amplitude (vertical displacement strength) */
-  curtainWaveAmplitude: 0.15, // TESTING: Increased for visibility
+  curtainWaveAmplitude: 0.01, // Minimal displacement for flat horizon appearance
 
   /** Curtain wave frequency (number of wave peaks across screen) */
   curtainWaveFrequency: 8.0, // Creates 8 major curtain bands
