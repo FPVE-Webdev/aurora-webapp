@@ -202,10 +202,10 @@ export const FRAGMENT_SHADER = `
 
     float kpFactor = clamp(u_kpIndex / 9.0, 0.0, 1.0);
 
-    // LOW KP PALETTE (Green aurora)
-    vec3 colorLowKP_Low = vec3(0.24, 1.0, 0.62);    // Deep green #3cff9e
-    vec3 colorLowKP_Mid = vec3(0.30, 0.86, 1.0);    // Cyan #4ddcff
-    vec3 colorLowKP_High = vec3(0.35, 0.75, 0.95);  // Light cyan
+    // LOW KP PALETTE (Teal/Cyan aurora - matching reference image)
+    vec3 colorLowKP_Low = vec3(0.20, 1.0, 0.75);    // Teal #33ffbf
+    vec3 colorLowKP_Mid = vec3(0.25, 0.95, 1.0);    // Bright cyan #40f2ff
+    vec3 colorLowKP_High = vec3(0.30, 0.85, 0.98);  // Light cyan
 
     // HIGH KP PALETTE (Purple-Red aurora - geomagnetic storm)
     vec3 colorHighKP_Low = vec3(0.78, 0.36, 1.0);   // Purple #c75cff
@@ -545,14 +545,14 @@ export const FRAGMENT_SHADER = `
             mix(1.0, 0.4, distanceFade); // far clouds darker
 
         // --- COLOR ---
-        // Lighter gray-blue for better visibility against dark background
-        vec3 cloudNearColor = vec3(0.35, 0.40, 0.45); // Light foggy gray (foreground)
-        vec3 cloudFarColor  = vec3(0.15, 0.18, 0.22); // Medium gray (horizon)
+        // Dark blue-gray to match reference image (dense cloud bank)
+        vec3 cloudNearColor = vec3(0.08, 0.12, 0.18); // Dark blue-gray (foreground)
+        vec3 cloudFarColor  = vec3(0.03, 0.06, 0.10); // Nearly black (horizon)
 
         cloudColor = mix(cloudNearColor, cloudFarColor, distanceFade);
 
-        // TESTING: Heavy boost for cloud visibility (6x multiplier)
-        cloudAlpha = cloudOpacity * 6.0;
+        // DRAMATIC: Heavy boost for dense, structured cloud coverage
+        cloudAlpha = cloudOpacity * 8.0;
       }
     }
 

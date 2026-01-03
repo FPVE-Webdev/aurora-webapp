@@ -125,19 +125,19 @@ export const VISUAL_MODE_CONFIG = {
   // ===== INTENSITY & VISIBILITY =====
   
   /** KP weight in intensity formula */
-  intensityKpWeight: 2.0,  // TESTING: Much higher for visibility
+  intensityKpWeight: 5.0,  // DRAMATIC: Match reference image intensity
 
   /** Probability weight in intensity formula */
-  intensityProbabilityWeight: 1.0,  // TESTING: Much higher for visibility
-  
+  intensityProbabilityWeight: 2.0,  // DRAMATIC: Match reference image intensity
+
   /** Minimum intensity threshold (below this, aurora not rendered) */
   intensityMinThreshold: 0.05,
-  
+
   /** Alpha tuning multiplier (global transparency) */
-  alphaTune: 2.5,  // TESTING: Dramatically increased for visibility
+  alphaTune: 5.0,  // DRAMATIC: Glowing, vivid aurora like reference
 
   /** Layer alpha contribution */
-  layerAlpha: 0.8,  // TESTING: Much higher for visibility
+  layerAlpha: 1.2,  // DRAMATIC: Can exceed 1.0 for glow effect
   
   /** Cloud coverage impact multiplier */
   cloudImpact: 0.2,
