@@ -183,17 +183,21 @@ export const FRAGMENT_SHADER = `
   // Uses layered noise for realistic cumulus/stratus formations
 
   float sampleCloudLayer(vec2 uv, float altitude, float time) {
-    // MINIMAL wind drift for realistic, stable cloud cover
+    // ULTRA-MINIMAL wind drift for nearly static cloud cover
     vec2 windVector = vec2(
       sin(u_windDirection * 0.01745),  // degrees to radians
       cos(u_windDirection * 0.01745)
     );
-    vec2 drift = windVector * u_windSpeed * time * 0.000008; // Very slow drift
+    vec2 drift = windVector * u_windSpeed * time * 0.0000004; // 5% of previous (0.000008)
+
+    // Shift clouds toward horizon (over Tromsø, away from viewer)
+    // Offset uv.y upward to position clouds further back in scene
+    vec2 cloudUV = vec2(uv.x, uv.y + 0.15); // Push clouds up 15% in screen space
 
     // 3D position (clouds are low altitude)
     vec3 pos = vec3(
-      (uv.x + drift.x) * 3.5,  // Increased scale for larger cloud formations
-      (uv.y + drift.y) * 3.5,
+      (cloudUV.x + drift.x) * 3.5,  // Increased scale for larger cloud formations
+      (cloudUV.y + drift.y) * 3.5,
       altitude * 0.1
     );
 
