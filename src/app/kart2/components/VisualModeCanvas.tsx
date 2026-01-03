@@ -24,6 +24,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createShaderProgram, VERTEX_SHADER, FRAGMENT_SHADER } from '../utils/shaders';
+import { generateSubdividedPlane, getRecommendedResolution, validateMeshData } from '../utils/geometry';
 import {
   VISUAL_MODE_CONFIG,
   getQualityConfig,
@@ -145,6 +146,8 @@ export default function VisualModeCanvas({
 
     const canvas = canvasRef.current;
     let positionBuffer: WebGLBuffer | null = null;
+    let indexBuffer: WebGLBuffer | null = null;
+    let meshIndexCount = 0;
 
     const reportFatal = (err: unknown) => {
       if (fatalErrorReportedRef.current) return;
@@ -178,6 +181,9 @@ export default function VisualModeCanvas({
         }
         if (positionBuffer && glRef.current) {
           glRef.current.deleteBuffer(positionBuffer);
+        }
+        if (indexBuffer && glRef.current) {
+          glRef.current.deleteBuffer(indexBuffer);
         }
         if (glRef.current) {
           glRef.current.getExtension('WEBGL_lose_context')?.loseContext();
@@ -306,16 +312,52 @@ export default function VisualModeCanvas({
     programRef.current = program;
     gl.useProgram(program);
 
-      // Create fullscreen quad
+      // ===== GENERATE SUBDIVIDED MESH FOR VERTEX DISPLACEMENT =====
+      // High-poly geometry required for smooth sine-wave curtain animation
+      const meshResolution = getRecommendedResolution(isMobileRef.current);
+      const mesh = generateSubdividedPlane(meshResolution);
+
+      // Validate mesh data
+      if (!validateMeshData(mesh)) {
+        reportFatal(new Error('Invalid mesh data generated'));
+        return;
+      }
+
+      meshIndexCount = mesh.indexCount;
+
+      // Log mesh stats in dev mode
+      if (!IS_PRODUCTION) {
+        console.log('[VisualMode] Mesh generated:', {
+          resolution: meshResolution,
+          vertices: mesh.vertexCount,
+          triangles: mesh.indexCount / 3,
+          isMobile: isMobileRef.current
+        });
+        console.log('[VisualMode] Aurora data:', {
+          kpIndex,
+          auroraProbability,
+          auroraIntensity,
+          curtainDensity
+        });
+      }
+
+      // Create vertex buffer
       positionBuffer = gl.createBuffer();
+      if (!positionBuffer) {
+        reportFatal(new Error('Failed to create vertex buffer'));
+        return;
+      }
       gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    const positions = new Float32Array([
-      -1, -1,
-       1, -1,
-      -1,  1,
-       1,  1,
-    ]);
-      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+      gl.bufferData(gl.ARRAY_BUFFER, mesh.vertices, gl.STATIC_DRAW);
+
+      // Create index buffer
+      indexBuffer = gl.createBuffer();
+      if (!indexBuffer) {
+        reportFatal(new Error('Failed to create index buffer'));
+        return;
+      }
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW);
 
     // Setup vertex attribute
     const positionLocation = gl.getAttribLocation(program, 'a_position');
@@ -327,9 +369,14 @@ export default function VisualModeCanvas({
     const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
     const timeLocation = gl.getUniformLocation(program, 'u_time');
     const auroraIntensityLocation = gl.getUniformLocation(program, 'u_auroraIntensity');
+    const kpIndexLocation = gl.getUniformLocation(program, 'u_kpIndex');
     const tromsoCenterLocation = gl.getUniformLocation(program, 'u_tromsoCenter');
     const cloudCoverageLocation = gl.getUniformLocation(program, 'u_cloudCoverage');
     const mapPitchLocation = gl.getUniformLocation(program, 'u_mapPitch');
+
+    // Vertex shader uniforms (curtain wave effect)
+    const curtainWaveAmplitudeLocation = gl.getUniformLocation(program, 'u_curtainWaveAmplitude');
+    const curtainWaveFrequencyLocation = gl.getUniformLocation(program, 'u_curtainWaveFrequency');
 
     // 3D Rendering uniform locations
     const cameraAltitudeLocation = gl.getUniformLocation(program, 'u_cameraAltitude');
@@ -474,9 +521,15 @@ export default function VisualModeCanvas({
       gl.uniform1f(timeLocation, currentTime);
       // Aurora intensity: always pass real value (toggle handled in shader)
       gl.uniform1f(auroraIntensityLocation, auroraIntensity);
+      // KP Index: pass raw value for color shift (0-9 range)
+      gl.uniform1f(kpIndexLocation, kpIndex);
       gl.uniform2f(tromsoCenterLocation, screenX, screenY);
       // Cloud coverage: always pass real value (toggle handled in shader)
       gl.uniform1f(cloudCoverageLocation, cloudCoverage / 100);
+
+      // Vertex shader uniforms for curtain wave effect
+      gl.uniform1f(curtainWaveAmplitudeLocation, VISUAL_MODE_CONFIG.curtainWaveAmplitude);
+      gl.uniform1f(curtainWaveFrequencyLocation, VISUAL_MODE_CONFIG.curtainWaveFrequency);
 
       // Map pitch for aurora tilt alignment
       const pitch = mapInstance.getPitch(); // 0-85 degrees (Mapbox maximum)
@@ -509,8 +562,8 @@ export default function VisualModeCanvas({
       gl.uniform1f(auroraEnabledLocation, isEnabled ? 1.0 : 0.0);
       gl.uniform1f(weatherEnabledLocation, weatherModeEnabled ? 1.0 : 0.0);
 
-      // Draw fullscreen quad
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      // Draw subdivided mesh (indexed triangles)
+      gl.drawElements(gl.TRIANGLES, meshIndexCount, gl.UNSIGNED_SHORT, 0);
 
       animationFrameRef.current = requestAnimationFrame(render);
         } catch (err) {
@@ -535,6 +588,9 @@ export default function VisualModeCanvas({
         }
         if (positionBuffer && glRef.current) {
           glRef.current.deleteBuffer(positionBuffer);
+        }
+        if (indexBuffer && glRef.current) {
+          glRef.current.deleteBuffer(indexBuffer);
         }
         if (glRef.current) {
           glRef.current.getExtension('WEBGL_lose_context')?.loseContext();

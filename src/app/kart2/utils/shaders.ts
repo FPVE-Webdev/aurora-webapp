@@ -22,18 +22,50 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 export const VERTEX_SHADER = `
   attribute vec2 a_position;
+  varying vec2 v_uv;
+
+  uniform float u_time;
+  uniform float u_auroraIntensity;
+  uniform float u_curtainWaveAmplitude;
+  uniform float u_curtainWaveFrequency;
+
   void main() {
-    gl_Position = vec4(a_position, 0.0, 1.0);
+    // Convert NDC (-1,1) to UV (0,1) for fragment shader
+    v_uv = a_position * 0.5 + 0.5;
+
+    // VERTICAL CURTAIN DISPLACEMENT - Sine wave ripple effect
+    // Creates the "living, breathing" aurora curtain motion
+
+    // Horizontal wave pattern (creates vertical curtain bands)
+    float wave1 = sin(a_position.x * u_curtainWaveFrequency + u_time * 0.0003) * u_curtainWaveAmplitude;
+
+    // Secondary wave at different frequency (adds organic complexity)
+    float wave2 = sin(a_position.x * u_curtainWaveFrequency * 1.7 + u_time * 0.00045) * (u_curtainWaveAmplitude * 0.5);
+
+    // Vertical modulation (curtains taller in center, shorter at edges)
+    float verticalMask = smoothstep(0.0, 0.3, v_uv.y) * smoothstep(1.0, 0.7, v_uv.y);
+
+    // Combine waves with intensity scaling
+    float totalDisplacement = (wave1 + wave2) * verticalMask * u_auroraIntensity;
+
+    // Apply displacement in Y direction (vertical curtain motion)
+    vec2 displaced = a_position + vec2(0.0, totalDisplacement);
+
+    gl_Position = vec4(displaced, 0.0, 1.0);
   }
 `;
 
 export const FRAGMENT_SHADER = `
   precision mediump float;
 
+  // ===== VARYING FROM VERTEX SHADER =====
+  varying vec2 v_uv;
+
   // ===== CORE UNIFORMS =====
   uniform vec2 u_resolution;
   uniform float u_time;
   uniform float u_auroraIntensity;
+  uniform float u_kpIndex;            // Raw KP index (0-9) for color shift
   uniform vec2 u_tromsoCenter;        // Screen-space coords [0-1]
   uniform float u_cloudCoverage;      // 0-1
   uniform float u_mapPitch;           // Map pitch normalized (0-1)
@@ -155,26 +187,40 @@ export const FRAGMENT_SHADER = `
     return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
   }
 
-  // ===== ALTITUDE-BASED COLOR MAPPING =====
+  // ===== ALTITUDE-BASED COLOR MAPPING WITH KP-DRIVEN SHIFT =====
   // Scientific aurora colors based on atmospheric emission wavelengths
+  // KP INDEX INFLUENCE: Low KP = Green dominant, High KP = Purple/Red dominant
 
   vec3 getAuroraColor(float altitude, float intensity) {
-    // NATURAL POLAR PALETTE (cinematic, non-neon colors)
-    // 80-100km:  Subtle violet hints (low alpha)
-    // 100-150km: Deep green → cyan (primary band) - #3cff9e / #4ddcff
-    // 200-300km: Cyan tones (high altitude)
+    // KP-driven base color shift
+    // Low KP (0-3): Green dominant (common aurora)
+    // Mid KP (4-6): Green-Cyan mix (moderate activity)
+    // High KP (7-9): Purple-Red dominant (storm aurora)
 
-    vec3 colorLow = vec3(0.48, 0.36, 1.0);   // Subtle violet #7a5cff (hint only)
-    vec3 colorMid = vec3(0.24, 1.0, 0.62);   // Deep green-cyan #3cff9e (primary)
-    vec3 colorHigh = vec3(0.30, 0.86, 1.0);  // Cyan #4ddcff (high altitude)
+    float kpFactor = clamp(u_kpIndex / 9.0, 0.0, 1.0);
 
-    // Smooth, natural transitions between color bands
+    // LOW KP PALETTE (Green aurora)
+    vec3 colorLowKP_Low = vec3(0.24, 1.0, 0.62);    // Deep green #3cff9e
+    vec3 colorLowKP_Mid = vec3(0.30, 0.86, 1.0);    // Cyan #4ddcff
+    vec3 colorLowKP_High = vec3(0.35, 0.75, 0.95);  // Light cyan
+
+    // HIGH KP PALETTE (Purple-Red aurora - geomagnetic storm)
+    vec3 colorHighKP_Low = vec3(0.78, 0.36, 1.0);   // Purple #c75cff
+    vec3 colorHighKP_Mid = vec3(1.0, 0.24, 0.62);   // Magenta-Red #ff3d9e
+    vec3 colorHighKP_High = vec3(1.0, 0.50, 0.70);  // Pink
+
+    // Interpolate palettes based on KP index
+    vec3 colorLow = mix(colorLowKP_Low, colorHighKP_Low, kpFactor);
+    vec3 colorMid = mix(colorLowKP_Mid, colorHighKP_Mid, kpFactor);
+    vec3 colorHigh = mix(colorLowKP_High, colorHighKP_High, kpFactor);
+
+    // Altitude-based color transitions (same structure, KP-shifted colors)
     if (altitude < 120.0) {
-      // Transition from subtle violet to deep green (80-120km)
+      // Transition from low to mid altitude colors (80-120km)
       float t = (altitude - 80.0) / 40.0;
       return mix(colorLow, colorMid, smoothstep(0.0, 1.0, t));
     } else {
-      // Transition from deep green to cyan (120-300km)
+      // Transition from mid to high altitude colors (120-300km)
       float t = (altitude - 120.0) / 180.0;
       return mix(colorMid, colorHigh, smoothstep(0.0, 1.0, t));
     }
@@ -616,8 +662,13 @@ export const FRAGMENT_SHADER = `
       // Get color for this altitude
       vec3 layerColor = getAuroraColor(altitude, curtainValue);
 
+      // VERTICAL ALPHA GRADIENT - Fade at top/bottom, bright in center
+      // Creates the classic "curtain" appearance with natural falloff
+      float verticalGradient = smoothstep(0.0, 0.25, v_uv.y) *   // Fade in from bottom
+                               smoothstep(1.0, 0.75, v_uv.y);    // Fade out at top
+
       // Depth-based alpha (layers blend together)
-      float layerAlpha = curtainValue * 0.25; // Increased from 0.15 to 0.25 for more opacity
+      float layerAlpha = curtainValue * 0.25 * verticalGradient; // Apply vertical gradient
 
       // Accumulate color with depth blending (front-to-back)
       finalColor += layerColor * layerAlpha * (1.0 - finalAlpha);

@@ -70,27 +70,35 @@ export const VISUAL_MODE_CONFIG = {
   noiseAmplitudeDecay: 0.5,
   
   // ===== MOTION PARAMETERS =====
-  
+
   /** Base motion speed multiplier */
-  motionSpeedBase: 0.8,
-  
+  motionSpeedBase: 1.2, // Increased from 0.8 for more visible motion
+
   /** Vertical wave frequency (curtain undulation) */
   verticalWaveFreq: 0.0003,
-  
+
   /** Horizontal drift speed (east-west motion) */
   horizontalDriftSpeed: 0.00001,
-  
+
   /** Pulsing frequency (brightness variation) */
   pulseFrequency: 0.0005,
-  
+
   /** Pulse amplitude (0.0-1.0) */
   pulseAmplitude: 0.3,
-  
+
   /** Shimmer frequency (high-frequency flicker at edges) */
   shimmerFrequency: 0.003,
-  
+
   /** Shimmer amplitude */
   shimmerAmplitude: 0.1,
+
+  // ===== VERTEX DISPLACEMENT PARAMETERS (NEW) =====
+
+  /** Curtain wave amplitude (vertical displacement strength) */
+  curtainWaveAmplitude: 0.08, // Moderate wave height
+
+  /** Curtain wave frequency (number of wave peaks across screen) */
+  curtainWaveFrequency: 8.0, // Creates 8 major curtain bands
   
   // ===== PARALLAX & DEPTH =====
   
@@ -126,7 +134,7 @@ export const VISUAL_MODE_CONFIG = {
   intensityMinThreshold: 0.05,
   
   /** Alpha tuning multiplier (global transparency) */
-  alphaTune: 0.75,  // Increased from 0.55 for more visible colors
+  alphaTune: 0.85,  // Increased from 0.75 for more vivid curtains
 
   /** Layer alpha contribution */
   layerAlpha: 0.25,  // Increased from 0.15
