@@ -12,6 +12,8 @@ import { useVisualMode } from './hooks/useVisualMode';
 import { useWeatherMode } from './hooks/useWeatherMode';
 import VisualModeErrorBoundary from './components/VisualModeErrorBoundary';
 import { generateTromsoCityLights } from './utils/cityLights';
+import { createAurora3DLayer } from './components/aurora3dLayer';
+import { createClouds3DLayer } from './components/clouds3dLayer';
 
 /**
  * Encode MET.no weather symbol code to shader weather type
@@ -32,10 +34,14 @@ export default function MapView() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const hasInitialized = useRef(false); // Task 3: Map Init Guard
+  const [isMapReady, setIsMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const isSnapshottingRef = useRef(false); // Task 1: Snapshot Debounce Lock
   const [visualModeError, setVisualModeError] = useState<string | null>(null);
+  const [aurora3DActive, setAurora3DActive] = useState(false);
+  const [clouds3DActive, setClouds3DActive] = useState(false);
+  const clouds3DLayerRef = useRef<any>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const { data, isLoading, error } = useAuroraData();
   const chaseState = useChaseRegions();
@@ -45,13 +51,6 @@ export default function MapView() {
   // Weather test mode state
   const [weatherTestMode, setWeatherTestMode] = useState<'real' | 'snow' | 'clear'>('snow');
 
-  // Set initial cloud coverage override
-  useEffect(() => {
-    if (typeof window !== 'undefined' && weatherTestMode === 'snow') {
-      (window as any).__WEATHER_TEST_CLOUD_OVERRIDE = 100;
-    }
-  }, []);
-
   // Weather data for cloud layer rendering (REAL MET.NO DATA)
   const [weatherData, setWeatherData] = useState({
     windSpeed: 15.0,         // TEST: Strong wind for snow squalls
@@ -59,6 +58,285 @@ export default function MapView() {
     weatherType: 4.0,        // TEST: Snow (4.0 = snow in encodeWeatherType)
     precipitation: 5.0,      // TEST: Heavy precipitation
   });
+
+  // Set initial cloud coverage override
+  useEffect(() => {
+    if (typeof window !== 'undefined' && weatherTestMode === 'snow') {
+      (window as any).__WEATHER_TEST_CLOUD_OVERRIDE = 100;
+    }
+  }, []);
+
+  // Aurora 3D prototype: render aurora inside Mapbox 3D scene at high altitude.
+  // This gives true world-space "height" separate from terrain/buildings.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapReady) return;
+
+    const layerId = 'aurora-3d';
+    const aurora3DFeatureEnabled =
+      process.env.NEXT_PUBLIC_KART2_AURORA3D === '1' || process.env.NODE_ENV !== 'production';
+    let cancelled = false;
+    let idleHandler: (() => void) | null = null;
+
+    const removeLayer = () => {
+      try {
+        if (idleHandler) {
+          try {
+            map.off?.('idle', idleHandler);
+          } catch {}
+          idleHandler = null;
+        }
+        if (map.getLayer?.(layerId)) {
+          map.removeLayer(layerId);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setAurora3DActive(false);
+      }
+    };
+
+    // Feature flag: keep this prototype off in production unless explicitly enabled.
+    if (!aurora3DFeatureEnabled) {
+      removeLayer();
+      return;
+    }
+
+    if (!visualMode.isEnabled) {
+      removeLayer();
+      return;
+    }
+
+    // Add only once per enable-cycle.
+    if (map.getLayer?.(layerId)) {
+      setAurora3DActive(true);
+      return;
+    }
+
+    const tryAddLayer = () => {
+      if (cancelled) return;
+      // If already added meanwhile, just mark active.
+      if (map.getLayer?.(layerId)) {
+        setAurora3DActive(true);
+        return;
+      }
+
+      // Guard: Mapbox throws if style isn't loaded yet.
+      if (map.isStyleLoaded && !map.isStyleLoaded()) {
+        // Wait for idle (style + resources ready), then try again.
+        if (!idleHandler) {
+          idleHandler = () => {
+            idleHandler = null;
+            tryAddLayer();
+          };
+          try {
+            map.once?.('idle', idleHandler);
+          } catch {
+            // Fallback: if once() doesn't exist, use on() and self-remove.
+            try {
+              map.on?.('idle', idleHandler);
+            } catch {}
+          }
+        }
+        return;
+      }
+
+      try {
+        import('mapbox-gl')
+          .then((mapboxgl) => {
+            if (cancelled) return;
+            try {
+              if (!map.getLayer?.(layerId)) {
+                const auroraLayer = createAurora3DLayer(mapboxgl, {
+                  id: layerId,
+                  centerLngLat: [18.95, 69.65],
+                  // NOTE: Prototype: keep altitude within Mapbox camera frustum.
+                  // We can raise this later once visibility + occlusion look right.
+                  altitudeMeters: 15_000,
+                  // Tuned for Tromsø scene: wide band close to the horizon.
+                  latSpanDeg: 0.7,
+                  lonSpanDeg: 4.5,
+                  northOffsetDeg: 0.25,
+                  intensity: 1.0
+                });
+
+                // Render late so terrain/buildings are in depth buffer (for occlusion).
+                map.addLayer(auroraLayer);
+              }
+              setAurora3DActive(true);
+            } catch (err) {
+              setAurora3DActive(false);
+              if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.warn('[Aurora3D] Failed to add custom layer:', err);
+              }
+            }
+          })
+          .catch(() => {
+            setAurora3DActive(false);
+          });
+      } catch {
+        setAurora3DActive(false);
+      }
+    };
+
+    tryAddLayer();
+
+    return () => {
+      cancelled = true;
+      removeLayer();
+    };
+  }, [visualMode.isEnabled, isMapReady]);
+
+  // Clouds 3D: separate cloud deck layer, driven by tromsoCloudCoverage, sits above aurora-3d.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapReady) return;
+
+    const layerId = 'clouds-3d';
+    const clouds3DFeatureEnabled =
+      process.env.NEXT_PUBLIC_KART2_CLOUDS3D === '1' || process.env.NODE_ENV !== 'production';
+
+    let cancelled = false;
+    let idleHandler: (() => void) | null = null;
+
+    const removeLayer = () => {
+      try {
+        if (idleHandler) {
+          try {
+            map.off?.('idle', idleHandler);
+          } catch {}
+          idleHandler = null;
+        }
+        if (map.getLayer?.(layerId)) {
+          map.removeLayer(layerId);
+        }
+      } catch {
+        // ignore
+      } finally {
+        clouds3DLayerRef.current = null;
+        setClouds3DActive(false);
+      }
+    };
+
+    // Cloud deck for the 3D pipeline:
+    // - Only show when Visual Mode is enabled AND Aurora3D is active (i.e. we are not using the old overlay canvas)
+    // - Controlled by Weather toggle
+    const shouldShowClouds3D = visualMode.isEnabled && aurora3DActive && weatherMode.isEnabled;
+
+    if (!clouds3DFeatureEnabled || !shouldShowClouds3D) {
+      removeLayer();
+      return;
+    }
+
+    const updateUniforms = () => {
+      const layer = clouds3DLayerRef.current;
+      if (!layer) return;
+      try {
+        layer.setCloudCoverage?.(chaseState.tromsoCloudCoverage ?? 0);
+        layer.setWind?.(weatherData.windDirection ?? 270, weatherData.windSpeed ?? 5);
+        map.triggerRepaint?.();
+      } catch {
+        // ignore
+      }
+    };
+
+    const tryAddLayer = () => {
+      if (cancelled) return;
+
+      // Update if already exists
+      if (map.getLayer?.(layerId)) {
+        setClouds3DActive(true);
+        updateUniforms();
+        // Ensure clouds are above aurora
+        try {
+          map.moveLayer?.(layerId);
+        } catch {}
+        return;
+      }
+
+      if (map.isStyleLoaded && !map.isStyleLoaded()) {
+        if (!idleHandler) {
+          idleHandler = () => {
+            idleHandler = null;
+            tryAddLayer();
+          };
+          try {
+            map.once?.('idle', idleHandler);
+          } catch {
+            try {
+              map.on?.('idle', idleHandler);
+            } catch {}
+          }
+        }
+        return;
+      }
+
+      import('mapbox-gl')
+        .then((mapboxgl) => {
+          if (cancelled) return;
+          try {
+            if (!map.getLayer?.(layerId)) {
+              const cloudsLayer = createClouds3DLayer(mapboxgl, {
+                id: layerId,
+                centerLngLat: [18.95, 69.65],
+                altitudeMeters: 2_000,
+                topAltitudeMeters: 12_000,
+                lonSpanDeg: 5.0,
+                // Place closer for guaranteed visibility in pitched view
+                northOffsetDeg: 0.06,
+                cloudCoverage: chaseState.tromsoCloudCoverage ?? 0,
+                windSpeed: weatherData.windSpeed ?? 5,
+                windDirection: weatherData.windDirection ?? 270
+              });
+              clouds3DLayerRef.current = cloudsLayer;
+              map.addLayer(cloudsLayer);
+                if (process.env.NODE_ENV !== 'production') {
+                  // eslint-disable-next-line no-console
+                  console.log('[Clouds3D] added');
+                  try {
+                    (window as any).__CLOUDS3D_ADDED = true;
+                  } catch {}
+                }
+            }
+            setClouds3DActive(true);
+            // Keep clouds above aurora in stack.
+            try {
+              map.moveLayer?.(layerId);
+            } catch {}
+          } catch (err) {
+            setClouds3DActive(false);
+            clouds3DLayerRef.current = null;
+            if (process.env.NODE_ENV !== 'production') {
+              // eslint-disable-next-line no-console
+              console.warn('[Clouds3D] Failed to add custom layer:', err);
+            }
+          }
+        })
+        .catch(() => {
+          setClouds3DActive(false);
+          clouds3DLayerRef.current = null;
+        });
+    };
+
+    tryAddLayer();
+
+    // Keep uniforms in sync while enabled.
+    updateUniforms();
+
+    return () => {
+      cancelled = true;
+      removeLayer();
+    };
+  }, [
+    isMapReady,
+    visualMode.isEnabled,
+    aurora3DActive,
+    weatherMode.isEnabled,
+    chaseState.tromsoCloudCoverage,
+    weatherData.windSpeed,
+    weatherData.windDirection
+  ]);
 
   // Toggle weather test scenarios
   const cycleWeatherTest = () => {
@@ -643,6 +921,9 @@ export default function MapView() {
               }
             }
           });
+
+          // Mark map as ready for custom 3D layers (clouds/aurora).
+          setIsMapReady(true);
         });
 
         // Helper function to configure ocean appearance (cold, deep Arctic aesthetic)
@@ -798,6 +1079,7 @@ export default function MapView() {
         }
         mapRef.current.remove();
         mapRef.current = null;
+        setIsMapReady(false);
       }
     };
   }, []);
@@ -824,7 +1106,7 @@ export default function MapView() {
       </div>
 
       {/* Visual Mode Canvas Overlay - wrapped for proper z-index stacking */}
-      {data && visualMode.isClient && mapRef.current && (
+      {data && visualMode.isClient && mapRef.current && !aurora3DActive && (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
           <VisualModeErrorBoundary
             resetKey={`${visualMode.isEnabled}-${data.timestamp}`}
@@ -832,7 +1114,8 @@ export default function MapView() {
           >
             <VisualModeCanvas
               isEnabled={visualMode.isEnabled}
-              weatherModeEnabled={weatherMode.isEnabled}
+              // If we have 3D clouds, disable shader-clouds to avoid double rendering.
+              weatherModeEnabled={weatherMode.isEnabled && !clouds3DActive}
               kpIndex={data.kp}
               auroraProbability={data.probability}
               cloudCoverage={chaseState.tromsoCloudCoverage}
