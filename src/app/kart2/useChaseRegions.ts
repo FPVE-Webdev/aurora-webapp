@@ -16,6 +16,13 @@
 import { useState, useEffect } from 'react';
 import { CHASE_REGIONS, MAP_CONFIG, type ChaseRegion } from './map.config';
 
+// DEV MODE: Weather test override (set from MapView)
+declare global {
+  interface Window {
+    __WEATHER_TEST_CLOUD_OVERRIDE?: number;
+  }
+}
+
 interface RegionVisibility {
   region: ChaseRegion;
   cloudCoverage: number;        // 0-100%
@@ -59,7 +66,11 @@ export function useChaseRegions(): ChaseRegionState {
         // Fetch Tromsø cloud coverage
         const tromsoRes = await fetch('/api/weather/69.65/18.95');
         const tromsoData = await tromsoRes.json();
-        const tromsoCloud = tromsoData.cloudCoverage ?? 0;
+
+        // DEV MODE: Allow override from Weather Test button
+        const tromsoCloud = typeof window !== 'undefined' && window.__WEATHER_TEST_CLOUD_OVERRIDE !== undefined
+          ? window.__WEATHER_TEST_CLOUD_OVERRIDE
+          : (tromsoData.cloudCoverage ?? 0);
 
         // Check if we should expand
         if (tromsoCloud <= MAP_CONFIG.chaseMode.cloudThreshold) {

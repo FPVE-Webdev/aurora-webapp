@@ -42,16 +42,70 @@ export default function MapView() {
   const visualMode = useVisualMode();
   const weatherMode = useWeatherMode();
 
+  // Weather test mode state
+  const [weatherTestMode, setWeatherTestMode] = useState<'real' | 'snow' | 'clear'>('snow');
+
+  // Set initial cloud coverage override
+  useEffect(() => {
+    if (typeof window !== 'undefined' && weatherTestMode === 'snow') {
+      (window as any).__WEATHER_TEST_CLOUD_OVERRIDE = 100;
+    }
+  }, []);
+
   // Weather data for cloud layer rendering (REAL MET.NO DATA)
   const [weatherData, setWeatherData] = useState({
-    windSpeed: 5.0,          // Default: 5 m/s westerly wind
+    windSpeed: 15.0,         // TEST: Strong wind for snow squalls
     windDirection: 270.0,    // Default: Westerly (from west)
-    weatherType: 2.0,        // Default: Cloudy
-    precipitation: 0.0,      // Default: No precipitation
+    weatherType: 4.0,        // TEST: Snow (4.0 = snow in encodeWeatherType)
+    precipitation: 5.0,      // TEST: Heavy precipitation
   });
+
+  // Toggle weather test scenarios
+  const cycleWeatherTest = () => {
+    const modes: Array<'real' | 'snow' | 'clear'> = ['real', 'snow', 'clear'];
+    const currentIndex = modes.indexOf(weatherTestMode);
+    const nextMode = modes[(currentIndex + 1) % modes.length];
+    setWeatherTestMode(nextMode);
+
+    // Update weather data and cloud coverage based on mode
+    if (nextMode === 'snow') {
+      setWeatherData({
+        windSpeed: 15.0,
+        windDirection: 270.0,
+        weatherType: 4.0,  // Snow
+        precipitation: 5.0,
+      });
+      // Set 100% cloud coverage for snow
+      if (typeof window !== 'undefined') {
+        (window as any).__WEATHER_TEST_CLOUD_OVERRIDE = 100;
+      }
+    } else if (nextMode === 'clear') {
+      setWeatherData({
+        windSpeed: 3.0,
+        windDirection: 270.0,
+        weatherType: 0.0,  // Clear sky
+        precipitation: 0.0,
+      });
+      // Set 0% cloud coverage for clear
+      if (typeof window !== 'undefined') {
+        (window as any).__WEATHER_TEST_CLOUD_OVERRIDE = 0;
+      }
+    } else {
+      // Real mode: remove override
+      if (typeof window !== 'undefined') {
+        delete (window as any).__WEATHER_TEST_CLOUD_OVERRIDE;
+      }
+    }
+
+    // Force re-fetch of chase regions
+    window.location.reload();
+  };
 
   // Fetch real weather data from MET.no API
   useEffect(() => {
+    // Skip API fetch if in test mode
+    if (weatherTestMode !== 'real') return;
+
     const fetchWeather = async () => {
       try {
         const res = await fetch('/api/weather/69.65/18.95'); // Tromsø coordinates
@@ -88,7 +142,7 @@ export default function MapView() {
     // Refresh every 15 minutes (MET.no update frequency)
     const interval = setInterval(fetchWeather, 15 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [weatherTestMode]);
 
   // Fixed "scene" camera: Tromsø viewpoint (not a navigable world map)
   const SCENE_CENTER: [number, number] = [18.95, 69.65];
@@ -398,6 +452,35 @@ export default function MapView() {
           const initialPitch = map.getPitch?.() ?? SCENE_PITCH;
           configureOcean(false, initialPitch); // Visual mode is off by default
 
+          // === AURORA WATER REFLECTION ===
+          // Subtle green-cyan glow on water surface (aurora reflection effect)
+          if (!map.getLayer('aurora-water-reflection')) {
+            map.addLayer({
+              id: 'aurora-water-reflection',
+              type: 'fill',
+              source: 'composite',
+              'source-layer': 'water',
+              paint: {
+                'fill-color': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  7, 'rgba(120,255,200,0.03)',
+                  10, 'rgba(140,255,220,0.06)',
+                  12, 'rgba(160,255,230,0.08)'
+                ],
+                'fill-opacity': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  7, 0.15,
+                  10, 0.35,
+                  12, 0.5
+                ]
+              }
+            });
+          }
+
           // Add Tromsø dimming overlay (shown when shouldExpandMap is true)
           map.addSource('tromso-dim', {
             type: 'geojson',
@@ -501,40 +584,26 @@ export default function MapView() {
               return;
             }
 
-            // Base Arctic water color: cold blue-green (#102a36)
-            const baseColor = '#102a36';
+            // === OCEAN CONTRAST ENHANCEMENT ===
+            // Zoom-responsive color gradient for depth perception
+            map.setPaintProperty('water', 'fill-color', [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              7, '#0b1f2a',
+              10, '#123645',
+              12, '#1a4b5f'
+            ]);
 
-            // Calculate pitch-responsive darkening (pitch 0-85°)
-            // At high pitch (>50°), darken water by ~12% to push focus upward
-            const pitchFactor = currentPitch > 50 ? 0.88 : 1.0;
-
-            // Base opacity: reduced from default to lower contrast vs land
-            const baseOpacity = 0.87;
-
-            // Visual Mode: add subtle cyan tint (max 0.05 opacity)
-            // This creates a hint of reflection without being a full reflection
-            const visualModeTint = isVisualMode ? 0.03 : 0.0;
-
-            // Final opacity combines base, pitch, and visual mode
-            const finalOpacity = baseOpacity * pitchFactor * (1 - visualModeTint);
-
-            // If Visual Mode is active, add subtle cyan overlay via water-color interpolation
-            if (isVisualMode && visualModeTint > 0) {
-              // Mix base color with subtle cyan (#00ffff at 3% strength)
-              map.setPaintProperty('water', 'fill-color', [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                5, '#102a36',  // Base Arctic color at far zoom
-                12, '#0f3540' // Slightly lighter cyan-tinted at close zoom
-              ]);
-            } else {
-              // Set water color (cold Arctic tone)
-              map.setPaintProperty('water', 'fill-color', baseColor);
-            }
-
-            // Set water opacity (reduced contrast)
-            map.setPaintProperty('water', 'fill-opacity', finalOpacity);
+            // Zoom-responsive opacity for clarity
+            map.setPaintProperty('water', 'fill-opacity', [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              7, 0.55,
+              10, 0.75,
+              12, 0.9
+            ]);
 
           } catch (err) {
             if (process.env.NODE_ENV !== 'production') {
@@ -871,6 +940,21 @@ export default function MapView() {
               isEnabled={weatherMode.isEnabled}
               onToggle={weatherMode.toggle}
             />
+          )}
+
+          {/* Weather Test Toggle (DEV MODE ONLY) */}
+          {process.env.NODE_ENV !== 'production' && (
+            <button
+              onClick={cycleWeatherTest}
+              className="bg-purple-600/90 backdrop-blur-md text-white p-3 rounded shadow-lg hover:bg-purple-700 transition-colors text-xs font-medium"
+            >
+              <div className="flex flex-col items-start gap-1">
+                <span className="font-bold">🌦️ Weather Test</span>
+                <span className="text-[10px] opacity-90">
+                  Mode: {weatherTestMode === 'snow' ? '❄️ Snow' : weatherTestMode === 'clear' ? '☀️ Clear' : '🌐 Real'}
+                </span>
+              </div>
+            </button>
           )}
 
           {/* Tromsø Cloud Notice */}
