@@ -29,9 +29,28 @@ export default function HomePage() {
     selectedSpot,
     isLoading,
     lastUpdate,
-    error
+    error,
+    selectSpot // Need ability to force-reset spot
   } = useAuroraData();
   const { isPremium } = usePremium();
+  
+  // Enforce Lite Mode: Lock to Tromsø
+  useEffect(() => {
+    if (!isPremium && selectedSpot.id !== 'troms') {
+      const tromsoArg = { id: 'troms', name: 'Tromsø', latitude: 69.6492, longitude: 18.9553, region: 'troms' }; 
+      // Note: Ideal would be importing FREE_OBSERVATION_SPOTS or finding 'troms' from list, but hardcoding safe default avoids dependency cycles or extra lookups here for now.
+      // Actually, let's just assume selectSpot handles the ID update, passed object needs to match shape.
+      // Better: find it in spotForecasts or just construct minimal object if useAuroraData handles ID selection.
+      // Simplest safe approach:
+      selectSpot({ 
+           id: 'troms', 
+           name: 'Tromsø', 
+           latitude: 69.6492, 
+           longitude: 18.9553, 
+           region: 'troms',
+      });
+    }
+  }, [isPremium, selectedSpot, selectSpot]);
   const { settings } = useAppSettings();
   const [extendedMetrics, setExtendedMetrics] = useState<ExtendedMetricsType | null>(null);
   const [showIntro, setShowIntro] = useState(true);
@@ -229,7 +248,7 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto mb-8">
             {currentForecast && currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 && (
               <HourlyForecast
-                forecasts={currentForecast.hourlyForecast}
+                forecasts={isPremium ? currentForecast.hourlyForecast : currentForecast.hourlyForecast.slice(0, 4)}
                 locationName={currentForecast.spot.name}
               />
             )}
