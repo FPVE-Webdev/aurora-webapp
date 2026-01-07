@@ -49,6 +49,30 @@ async function resolveBestSpot(req: Request) {
   } as BestSpot;
 }
 
+async function resolveForecast(req: Request) {
+  const data = await fetchJson<any>('/api/aurora/tonight?lang=en', req);
+  if (!data || !data.hourly_forecast) return null;
+
+  // Find peak hour in next 6 hours
+  const now = new Date();
+  const currentHour = now.getHours();
+  const nextSixHours = data.hourly_forecast
+    .slice(0, 6)
+    .map((h: any, idx: number) => ({
+      hour: (currentHour + idx) % 24,
+      probability: h.probability || 0,
+    }));
+
+  const peak = nextSixHours.reduce((max: any, curr: any) =>
+    curr.probability > max.probability ? curr : max
+  , nextSixHours[0]);
+
+  return {
+    peakHour: peak.hour,
+    peakProbability: peak.probability,
+  };
+}
+
 function deriveMasterStatus(nowData: any, weather: any, lat: number, lon: number) {
   const kpIndex = typeof nowData?.kp === 'number' ? nowData.kp : scoreToKpIndex(nowData?.score || 50);
   const cloudCoverage = typeof weather?.cloudCoverage === 'number' ? weather.cloudCoverage : 50;
@@ -71,15 +95,60 @@ function deriveMasterStatus(nowData: any, weather: any, lat: number, lon: number
   });
 }
 
-const SYSTEM_PROMPT = `You are an expert Northern Lights guide for aurora.tromso.ai. 
-Goal: help tourists in Tromsø decide: Go out now, wait, or sleep.
-Tone: Enthusiastic, authoritative, local, concise. No tables. Max 3 sentences unless asked.
-Rules:
-- Answer the "Should I go out?" question first based on Master Status.
-- Be local & specific (name spots, driving times).
-- Translate data: say “Magnetic field is perfect” not “Bz -5”.
-- Safety: never guarantee 100%; avoid dangerous advice.
-- Always point users to aurora.tromso.ai for live map.`;
+const SYSTEM_PROMPT = `You are the official AI Guide for aurora.tromso.ai - a local Northern Lights expert in Tromsø, Norway.
+
+ROLE: You are like a friendly hotel receptionist + aurora expert. Enthusiastic but honest. Help tourists see the Northern Lights.
+
+TONE & STYLE:
+- Short answers (people are standing in the cold, on mobile)
+- Use emojis sparingly (🌌, 🔥, ❄️, ⭐)
+- Be a LOCAL GUIDE, not a Wikipedia bot
+- Max 2-3 sentences unless complex question
+- Speak like a human, not a robot
+
+PRIORITY #1: THE MASTER STATUS DECISION
+When asked "Should I go out?" or "Is it worth it?", ALWAYS check Master Status FIRST:
+- If GO: Be urgent! "YES! Look up! Go to a dark area immediately. Activity is visible and skies are clear."
+- If WAIT: Be strategic. "Activity is brewing, but clouds are blocking Tromsø city. Check the map for clear spots or wait an hour."
+- If NO: Be honest. "Save your energy. Relax, grab a drink. Either too cloudy or low activity right now."
+
+LOCATION ADVICE (Your "Secret Sauce"):
+1. NO CAR (Walking distance):
+   - Telegrafbukta: 30 min walk from city center, darker than downtown, nice photo spot
+   - Coastal road towards Ramfjord: darker spots along the way
+
+2. WITH CAR (Best spots):
+   - Ersfjordbotn: 25 min drive, spectacular mountain backdrop, local favorite
+   - Kvaløya (west coast): Good when east has clouds, beaches and viewpoints
+   - Sommarøy: 1h drive, very dark, island vibe
+   - Skibotn (inland, E8 towards Finland): 1.5h drive, ONLY recommend if coastal weather is terrible (dry inland backup)
+
+3. LOCATION STRATEGY RULES:
+   - If KP < 3: Always recommend leaving the city (light pollution ruins weak aurora)
+   - If city clouds > 30%: Send them to opposite direction (west coast if east cloudy, inland if coast cloudy)
+   - Never guarantee clear skies, always say "Best chance is..."
+
+TRANSLATE DATA TO HUMAN LANGUAGE:
+❌ NEVER SAY: "Bz is negative 10 nanotesla" or "KP index is 4.5"
+✅ INSTEAD SAY: "Magnetic conditions are PERFECT for colorful displays!" or "Activity is moderate"
+
+TIME PLANNING:
+- If asked "what time?", refer to the forecast data and find the peak hour
+- Example: "The strongest activity is expected between 22:00 and 01:00. Aim for that window."
+
+EXPECTATION MANAGEMENT:
+- Explain: Camera sees more than the eye (especially greens)
+- Explain: Aurora comes in bursts, not constant like a billboard
+- Never guarantee specific colors
+
+SOFT UPSELL:
+- If complex routing needed, hint: "Check the Live Map on aurora.tromso.ai for real-time cloud gaps"
+- Don't be pushy
+
+SAFETY:
+- Never guarantee 100% anything
+- Warn about driving in winter conditions if needed
+- Remind: dress warm, layers, -10°C is common`;
 
 export async function POST(req: Request) {
   try {
@@ -92,10 +161,11 @@ export async function POST(req: Request) {
     const lat = typeof body?.lat === 'number' ? body.lat : DEFAULT_LAT;
     const lon = typeof body?.lon === 'number' ? body.lon : DEFAULT_LON;
 
-    const [nowData, weather, bestSpot] = await Promise.all([
+    const [nowData, weather, bestSpot, forecast] = await Promise.all([
       resolveNow(req, lat, lon),
       resolveWeather(req, lat, lon),
       resolveBestSpot(req),
+      resolveForecast(req),
     ]);
 
     const master = deriveMasterStatus(nowData, weather, lat, lon);
@@ -112,15 +182,40 @@ export async function POST(req: Request) {
     const bz = nowData?.extended_metrics?.bz_factor?.value;
     const solarWind = nowData?.extended_metrics?.solar_wind?.speed;
 
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const timeString = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+
     const contextBlock = [
-      `Master Status: ${master.status} (${statusLine})`,
-      `KP ${kp.toFixed(1)}, probability ${Math.round(probability)}%, Tromsø clouds ${Math.round(cloud)}%`,
-      bz ? `Magnetic field (Bz): ${bz} nT` : null,
-      solarWind ? `Solar wind: ${Math.round(solarWind)} km/s` : null,
+      `=== CURRENT CONDITIONS (${timeString}) ===`,
+      `Master Status: ${master.status}`,
+      `Your recommendation: ${statusLine}`,
+      ``,
+      `Technical data (translate to human language):`,
+      `- KP Index: ${kp.toFixed(1)} (solar activity level)`,
+      `- Aurora Probability: ${Math.round(probability)}%`,
+      `- Tromsø Cloud Coverage: ${Math.round(cloud)}%`,
+      bz ? `- Magnetic Field (Bz): ${bz} nT ${bz < -5 ? '(EXCELLENT for aurora!)' : bz < 0 ? '(good)' : '(weak)'}` : null,
+      solarWind ? `- Solar Wind Speed: ${Math.round(solarWind)} km/s ${solarWind > 500 ? '(FAST - great!)' : '(normal)'}` : null,
+      ``,
+      `=== TIME PLANNING ===`,
+      forecast
+        ? `Best window tonight: Around ${String(forecast.peakHour).padStart(2, '0')}:00 (${Math.round(forecast.peakProbability)}% probability peak)`
+        : 'No specific peak identified - activity fairly constant',
+      ``,
+      `=== LOCATION INTEL ===`,
       bestSpot
-        ? `Best spot now: ${bestSpot.name} (~${bestSpot.driveMinutes} min drive, ${bestSpot.visibilityScore}% sky, maps: ${bestSpot.googleMapsUrl})`
-        : 'Best spot now: Stay in Tromsø (clouds acceptable).',
-      `Local spots to mention: Ersfjordbotn (25 min), Kvaløya coast, Telegrafbukta (no car).`,
+        ? `Best spot RIGHT NOW: ${bestSpot.name} (~${bestSpot.driveMinutes} min drive, ${Math.round(bestSpot.visibilityScore)}% clear sky)`
+        : 'Best spot: Stay in Tromsø (clouds acceptable in city).',
+      bestSpot?.googleMapsUrl ? `Google Maps: ${bestSpot.googleMapsUrl}` : null,
+      ``,
+      `Remember: You know these spots:`,
+      `- Telegrafbukta (no car needed, 30 min walk)`,
+      `- Ersfjordbotn (25 min drive, local favorite)`,
+      `- Kvaløya west coast (beaches, good when east cloudy)`,
+      `- Sommarøy (1h drive, very dark)`,
+      `- Skibotn inland (1.5h, ONLY if coast terrible)`,
     ]
       .filter(Boolean)
       .join('\n');
