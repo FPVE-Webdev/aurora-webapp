@@ -84,8 +84,17 @@ export default function VisualModeCanvas({
   const lastFrameTimeRef = useRef<number>(Date.now());
   const [shouldRender, setShouldRender] = useState(true);
   const [isPageVisible, setIsPageVisible] = useState(true);
+  const [fallbackCss, setFallbackCss] = useState(false);
   const isMobileRef = useRef(false);
   const fatalErrorReportedRef = useRef(false);
+
+  // Reset fatal flags when disabling (so toggling Visual Mode off/on can retry WebGL init)
+  useEffect(() => {
+    if (!isEnabled) {
+      fatalErrorReportedRef.current = false;
+      setFallbackCss(false);
+    }
+  }, [isEnabled]);
 
   // Check for prefers-reduced-motion
   useEffect(() => {
@@ -152,6 +161,7 @@ export default function VisualModeCanvas({
     const reportFatal = (err: unknown) => {
       if (fatalErrorReportedRef.current) return;
       fatalErrorReportedRef.current = true;
+      setFallbackCss(true);
 
       // Production must be clean (no console errors). Log only in dev.
       if (!IS_PRODUCTION) {
@@ -166,9 +176,8 @@ export default function VisualModeCanvas({
         }
       } catch {}
 
-      try {
-        setShouldRender(false);
-      } catch {}
+      // IMPORTANT: Do not set shouldRender=false here, otherwise the component returns null and
+      // the user sees *no animation*. We fall back to CSS overlay instead.
 
       try {
         onFatalError?.(err);
@@ -233,6 +242,7 @@ export default function VisualModeCanvas({
           cancelAnimationFrame(animationFrameRef.current);
           animationFrameRef.current = null;
         }
+        setFallbackCss(true);
       };
 
       const handleContextRestore = () => {
@@ -510,10 +520,25 @@ export default function VisualModeCanvas({
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      // PROJECT TROMSØ TO SCREEN SPACE using Mapbox
-      const projected = mapInstance.project(tromsoCoords);
+      // PROJECT A "HORIZON ANCHOR" TO SCREEN SPACE using Mapbox
+      // Users view the landscape nearly horizontally (high pitch), so Tromsø can be off-screen.
+      // Anchor the effect slightly "forward" (towards current bearing) so aurora/clouds stay visible.
+      const center = mapInstance.getCenter?.() ?? { lng: tromsoCoords[0], lat: tromsoCoords[1] };
+      const bearingDeg = mapInstance.getBearing?.() ?? 0;
+      const bearingRad = (bearingDeg * Math.PI) / 180;
+      const lat0 = center.lat ?? tromsoCoords[1];
+      const lon0 = center.lng ?? tromsoCoords[0];
+      const dLat = 0.35 * Math.cos(bearingRad);
+      const dLon = (0.35 * Math.sin(bearingRad)) / Math.max(0.15, Math.cos((lat0 * Math.PI) / 180));
+      const anchorLngLat: [number, number] = [lon0 + dLon, lat0 + dLat];
+
+      const projected = mapInstance.project(anchorLngLat);
       let screenX = projected.x / canvas.width;
       let screenY = 1.0 - (projected.y / canvas.height); // Invert Y for WebGL
+
+      // Clamp so we never push the anchor fully off-screen.
+      screenX = Math.max(0.05, Math.min(0.95, screenX));
+      screenY = Math.max(0.10, Math.min(0.90, screenY));
 
       // Guard against NaN/out-of-range
       screenX = Number.isFinite(screenX) ? Math.min(1, Math.max(0, screenX)) : 0.5;
@@ -623,6 +648,43 @@ export default function VisualModeCanvas({
 
   // Don't render if disabled or reduced-motion
   if (!isEnabled || !shouldRender) return null;
+
+  // WebGL fallback: render a lightweight CSS aurora overlay instead of returning null
+  if (fallbackCss) {
+    return (
+      <>
+        <div
+          className="absolute inset-0 pointer-events-none auroraFallback"
+          style={{
+            backgroundImage:
+              'radial-gradient(1200px 600px at 50% 70%, rgba(16, 255, 210, 0.28) 0%, rgba(16, 255, 210, 0.05) 35%, rgba(0,0,0,0) 70%), linear-gradient(115deg, rgba(60, 255, 190, 0.06) 0%, rgba(64, 180, 255, 0.08) 35%, rgba(168, 85, 247, 0.06) 70%, rgba(0,0,0,0) 100%)',
+            backgroundSize: '220% 220%',
+            opacity: 0.9,
+            mixBlendMode: 'screen'
+          }}
+        />
+        <style jsx>{`
+          .auroraFallback {
+            animation: auroraFallbackShift 10s ease-in-out infinite;
+          }
+          @keyframes auroraFallbackShift {
+            0% {
+              background-position: 0% 60%;
+              filter: saturate(1.05) brightness(1);
+            }
+            50% {
+              background-position: 100% 40%;
+              filter: saturate(1.15) brightness(1.08);
+            }
+            100% {
+              background-position: 0% 60%;
+              filter: saturate(1.05) brightness(1);
+            }
+          }
+        `}</style>
+      </>
+    );
+  }
 
   return (
     <canvas

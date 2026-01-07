@@ -20,6 +20,7 @@ import { shouldShowGoNow } from '@/lib/auroraCalculations';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { ExtendedMetrics as ExtendedMetricsType } from '@/types/tromsoAI';
+import IntroOverlay from '@/components/intro/IntroOverlay';
 
 export default function HomePage() {
   const {
@@ -33,6 +34,7 @@ export default function HomePage() {
   const { isPremium } = usePremium();
   const { settings } = useAppSettings();
   const [extendedMetrics, setExtendedMetrics] = useState<ExtendedMetricsType | null>(null);
+  const [showIntro, setShowIntro] = useState(true);
 
   // Fetch extended metrics (Phase 2 feature)
   useEffect(() => {
@@ -119,7 +121,8 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-arctic-900">
+    <div className="min-h-screen">
+      {showIntro && <IntroOverlay onClose={() => setShowIntro(false)} />}
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         {/* Aurora glow effect with animation */}

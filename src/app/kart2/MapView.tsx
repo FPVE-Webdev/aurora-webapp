@@ -41,12 +41,33 @@ export default function MapView() {
   const [visualModeError, setVisualModeError] = useState<string | null>(null);
   const [aurora3DActive, setAurora3DActive] = useState(false);
   const [clouds3DActive, setClouds3DActive] = useState(false);
+  const [aurora3DRendered, setAurora3DRendered] = useState(false);
+  const [clouds3DRendered, setClouds3DRendered] = useState(false);
+  const [aurora3DFallbackGracePassed, setAurora3DFallbackGracePassed] = useState(false);
+  const [clouds3DFallbackGracePassed, setClouds3DFallbackGracePassed] = useState(false);
   const clouds3DLayerRef = useRef<any>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const { data, isLoading, error } = useAuroraData();
   const chaseState = useChaseRegions();
   const visualMode = useVisualMode();
   const weatherMode = useWeatherMode();
+
+  // Feature flags (production defaults ON - disable only via env = 0)
+  const aurora3DFeatureEnabled = process.env.NEXT_PUBLIC_KART2_AURORA3D !== '0';
+  const clouds3DFeatureEnabled = process.env.NEXT_PUBLIC_KART2_CLOUDS3D !== '0';
+
+  const showDebugBadge = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_KART2_DEBUG === '1';
+
+  const shouldShow2DVisualModeOverlay =
+    !!data &&
+    visualMode.isClient &&
+    !!mapRef.current &&
+    visualMode.isEnabled &&
+    (!aurora3DFeatureEnabled || (aurora3DFallbackGracePassed && !aurora3DRendered));
+
+  const shouldEnable2DShaderClouds =
+    weatherMode.isEnabled &&
+    (!clouds3DFeatureEnabled || (clouds3DFallbackGracePassed && !clouds3DRendered));
 
   // Weather test mode state
   const [weatherTestMode, setWeatherTestMode] = useState<'real' | 'snow' | 'clear'>('snow');
@@ -73,8 +94,6 @@ export default function MapView() {
     if (!map || !isMapReady) return;
 
     const layerId = 'aurora-3d';
-    const aurora3DFeatureEnabled =
-      process.env.NEXT_PUBLIC_KART2_AURORA3D === '1' || process.env.NODE_ENV !== 'production';
     let cancelled = false;
     let idleHandler: (() => void) | null = null;
 
@@ -93,10 +112,10 @@ export default function MapView() {
         // ignore
       } finally {
         setAurora3DActive(false);
+        setAurora3DRendered(false);
       }
     };
 
-    // Feature flag: keep this prototype off in production unless explicitly enabled.
     if (!aurora3DFeatureEnabled) {
       removeLayer();
       return;
@@ -152,12 +171,23 @@ export default function MapView() {
                   centerLngLat: [18.95, 69.65],
                   // Aurora is physically MUCH higher than clouds (80–300km).
                   // This uses true altitude in meters.
-                  altitudeMeters: 300_000,
-                  // Keep the band within view: closer to the horizon and not too far north.
-                  latSpanDeg: 0.55,
+                  // Lower than before to avoid camera far-plane clipping on some setups.
+                  altitudeMeters: 120_000,
+                  // Keep the curtain reasonably wide but not enormous.
+                  latSpanDeg: 0.25,
                   lonSpanDeg: 4.5,
-                  northOffsetDeg: 0.18,
-                  intensity: 1.0
+                  // Sanity: place near center so it's guaranteed in view; we can push back to horizon later.
+                  northOffsetDeg: 0.0,
+                  intensity: 1.0,
+                  onFirstRender: () => setAurora3DRendered(true),
+                  onError: () => {
+                    // Silent fallback in production.
+                    try {
+                      if (map.getLayer?.(layerId)) map.removeLayer(layerId);
+                    } catch {}
+                    setAurora3DActive(false);
+                    setAurora3DRendered(false);
+                  }
                 });
 
                 // Render late so terrain/buildings are in depth buffer (for occlusion).
@@ -166,6 +196,7 @@ export default function MapView() {
               setAurora3DActive(true);
             } catch (err) {
               setAurora3DActive(false);
+              setAurora3DRendered(false);
               if (process.env.NODE_ENV !== 'production') {
                 // eslint-disable-next-line no-console
                 console.warn('[Aurora3D] Failed to add custom layer:', err);
@@ -174,9 +205,11 @@ export default function MapView() {
           })
           .catch(() => {
             setAurora3DActive(false);
+            setAurora3DRendered(false);
           });
       } catch {
         setAurora3DActive(false);
+        setAurora3DRendered(false);
       }
     };
 
@@ -186,7 +219,22 @@ export default function MapView() {
       cancelled = true;
       removeLayer();
     };
-  }, [visualMode.isEnabled, isMapReady]);
+  }, [visualMode.isEnabled, isMapReady, aurora3DFeatureEnabled]);
+
+  // If 3D aurora hasn't rendered shortly after enabling, allow 2D fallback to kick in.
+  useEffect(() => {
+    if (!visualMode.isEnabled || !isMapReady || !aurora3DFeatureEnabled) {
+      setAurora3DFallbackGracePassed(false);
+      return;
+    }
+    if (aurora3DRendered) {
+      setAurora3DFallbackGracePassed(false);
+      return;
+    }
+    setAurora3DFallbackGracePassed(false);
+    const t = window.setTimeout(() => setAurora3DFallbackGracePassed(true), 1200);
+    return () => window.clearTimeout(t);
+  }, [visualMode.isEnabled, isMapReady, aurora3DFeatureEnabled, aurora3DRendered]);
 
   // Clouds 3D: separate cloud deck layer, driven by tromsoCloudCoverage, sits above aurora-3d.
   useEffect(() => {
@@ -194,9 +242,6 @@ export default function MapView() {
     if (!map || !isMapReady) return;
 
     const layerId = 'clouds-3d';
-    // Production default: ON (disable only via NEXT_PUBLIC_KART2_CLOUDS3D=0)
-    const clouds3DFeatureEnabled = process.env.NEXT_PUBLIC_KART2_CLOUDS3D !== '0';
-
     let cancelled = false;
     let idleHandler: (() => void) | null = null;
 
@@ -216,6 +261,7 @@ export default function MapView() {
       } finally {
         clouds3DLayerRef.current = null;
         setClouds3DActive(false);
+        setClouds3DRendered(false);
       }
     };
 
@@ -280,14 +326,24 @@ export default function MapView() {
               const cloudsLayer = createClouds3DLayer(mapboxgl, {
                 id: layerId,
                 centerLngLat: [18.95, 69.65],
-                altitudeMeters: 7_000,
-                latSpanDeg: 0.16,
+                altitudeMeters: 4_000,
+                latSpanDeg: 0.25,
                 lonSpanDeg: 5.0,
                 // Place the deck on the horizon line (far enough to read as “horizon clouds”)
-                northOffsetDeg: 0.35,
+                // Sanity: place near center so it's guaranteed in view; we can push back to horizon later.
+                northOffsetDeg: 0.0,
                 cloudCoverage: chaseState.tromsoCloudCoverage ?? 0,
                 windSpeed: weatherData.windSpeed ?? 5,
-                windDirection: weatherData.windDirection ?? 270
+                windDirection: weatherData.windDirection ?? 270,
+                onFirstRender: () => setClouds3DRendered(true),
+                onError: () => {
+                  try {
+                    if (map.getLayer?.(layerId)) map.removeLayer(layerId);
+                  } catch {}
+                  clouds3DLayerRef.current = null;
+                  setClouds3DActive(false);
+                  setClouds3DRendered(false);
+                }
               });
               clouds3DLayerRef.current = cloudsLayer;
               map.addLayer(cloudsLayer);
@@ -306,6 +362,7 @@ export default function MapView() {
             } catch {}
           } catch (err) {
             setClouds3DActive(false);
+            setClouds3DRendered(false);
             clouds3DLayerRef.current = null;
             if (process.env.NODE_ENV !== 'production') {
               // eslint-disable-next-line no-console
@@ -315,6 +372,7 @@ export default function MapView() {
         })
         .catch(() => {
           setClouds3DActive(false);
+          setClouds3DRendered(false);
           clouds3DLayerRef.current = null;
         });
     };
@@ -331,12 +389,27 @@ export default function MapView() {
   }, [
     isMapReady,
     visualMode.isEnabled,
-    aurora3DActive,
     weatherMode.isEnabled,
+    clouds3DFeatureEnabled,
     chaseState.tromsoCloudCoverage,
     weatherData.windSpeed,
     weatherData.windDirection
   ]);
+
+  // If 3D clouds haven't rendered shortly after enabling, allow 2D shader-clouds fallback to kick in.
+  useEffect(() => {
+    if (!visualMode.isEnabled || !isMapReady || !clouds3DFeatureEnabled || !weatherMode.isEnabled) {
+      setClouds3DFallbackGracePassed(false);
+      return;
+    }
+    if (clouds3DRendered) {
+      setClouds3DFallbackGracePassed(false);
+      return;
+    }
+    setClouds3DFallbackGracePassed(false);
+    const t = window.setTimeout(() => setClouds3DFallbackGracePassed(true), 1200);
+    return () => window.clearTimeout(t);
+  }, [visualMode.isEnabled, isMapReady, clouds3DFeatureEnabled, weatherMode.isEnabled, clouds3DRendered]);
 
   // Toggle weather test scenarios
   const cycleWeatherTest = () => {
@@ -1196,6 +1269,26 @@ export default function MapView() {
             const currentPitch = map.getPitch?.() ?? SCENE_PITCH;
             configureOcean(isDimmed, currentPitch);
 
+            // NOTE:
+            // Mapbox fog + stars can visually cover custom WebGL layers (post-processing).
+            // For Visual Mode we disable fog so 3D aurora/cloud layers are guaranteed visible.
+            // When Visual Mode is off, restore cinematic starry fog.
+            try {
+              if (isDimmed) {
+                map.setFog(null as any);
+              } else {
+                map.setFog({
+                  color: 'rgb(10, 15, 25)', // Dark blue-black night sky
+                  'high-color': 'rgb(5, 10, 20)', // Even darker at horizon
+                  'horizon-blend': 0.05, // Sharp horizon transition
+                  'space-color': 'rgb(2, 5, 12)', // Deep space color
+                  'star-intensity': 0.65, // Visible stars (0-1)
+                  range: [2, 12], // Fog distance range
+                  'vertical-range': [0.5, 2] // Vertical fog distribution
+                } as any);
+              }
+            } catch {}
+
             // Also dim aurora reflection on water when Visual Mode is active,
             // otherwise the reflection can make the sea read too bright at zoom=12.
             if (map.getLayer('aurora-water-reflection')) {
@@ -1300,7 +1393,7 @@ export default function MapView() {
 
     // Dim map when visual mode is enabled
     (mapRef.current as any).dimMapForVisualMode(visualMode.isEnabled);
-  }, [visualMode.isEnabled]);
+  }, [visualMode.isEnabled, isMapReady]);
 
   // Zoom is locked at 11.16 - keyboard zoom testing removed
 
@@ -1313,8 +1406,8 @@ export default function MapView() {
       </div>
 
       {/* Visual Mode Canvas Overlay - wrapped for proper z-index stacking */}
-      {/* Production fallback: keep the 2D overlay available even if 3D layers are enabled but not visible on some GPUs/drivers. */}
-      {data && visualMode.isClient && mapRef.current && (!aurora3DActive || process.env.NODE_ENV === 'production') && (
+      {/* 2D overlay is a fallback only: show it if 3D aurora fails to actually render shortly after enabling. */}
+      {shouldShow2DVisualModeOverlay && (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
           <VisualModeErrorBoundary
             resetKey={`${visualMode.isEnabled}-${data.timestamp}`}
@@ -1322,8 +1415,9 @@ export default function MapView() {
           >
             <VisualModeCanvas
               isEnabled={visualMode.isEnabled}
-              // If we have 3D clouds, disable shader-clouds to avoid the old "screen-space" cloud band.
-              weatherModeEnabled={weatherMode.isEnabled && !clouds3DActive}
+              // If 3D clouds are actually rendering, disable shader-clouds to avoid the old "screen-space" cloud band.
+              // Otherwise allow shader-clouds as fallback.
+              weatherModeEnabled={shouldEnable2DShaderClouds}
               kpIndex={data.kp}
               auroraProbability={data.probability}
               cloudCoverage={chaseState.tromsoCloudCoverage}
@@ -1351,6 +1445,60 @@ export default function MapView() {
       {/* UI Overlay (always top-most). pointer-events-none so map remains interactive,
           but interactive UI elements use pointer-events-auto. */}
       <div className="absolute inset-0 z-50 pointer-events-none">
+        {/* Debug badge (dev by default, or enable in prod with NEXT_PUBLIC_KART2_DEBUG=1) */}
+        {showDebugBadge && (
+          <div className="pointer-events-auto absolute top-4 right-4">
+            <div className="bg-black/80 backdrop-blur-md text-white rounded-lg px-3 py-2 text-[11px] leading-snug border border-white/10 shadow-xl min-w-[240px]">
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <span className="font-semibold text-white/90">Kart2 Debug</span>
+                <span className="text-[10px] text-white/60">
+                  {process.env.NODE_ENV === 'production' ? 'prod' : 'dev'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                <div>
+                  <div className="text-white/60">Visual</div>
+                  <div className="font-mono">
+                    {visualMode.isEnabled ? 'ON' : 'OFF'} / {weatherMode.isEnabled ? 'WxON' : 'WxOFF'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-white/60">Renderer</div>
+                  <div className="font-mono">
+                    {aurora3DFeatureEnabled && aurora3DRendered ? '3D' : shouldShow2DVisualModeOverlay ? '2D' : '—'}
+                  </div>
+                </div>
+
+                <div className="col-span-2 mt-1 border-t border-white/10 pt-1" />
+
+                <div>
+                  <div className="text-white/60">Aurora3D</div>
+                  <div className="font-mono">
+                    {aurora3DFeatureEnabled ? 'EN' : 'DIS'} / {aurora3DActive ? 'A' : '-'} /{' '}
+                    {aurora3DRendered ? 'R' : '-'} / {aurora3DFallbackGracePassed ? 'G' : '-'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-white/60">Clouds3D</div>
+                  <div className="font-mono">
+                    {clouds3DFeatureEnabled ? 'EN' : 'DIS'} / {clouds3DActive ? 'A' : '-'} /{' '}
+                    {clouds3DRendered ? 'R' : '-'} / {clouds3DFallbackGracePassed ? 'G' : '-'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-white/60">2D overlay</div>
+                  <div className="font-mono">{shouldShow2DVisualModeOverlay ? 'ON' : 'OFF'}</div>
+                </div>
+                <div>
+                  <div className="text-white/60">2D clouds</div>
+                  <div className="font-mono">{shouldEnable2DShaderClouds ? 'ON' : 'OFF'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Snapshot Button */}
         <div
           id="snapshot-button-container"

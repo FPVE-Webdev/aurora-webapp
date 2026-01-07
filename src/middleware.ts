@@ -29,6 +29,13 @@ const VALID_API_KEYS = new Set([
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Make Kart3 the landing experience. Keep the existing homepage accessible via `/home`.
+  if (pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/kart3';
+    return NextResponse.redirect(url);
+  }
+
   // Admin routes are now public - no authentication required
   if (pathname.startsWith('/admin')) {
     return NextResponse.next();
@@ -167,6 +174,7 @@ export async function middleware(request: NextRequest) {
  */
 export const config = {
   matcher: [
+    '/',
     '/admin/:path*',
     '/api/aurora/:path*',
   ],

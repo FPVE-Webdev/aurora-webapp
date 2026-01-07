@@ -10,6 +10,10 @@ type Aurora3DLayerOptions = {
   lonSpanDeg?: number;
   northOffsetDeg?: number;
   intensity?: number; // 0..1
+  /** Fired the first time Mapbox calls render() for this layer (signals "actually rendering"). */
+  onFirstRender?: () => void;
+  /** Fired if the layer hits an unrecoverable error during render(). */
+  onError?: (error: unknown) => void;
 };
 
 function createShader(gl: WebGLRenderingContext, type: number, source: string) {
@@ -73,6 +77,8 @@ export function createAurora3DLayer(mapboxgl: any, opts: Aurora3DLayerOptions) {
   let aUv = -1;
 
   const start = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  let didFirstRender = false;
+  let hasFailed = false;
 
   const layer: any = {
     id,
@@ -80,6 +86,11 @@ export function createAurora3DLayer(mapboxgl: any, opts: Aurora3DLayerOptions) {
     renderingMode: '3d',
     onAdd(_map: any, gl: WebGLRenderingContext) {
       const webgl2 = isWebGL2(gl);
+      const MercatorCoordinate =
+        mapboxgl?.MercatorCoordinate ?? mapboxgl?.default?.MercatorCoordinate ?? mapboxgl?.default?.default?.MercatorCoordinate;
+      if (!MercatorCoordinate?.fromLngLat) {
+        throw new Error('[Aurora3D] MercatorCoordinate.fromLngLat is unavailable');
+      }
 
       const vs1 = `
         precision highp float;
@@ -190,11 +201,11 @@ export function createAurora3DLayer(mapboxgl: any, opts: Aurora3DLayerOptions) {
       const latB = latCenter + latSpanDeg * 0.5;
 
       // Bottom edge (lower altitude)
-      const p00 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, latA], bottomAltitudeMeters);
-      const p10 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, latA], bottomAltitudeMeters);
+      const p00 = MercatorCoordinate.fromLngLat([lonMin, latA], bottomAltitudeMeters);
+      const p10 = MercatorCoordinate.fromLngLat([lonMax, latA], bottomAltitudeMeters);
       // Top edge (upper altitude)
-      const p01 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, latB], altitudeMeters);
-      const p11 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, latB], altitudeMeters);
+      const p01 = MercatorCoordinate.fromLngLat([lonMin, latB], altitudeMeters);
+      const p11 = MercatorCoordinate.fromLngLat([lonMax, latB], altitudeMeters);
 
       // Positions: 4 corners (two triangles), UV mapped.
       const positions = new Float32Array([
@@ -228,42 +239,66 @@ export function createAurora3DLayer(mapboxgl: any, opts: Aurora3DLayerOptions) {
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
     },
     render(gl: WebGLRenderingContext, matrix: number[]) {
+      if (hasFailed) return;
       if (!program || !posBuffer || !uvBuffer || !indexBuffer) return;
 
-      gl.useProgram(program);
+      try {
+        if (!didFirstRender) {
+          didFirstRender = true;
+          try {
+            opts.onFirstRender?.();
+          } catch {}
+        }
 
-      // IMPORTANT:
-      // In Mapbox's 3D pipeline the depth buffer can fully occlude far geometry (esp. at low horizon angles).
-      // For the "wow" aurora effect we prefer guaranteed visibility over perfect occlusion.
-      gl.disable(gl.DEPTH_TEST);
-      gl.depthMask(false); // Don't write depth (transparent layer).
+        gl.useProgram(program);
 
-      gl.enable(gl.BLEND);
-      // Additive blending sells "light in the sky" much better than alpha-over.
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        // Ensure viewport matches the current drawable size (Mapbox may change it between passes).
+        try {
+          gl.viewport(0, 0, (gl as any).drawingBufferWidth ?? gl.canvas.width, (gl as any).drawingBufferHeight ?? gl.canvas.height);
+        } catch {}
 
-      // Bind uniforms
-      if (uMatrix) gl.uniformMatrix4fv(uMatrix, false, matrix as any);
-      if (uTime) {
-        const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        gl.uniform1f(uTime, now - start);
+        // IMPORTANT:
+        // In Mapbox's 3D pipeline the depth buffer can fully occlude far geometry (esp. at low horizon angles).
+        // For the "wow" aurora effect we prefer guaranteed visibility over perfect occlusion.
+        gl.disable(gl.DEPTH_TEST);
+        gl.depthMask(false); // Don't write depth (transparent layer).
+        // Mapbox may have culling/stencil enabled; ensure our quad is never dropped.
+        gl.disable(gl.CULL_FACE);
+        gl.disable(gl.STENCIL_TEST);
+        gl.colorMask(true, true, true, true);
+
+        gl.enable(gl.BLEND);
+        // Additive blending sells "light in the sky" much better than alpha-over.
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
+        // Bind uniforms
+        if (uMatrix) gl.uniformMatrix4fv(uMatrix, false, matrix as any);
+        if (uTime) {
+          const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+          gl.uniform1f(uTime, now - start);
+        }
+        if (uIntensity) gl.uniform1f(uIntensity, intensity);
+
+        // Bind attributes
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+        gl.enableVertexAttribArray(aUv);
+        gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+        // Restore state Mapbox expects (best-effort).
+        gl.depthMask(true);
+      } catch (err) {
+        hasFailed = true;
+        try {
+          opts.onError?.(err);
+        } catch {}
       }
-      if (uIntensity) gl.uniform1f(uIntensity, intensity);
-
-      // Bind attributes
-      gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-      gl.enableVertexAttribArray(aPos);
-      gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
-      gl.enableVertexAttribArray(aUv);
-      gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
-
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-      gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
-
-      // Restore state Mapbox expects (best-effort).
-      gl.depthMask(true);
     },
     onRemove(_map: any, gl: WebGLRenderingContext) {
       try {

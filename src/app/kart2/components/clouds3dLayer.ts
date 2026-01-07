@@ -13,6 +13,10 @@ type Clouds3DLayerOptions = {
   cloudCoverage?: number; // 0..100
   windSpeed?: number; // m/s
   windDirection?: number; // degrees
+  /** Fired the first time Mapbox calls render() for this layer (signals "actually rendering"). */
+  onFirstRender?: () => void;
+  /** Fired if the layer hits an unrecoverable error during render(). */
+  onError?: (error: unknown) => void;
 };
 
 function createShader(gl: WebGLRenderingContext, type: number, source: string) {
@@ -82,6 +86,8 @@ export function createClouds3DLayer(mapboxgl: any, opts: Clouds3DLayerOptions) {
   let windSpeed = Math.max(0, Math.min(35, opts.windSpeed ?? 5));
 
   const start = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  let didFirstRender = false;
+  let hasFailed = false;
 
   const layer: any = {
     id,
@@ -97,6 +103,11 @@ export function createClouds3DLayer(mapboxgl: any, opts: Clouds3DLayerOptions) {
     },
     onAdd(_map: any, gl: WebGLRenderingContext) {
       const webgl2 = isWebGL2(gl);
+      const MercatorCoordinate =
+        mapboxgl?.MercatorCoordinate ?? mapboxgl?.default?.MercatorCoordinate ?? mapboxgl?.default?.default?.MercatorCoordinate;
+      if (!MercatorCoordinate?.fromLngLat) {
+        throw new Error('[Clouds3D] MercatorCoordinate.fromLngLat is unavailable');
+      }
 
       const vs1 = `
         precision highp float;
@@ -283,10 +294,10 @@ export function createClouds3DLayer(mapboxgl: any, opts: Clouds3DLayerOptions) {
       const lonMax = lng0 + lonSpanDeg * 0.5;
 
       // Horizontal deck: 4 corners at a single altitude.
-      const p00 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, latMin], cloudAlt);
-      const p10 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, latMin], cloudAlt);
-      const p01 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMin, latMax], cloudAlt);
-      const p11 = mapboxgl.default.MercatorCoordinate.fromLngLat([lonMax, latMax], cloudAlt);
+      const p00 = MercatorCoordinate.fromLngLat([lonMin, latMin], cloudAlt);
+      const p10 = MercatorCoordinate.fromLngLat([lonMax, latMin], cloudAlt);
+      const p01 = MercatorCoordinate.fromLngLat([lonMin, latMax], cloudAlt);
+      const p11 = MercatorCoordinate.fromLngLat([lonMax, latMax], cloudAlt);
 
       const positions = new Float32Array([
         p00.x, p00.y, p00.z,
@@ -319,38 +330,62 @@ export function createClouds3DLayer(mapboxgl: any, opts: Clouds3DLayerOptions) {
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
     },
     render(gl: WebGLRenderingContext, matrix: number[]) {
+      if (hasFailed) return;
       if (!program || !posBuffer || !uvBuffer || !indexBuffer) return;
 
-      gl.useProgram(program);
+      try {
+        if (!didFirstRender) {
+          didFirstRender = true;
+          try {
+            opts.onFirstRender?.();
+          } catch {}
+        }
 
-      // Visibility-first: clouds should be obvious. We disable depth testing so the cloud deck
-      // overlays the horizon even if terrain depth would otherwise occlude it.
-      gl.disable(gl.DEPTH_TEST);
-      gl.depthMask(false);
+        gl.useProgram(program);
 
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        // Ensure viewport matches the current drawable size (Mapbox may change it between passes).
+        try {
+          gl.viewport(0, 0, (gl as any).drawingBufferWidth ?? gl.canvas.width, (gl as any).drawingBufferHeight ?? gl.canvas.height);
+        } catch {}
 
-      if (uMatrix) gl.uniformMatrix4fv(uMatrix, false, matrix as any);
-      if (uTime) {
-        const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        gl.uniform1f(uTime, now - start);
+        // Visibility-first: clouds should be obvious. We disable depth testing so the cloud deck
+        // overlays the horizon even if terrain depth would otherwise occlude it.
+        gl.disable(gl.DEPTH_TEST);
+        gl.depthMask(false);
+        // Mapbox may have culling/stencil enabled; ensure our quad is never dropped.
+        gl.disable(gl.CULL_FACE);
+        gl.disable(gl.STENCIL_TEST);
+        gl.colorMask(true, true, true, true);
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        if (uMatrix) gl.uniformMatrix4fv(uMatrix, false, matrix as any);
+        if (uTime) {
+          const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+          gl.uniform1f(uTime, now - start);
+        }
+        if (uCoverage) gl.uniform1f(uCoverage, coverage01);
+        if (uWind) gl.uniform2f(uWind, windDirRad, windSpeed);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+        gl.enableVertexAttribArray(aUv);
+        gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+        gl.depthMask(true);
+      } catch (err) {
+        hasFailed = true;
+        try {
+          opts.onError?.(err);
+        } catch {}
       }
-      if (uCoverage) gl.uniform1f(uCoverage, coverage01);
-      if (uWind) gl.uniform2f(uWind, windDirRad, windSpeed);
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-      gl.enableVertexAttribArray(aPos);
-      gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
-      gl.enableVertexAttribArray(aUv);
-      gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
-
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-      gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
-
-      gl.depthMask(true);
     },
     onRemove(_map: any, gl: WebGLRenderingContext) {
       try {
