@@ -25,6 +25,8 @@ import { MasterStatusCard } from '@/components/aurora/MasterStatusCard';
 import Kart3VideoOverlay from '@/app/kart3/components/Kart3VideoOverlay';
 import { shareStoryImage } from '@/lib/shareStory';
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
+import { SightingsWidget } from '@/components/retention/SightingsWidget';
+import { AlertSettings } from '@/components/retention/AlertSettings';
 
 export default function HomePage() {
   const {
@@ -60,6 +62,9 @@ export default function HomePage() {
   const [extendedMetrics, setExtendedMetrics] = useState<ExtendedMetricsType | null>(null);
   const [showIntro, setShowIntro] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+
+  // Get current spot forecast - moved before useMemo
+  const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
 
   const intensity01 = useMemo(() => {
     const kpPart = (currentKp || 3) / 9;
@@ -142,9 +147,6 @@ export default function HomePage() {
       clearInterval(interval);
     };
   }, []);
-
-  // Get current spot forecast
-  const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
 
   // Check if we should show "Go Now" alert
   const showGoNow = currentForecast && shouldShowGoNow(currentForecast.currentProbability, selectedSpot.latitude);
@@ -327,6 +329,12 @@ export default function HomePage() {
 
             {/* Fun Facts */}
             <FunfactPanel funfacts={FUNFACTS.slice(0, 3)} />
+          </div>
+
+          {/* Retention Features - Sightings & Alerts */}
+          <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-6 mb-8">
+            <SightingsWidget />
+            <AlertSettings />
           </div>
 
           {/* Premium CTA (only for free users) */}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
+import { useRetention } from '@/contexts/RetentionContext';
 import { getStatusColor } from '@/lib/calculations/masterStatus';
 import { cn } from '@/lib/utils';
 import { ChevronDown, RefreshCw, Info } from 'lucide-react';
@@ -13,6 +14,7 @@ interface MasterStatusCardProps {
 
 export function MasterStatusCard({ className, showDetails = false }: MasterStatusCardProps) {
   const { result, isLoading, refresh, lastUpdated } = useMasterStatus();
+  const { userMode } = useRetention();
   const [expanded, setExpanded] = useState(showDetails);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -80,64 +82,76 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
           </button>
         </div>
 
-        {/* Subtext */}
-        <p className="text-white/90 text-sm mb-3">
-          {result.subtext}
-        </p>
+        {/* Subtext - Tourist vs Geek Mode */}
+        {userMode === 'tourist' ? (
+          <p className="text-white/90 text-sm mb-3">
+            {result.status === 'GO' && 'Nå er det perfekt! Mørkt, klart vær og høy aktivitet.'}
+            {result.status === 'WAIT' && 'Hold deg oppdatert - det kan komme i løpet av noen timer.'}
+            {result.status === 'NO' && 'Enten for mye skyer, eller for lav aktivitet. Prøv i morgen.'}
+          </p>
+        ) : (
+          <p className="text-white/90 text-sm mb-3">
+            {result.subtext}
+          </p>
+        )}
 
-        {/* Expand Toggle */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 text-white/60 hover:text-white/90 text-xs transition-colors"
-        >
-          <Info className="w-3.5 h-3.5" />
-          <span>Tekniske detaljer</span>
-          <ChevronDown className={cn(
-            "w-3.5 h-3.5 transition-transform",
-            expanded && "rotate-180"
-          )} />
-        </button>
+        {/* Expand Toggle - Only in Geek Mode */}
+        {userMode === 'geek' && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1 text-white/60 hover:text-white/90 text-xs transition-colors"
+          >
+            <Info className="w-3.5 h-3.5" />
+            <span>Tekniske detaljer</span>
+            <ChevronDown className={cn(
+              "w-3.5 h-3.5 transition-transform",
+              expanded && "rotate-180"
+            )} />
+          </button>
+        )}
       </div>
 
-      {/* Expandable Details */}
-      <div className={cn(
-        "overflow-hidden transition-all duration-300",
-        expanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
-      )}>
-        <div className="px-5 pb-4 pt-2 border-t border-white/10">
-          <div className="grid grid-cols-4 gap-3 text-center">
-            <div>
-              <p className="text-white/50 text-[10px] uppercase tracking-wide">Mørkt</p>
-              <p className="text-white font-semibold">
-                {result.factors.isDark ? '✓' : '✗'}
-              </p>
+      {/* Expandable Details - Only in Geek Mode */}
+      {userMode === 'geek' && (
+        <div className={cn(
+          "overflow-hidden transition-all duration-300",
+          expanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+        )}>
+          <div className="px-5 pb-4 pt-2 border-t border-white/10">
+            <div className="grid grid-cols-4 gap-3 text-center">
+              <div>
+                <p className="text-white/50 text-[10px] uppercase tracking-wide">Mørkt</p>
+                <p className="text-white font-semibold">
+                  {result.factors.isDark ? '✓' : '✗'}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/50 text-[10px] uppercase tracking-wide">Skyer</p>
+                <p className="text-white font-semibold">
+                  {result.factors.cloudCoverage}%
+                </p>
+              </div>
+              <div>
+                <p className="text-white/50 text-[10px] uppercase tracking-wide">Sjanse</p>
+                <p className="text-white font-semibold">
+                  {result.factors.probability}%
+                </p>
+              </div>
+              <div>
+                <p className="text-white/50 text-[10px] uppercase tracking-wide">KP</p>
+                <p className="text-white font-semibold">
+                  {result.factors.kpIndex.toFixed(1)}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-white/50 text-[10px] uppercase tracking-wide">Skyer</p>
-              <p className="text-white font-semibold">
-                {result.factors.cloudCoverage}%
+            {lastUpdated && (
+              <p className="text-white/40 text-[10px] text-center mt-3">
+                Oppdatert: {lastUpdated.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })}
               </p>
-            </div>
-            <div>
-              <p className="text-white/50 text-[10px] uppercase tracking-wide">Sjanse</p>
-              <p className="text-white font-semibold">
-                {result.factors.probability}%
-              </p>
-            </div>
-            <div>
-              <p className="text-white/50 text-[10px] uppercase tracking-wide">KP</p>
-              <p className="text-white font-semibold">
-                {result.factors.kpIndex.toFixed(1)}
-              </p>
-            </div>
+            )}
           </div>
-          {lastUpdated && (
-            <p className="text-white/40 text-[10px] text-center mt-3">
-              Oppdatert: {lastUpdated.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })}
-            </p>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

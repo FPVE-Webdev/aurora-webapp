@@ -1,4 +1,4 @@
-import { ImageResponse } from 'next/server';
+import { ImageResponse } from 'next/og';
 import { calculateMasterStatus, calculateSunElevation } from '@/lib/calculations/masterStatus';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
@@ -61,20 +61,19 @@ export async function GET(request: Request) {
     const bestSpotLine = spot ? `Best spot: ${spot}` : 'Stay flexible and watch the sky.';
 
     return new ImageResponse(
-      (
-        <div
-          style={{
-            width: WIDTH,
-            height: HEIGHT,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            padding: '64px',
-            background: 'linear-gradient(180deg, #040715 0%, #0b1228 40%, #05070f 100%)',
-            color: 'white',
-            fontFamily: 'Arial, sans-serif',
-          }}
-        >
+      <div
+        style={{
+          width: WIDTH,
+          height: HEIGHT,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: '64px',
+          background: 'linear-gradient(180deg, #040715 0%, #0b1228 40%, #05070f 100%)',
+          color: 'white',
+          fontFamily: 'Arial, sans-serif',
+        }}
+      >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
             <div
               style={{
@@ -126,8 +125,7 @@ export async function GET(request: Request) {
               {new Date().toLocaleDateString('no-NO', { weekday: 'short', month: 'short', day: 'numeric' })}
             </div>
           </div>
-        </div>
-      ),
+      </div>,
       { width: WIDTH, height: HEIGHT }
     );
   } catch (error) {
