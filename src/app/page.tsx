@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 import { useAuroraData } from '@/hooks/useAuroraData';
@@ -22,6 +22,9 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import { ExtendedMetrics as ExtendedMetricsType } from '@/types/tromsoAI';
 import IntroOverlay from '@/components/intro/IntroOverlay';
 import { MasterStatusCard } from '@/components/aurora/MasterStatusCard';
+import Kart3VideoOverlay from '@/app/kart3/components/Kart3VideoOverlay';
+import { shareStoryImage } from '@/lib/shareStory';
+import { useMasterStatus } from '@/contexts/MasterStatusContext';
 
 export default function HomePage() {
   const {
@@ -34,6 +37,7 @@ export default function HomePage() {
     selectSpot // Need ability to force-reset spot
   } = useAuroraData();
   const { isPremium } = usePremium();
+  const { status: masterStatus } = useMasterStatus();
   
   // Enforce Lite Mode: Lock to Tromsø
   useEffect(() => {
@@ -55,6 +59,34 @@ export default function HomePage() {
   const { settings } = useAppSettings();
   const [extendedMetrics, setExtendedMetrics] = useState<ExtendedMetricsType | null>(null);
   const [showIntro, setShowIntro] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+
+  const intensity01 = useMemo(() => {
+    const kpPart = (currentKp || 3) / 9;
+    const probPart = currentForecast ? currentForecast.currentProbability / 100 : 0.45;
+    return Math.max(0, Math.min(1, kpPart * 0.5 + probPart * 0.6));
+  }, [currentKp, currentForecast]);
+
+  const cloud01 = useMemo(() => {
+    const clouds = currentForecast ? currentForecast.weather.cloudCoverage : 60;
+    return Math.max(0, Math.min(1, clouds / 100));
+  }, [currentForecast]);
+
+  const handleShare = async () => {
+    try {
+      setIsSharing(true);
+      await shareStoryImage({
+        status: masterStatus,
+        location: selectedSpot.name,
+        spot: currentForecast?.spot.name,
+      });
+      console.info('[share-story] home_success', { status: masterStatus, spot: currentForecast?.spot.name });
+    } catch (err) {
+      alert('Kunne ikke lage delingsbilde. Prøv igjen.');
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   // Fetch extended metrics (Phase 2 feature)
   useEffect(() => {
@@ -145,6 +177,21 @@ export default function HomePage() {
       {showIntro && <IntroOverlay onClose={() => setShowIntro(false)} />}
       {/* Hero Section */}
       <div className="relative overflow-hidden">
+        {/* Kart3-inspired background */}
+        <div className="absolute inset-0">
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "url('/background.png')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center 72%',
+              opacity: 0.35,
+            }}
+          />
+          <div className="absolute inset-0 pointer-events-none">
+            <Kart3VideoOverlay intensity01={intensity01} cloud01={cloud01} weatherEnabled cinematic />
+          </div>
+        </div>
         {/* Aurora glow effect with animation */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-gradient-to-b from-primary/20 via-primary/10 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
@@ -298,6 +345,13 @@ export default function HomePage() {
               <MapIcon className="w-5 h-5" />
               Se live kart
             </Link>
+            <button
+              onClick={handleShare}
+              disabled={isSharing}
+              className="ml-3 inline-flex items-center gap-2 px-8 py-4 bg-white/90 text-black font-semibold rounded-lg transition-all shadow-lg hover:bg-white disabled:opacity-60"
+            >
+              {isSharing ? 'Lager bilde...' : 'Del status'}
+            </button>
           </div>
         </div>
       </div>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { MessageCircle, X, Send, Sparkles, Loader2 } from 'lucide-react';
+import { useMasterStatus } from '@/contexts/MasterStatusContext';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -12,17 +13,20 @@ interface Message {
 }
 
 export function ChatWidget() {
+  const { status, result, isLoading: statusLoading } = useMasterStatus();
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: 'Hei! 👋 Jeg er din nordlys-guide. Lurer du på noe om nordlyset i kveld?',
-      sender: 'bot',
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [hasIntro, setHasIntro] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const statusLabel = useMemo(() => {
+    if (!result) return 'Laster status...';
+    if (result.status === 'GO') return 'GO NOW';
+    if (result.status === 'WAIT') return 'WAIT';
+    return 'NO (vent)';
+  }, [result]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -31,6 +35,27 @@ export function ChatWidget() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Inject a status-based intro once the Master Status is ready
+  useEffect(() => {
+    if (hasIntro || statusLoading || !result) return;
+    const introText =
+      result.status === 'GO'
+        ? 'YES! Put on your jacket. Tromsø ser lovende ut nå. Spør meg hvor du bør dra eller om det lønner seg å vente.'
+        : result.status === 'WAIT'
+        ? 'Ikke helt enda. Aktivitet er på gang, men skyene kan plage. Spør om beste sted å kjøre til.'
+        : 'Akkurat nå er det for lyst eller for skyet. Jeg kan tipse deg om når det er verdt å sjekke igjen.';
+
+    setMessages([
+      {
+        id: 'intro',
+        text: introText,
+        sender: 'bot',
+        timestamp: new Date(),
+      },
+    ]);
+    setHasIntro(true);
+  }, [hasIntro, result, statusLoading]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -46,25 +71,43 @@ export function ChatWidget() {
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
 
-    // Simulate bot response
-    setTimeout(() => {
-      const botResponses = [
-        "Det ser bra ut for nordlys i kveld! KP-indeksen er lovende.",
-        "Husk å kle deg godt, det er kaldt ute!",
-        "Prøv å finne et sted med lite lysforurensning for best sikt.",
-        "Jeg kan dessverre ikke se live-kameraer ennå, men prognosen er god.",
-        "Skal jeg sjekke skydekket for deg?",
-      ];
-      const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
-      
+    setIsSending(true);
+
+    try {
+      const res = await fetch('/api/chat/guide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: messages
+            .map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text }))
+            .concat({ role: 'user', content: userMessage.text }),
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.info('[chat-guide] reply', { status: data.masterStatus, bestSpot: data.bestSpot?.name });
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: randomResponse,
+        text: data.reply || 'Jeg er her, men fikk ikke svar. Prøv igjen.',
         sender: 'bot',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, botMessage]);
-    }, 1000);
+    } catch (err) {
+      const botMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        text: 'Fikk ikke kontakt med guiden. Prøv igjen om litt.',
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, botMessage]);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -86,7 +129,7 @@ export function ChatWidget() {
               <h3 className="text-white font-medium text-sm">Nordlys Guide</h3>
               <p className="text-white/50 text-xs flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                Online
+                {statusLoading ? 'Henter status...' : `Status: ${statusLabel}`}
               </p>
             </div>
           </div>
@@ -122,6 +165,14 @@ export function ChatWidget() {
               </div>
             </div>
           ))}
+          {isSending && (
+            <div className="flex w-full mb-2 justify-start">
+              <div className="bg-white/10 text-white/80 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Tenker...
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -137,12 +188,12 @@ export function ChatWidget() {
             />
             <button
               type="submit"
-              disabled={!inputText.trim()}
+              disabled={!inputText.trim() || isSending}
               className="absolute right-1.5 p-1.5 bg-primary rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-hover transition-colors"
               title="Send melding"
               aria-label="Send melding"
             >
-              <Send className="w-4 h-4" />
+              {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
         </form>
@@ -150,7 +201,11 @@ export function ChatWidget() {
 
       {/* FAB Toggle */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const next = !isOpen;
+          setIsOpen(next);
+          if (next) console.info('[chat-guide] open');
+        }}
         className={cn(
           "group relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-purple-600 text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300 pointer-events-auto",
           isOpen && "rotate-90 scale-0 opacity-0"
