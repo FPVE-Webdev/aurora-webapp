@@ -179,14 +179,15 @@ export default function HomePage() {
       {showIntro && <IntroOverlay onClose={() => setShowIntro(false)} />}
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        {/* Kart3-inspired background */}
-        <div className="absolute inset-0">
+        {/* Kart3-inspired background - fixed */}
+        <div className="fixed inset-0 z-0">
           <div
             className="absolute inset-0"
             style={{
               backgroundImage: "url('/background.png')",
               backgroundSize: 'cover',
               backgroundPosition: 'center 72%',
+              backgroundAttachment: 'fixed',
               opacity: 0.35,
             }}
           />
@@ -194,14 +195,14 @@ export default function HomePage() {
             <Kart3VideoOverlay intensity01={intensity01} cloud01={cloud01} weatherEnabled cinematic />
           </div>
         </div>
-        {/* Aurora glow effect with animation */}
-        <div className="absolute inset-0 pointer-events-none">
+        {/* Aurora glow effect with animation - fixed */}
+        <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-gradient-to-b from-primary/20 via-primary/10 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
           <div className="absolute top-20 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
           <div className="absolute top-40 right-1/4 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '7s', animationDelay: '1s' }} />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Master Status - THE Decision */}
           <div className="mb-8">
             <MasterStatusCard />
