@@ -11,6 +11,7 @@ import { DataModeProvider } from '@/contexts/DataModeContext';
 import { AdminLink } from '@/components/shared/AdminLink';
 import { Navigation } from '@/components/shared/Navigation';
 import Footer from '@/components/shared/Footer';
+import { ChatWidget } from '@/components/chat/ChatWidget';
 import './globals.css';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -60,6 +61,7 @@ export default function RootLayout({
                 <DataModeProvider>
                   <PremiumProvider>
                     <LayoutContent>{children}</LayoutContent>
+                    <ChatWidget />
                     <Toaster
                       position="top-right"
                       theme="dark"

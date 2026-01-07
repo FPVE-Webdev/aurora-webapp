@@ -150,7 +150,13 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
     // Initialize map
     const map = L.map(mapRef.current, {
       center: [69.5, 20.0],
-      zoom: 5,
+      zoom: 6,
+      minZoom: 5,
+      maxZoom: 12,
+      maxBounds: [
+        [63.0, 4.0],  // Southwest corner (South of Helgeland)
+        [72.0, 32.0]  // Northeast corner (East of Varanager)
+      ],
       attributionControl: false,
       zoomControl: true
     });

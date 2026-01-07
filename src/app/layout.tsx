@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import ClientLayout from './client-layout';
+import './globals.css';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
@@ -22,8 +23,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return <ClientLayout>{children}</ClientLayout>;
 }
