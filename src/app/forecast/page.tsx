@@ -10,6 +10,7 @@ import { useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
 import { useEffect } from 'react';
+import { MasterStatusCard } from '@/components/aurora/MasterStatusCard';
 
 export default function ForecastPage() {
   const {
@@ -72,6 +73,11 @@ export default function ForecastPage() {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Master Status Card */}
+        <div className="mb-6">
+          <MasterStatusCard />
+        </div>
+
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link

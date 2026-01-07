@@ -12,6 +12,7 @@ import { AdminLink } from '@/components/shared/AdminLink';
 import { Navigation } from '@/components/shared/Navigation';
 import Footer from '@/components/shared/Footer';
 import { ChatWidget } from '@/components/chat/ChatWidget';
+import { MasterStatusProvider } from '@/contexts/MasterStatusContext';
 import './globals.css';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -60,19 +61,21 @@ export default function RootLayout({
               <DevModeProvider>
                 <DataModeProvider>
                   <PremiumProvider>
-                    <LayoutContent>{children}</LayoutContent>
-                    <ChatWidget />
-                    <Toaster
-                      position="top-right"
-                      theme="dark"
-                      toastOptions={{
-                        style: {
-                          background: 'rgb(15, 17, 24)',
-                          border: '1px solid rgba(255, 255, 255, 0:1)',
-                          color: 'white',
-                        },
-                      }}
-                    />
+                    <MasterStatusProvider>
+                      <LayoutContent>{children}</LayoutContent>
+                      <ChatWidget />
+                      <Toaster
+                        position="top-right"
+                        theme="dark"
+                        toastOptions={{
+                          style: {
+                            background: 'rgb(15, 17, 24)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            color: 'white',
+                          },
+                        }}
+                      />
+                    </MasterStatusProvider>
                   </PremiumProvider>
                 </DataModeProvider>
               </DevModeProvider>

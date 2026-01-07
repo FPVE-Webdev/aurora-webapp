@@ -21,6 +21,7 @@ import { usePremium } from '@/contexts/PremiumContext';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { ExtendedMetrics as ExtendedMetricsType } from '@/types/tromsoAI';
 import IntroOverlay from '@/components/intro/IntroOverlay';
+import { MasterStatusCard } from '@/components/aurora/MasterStatusCard';
 
 export default function HomePage() {
   const {
@@ -152,6 +153,11 @@ export default function HomePage() {
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {/* Master Status - THE Decision */}
+          <div className="mb-8">
+            <MasterStatusCard />
+          </div>
+
           {/* Header */}
           <div className="text-center mb-12 space-y-6">
             <div className="flex items-center justify-center gap-4">
@@ -237,10 +243,18 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Extended Metrics (Phase 2 - Solar Wind Data) */}
+          {/* Extended Metrics (Hidden by default for Tourist-First UX) */}
           {extendedMetrics && (
             <div className="max-w-4xl mx-auto mb-8">
-              <ExtendedMetrics data={extendedMetrics} lang="no" />
+              <details className="group">
+                <summary className="flex items-center justify-between cursor-pointer p-4 bg-arctic-800/50 rounded-lg border border-white/10 hover:bg-arctic-800/70 transition-colors">
+                  <span className="text-white/70 text-sm font-medium">📊 Avanserte data (for entusiaster)</span>
+                  <span className="text-white/50 text-xs group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div className="mt-2">
+                  <ExtendedMetrics data={extendedMetrics} lang="no" />
+                </div>
+              </details>
             </div>
           )}
 
