@@ -88,10 +88,10 @@ export function AuroraLiveMap() {
           const weatherRes = await fetch(`/api/weather/${spot.latitude}/${spot.longitude}`);
           const weatherData = weatherRes.ok ? await weatherRes.json() : null;
 
-          // Use real weather or fallback
-          const cloudCoverage = weatherData?.cloudCoverage ?? (20 + Math.random() * 60);
-          const temperature = weatherData?.temperature ?? (-15 + Math.random() * 25);
-          const windSpeed = weatherData?.windSpeed ?? Math.round(Math.random() * 15);
+          // Use real weather or fallback (Deterministic)
+          const cloudCoverage = weatherData?.cloudCoverage ?? 20;
+          const temperature = weatherData?.temperature ?? -5;
+          const windSpeed = weatherData?.windSpeed ?? 5;
 
           // Calculate probability based on real conditions
           const { probability } = calculateAuroraProbability({
@@ -116,8 +116,8 @@ export function AuroraLiveMap() {
           };
         } catch (error) {
           console.warn(`Failed to fetch weather for ${spot.name}, using fallback`);
-          const cloudCoverage = 20 + Math.random() * 60;
-          const temperature = -15 + Math.random() * 25;
+          const cloudCoverage = 20;
+          const temperature = -5;
           const { probability } = calculateAuroraProbability({
             kpIndex,
             cloudCoverage,
@@ -132,7 +132,7 @@ export function AuroraLiveMap() {
             weather: {
               cloudCoverage: Math.round(cloudCoverage),
               temperature: Math.round(temperature),
-              windSpeed: Math.round(Math.random() * 15),
+              windSpeed: 5,
               symbolCode: 'clearsky_night'
             }
           };

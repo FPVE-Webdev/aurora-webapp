@@ -67,35 +67,17 @@ export default function Kart3VideoOverlay({ intensity01, cloud01, weatherEnabled
 
       <style jsx>{`
         @keyframes cinematicLoop {
-          /* 15s Total */
-          /* Phase 1: Clean (0-2s) */
-          0%, 13% { opacity: 0; }
-          
-          /* Phase 2: Aurora Only (2s-5s) -> Fade in */
-          20% { opacity: 1; }
-          
-          /* Phase 3: Aurora + Clouds (5s-9s) -> Aurora stays */
-          60% { opacity: 1; }
-          
-          /* Phase 4: Clouds Only (9s-13s) -> Aurora fades out */
-          66% { opacity: 0; } 
-
-          /* Phase 5: Fade out */
-          100% { opacity: 0; }
+          /* Seamless loop: Aurora pulsates but never fully disappears */
+          0% { opacity: 0.8; }
+          50% { opacity: 0.4; } /* Dim slightly when clouds come in */
+          100% { opacity: 0.8; }
         }
 
         @keyframes cinematicClouds {
-          /* Phase 1 & 2: No Clouds (0-5s) */
-          0%, 33% { opacity: 0; }
-
-          /* Phase 3: Clouds Fade In (5s-6s) */
-          40% { opacity: 1; } 
-
-          /* Phase 4: Clouds Only (6s-13s) */
-          86% { opacity: 1; }
-
-          /* Phase 5: Clouds Fade Out (13s-15s) */
-          100% { opacity: 0; } 
+          /* Seamless loop: Clouds drift in and out */
+          0% { opacity: 0; }
+          50% { opacity: 0.9; } /* Clouds dominate */
+          100% { opacity: 0; }
         }
 
         /* Cloud bank - Opaque to cover stars */

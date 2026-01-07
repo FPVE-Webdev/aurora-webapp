@@ -6,8 +6,10 @@ import { HourlyForecast } from '@/components/aurora/HourlyForecast';
 import { SpotSelector } from '@/components/map/SpotSelector';
 import { Loader2, ArrowLeft, Calendar } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
+import { useEffect } from 'react';
 
 export default function ForecastPage() {
   const {
@@ -19,6 +21,19 @@ export default function ForecastPage() {
     lastUpdate,
     error
   } = useAuroraData();
+
+  const searchParams = useSearchParams();
+  const spotIdParam = searchParams.get('spotId');
+
+  // Handle URL parameter for spot selection
+  useEffect(() => {
+    if (spotIdParam && spotForecasts.length > 0) {
+      const spotFromUrl = spotForecasts.find(f => f.spot.id === spotIdParam)?.spot;
+      if (spotFromUrl && spotFromUrl.id !== selectedSpot.id) {
+        selectSpot(spotFromUrl);
+      }
+    }
+  }, [spotIdParam, spotForecasts, selectSpot, selectedSpot.id]);
 
   // Get forecast for selected spot
   const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];

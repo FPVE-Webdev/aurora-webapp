@@ -311,7 +311,7 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
             <p style="font-size: 11px; color: #666; margin: 0 0 4px 0;">
               ☁️ ${Math.round(displayWeather.cloudCoverage)}% • ${Math.round(displayWeather.temperature)}°C
             </p>
-            <a href="/forecast" style="display: inline-block; margin-top: 4px; padding: 4px 12px; background: ${color}; color: white; text-decoration: none; border-radius: 8px; font-size: 11px; font-weight: 600;">
+            <a href="/forecast?spotId=${forecast.spot.id}" style="display: inline-block; margin-top: 4px; padding: 4px 12px; background: ${color}; color: white; text-decoration: none; border-radius: 8px; font-size: 11px; font-weight: 600;">
               Se 12t prognose →
             </a>
           </div>

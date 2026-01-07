@@ -53,7 +53,7 @@ export default function HomePage() {
   }, [isPremium, selectedSpot, selectSpot]);
   const { settings } = useAppSettings();
   const [extendedMetrics, setExtendedMetrics] = useState<ExtendedMetricsType | null>(null);
-  const [showIntro, setShowIntro] = useState(true);
+  const [showIntro, setShowIntro] = useState(false);
 
   // Fetch extended metrics (Phase 2 feature)
   useEffect(() => {
