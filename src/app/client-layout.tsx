@@ -31,7 +31,6 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <div className={!isAdminRoute && !isImmersiveRoute ? 'pt-16' : ''}>
         {children}
       </div>
-      <AdminLink />
       {!isAdminRoute && !isImmersiveRoute && <Footer />}
     </>
   );
