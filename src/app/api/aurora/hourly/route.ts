@@ -190,20 +190,23 @@ function generateMockHourly(hours: number, location: string) {
   const hourlyData = [];
   const baseDate = new Date();
 
-  // Deterministic base KP: same for entire day
-  const todaySeed = timeSeed(baseDate);
-  const baseKp = 5 + seededRandom(todaySeed) * 2; // Consistent 5-7 for today
+  // Create location-specific seed by hashing location name
+  const locationSeed = location.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
+  // Deterministic base KP: same for entire day but different per location
+  const todaySeed = timeSeed(baseDate) + locationSeed;
+  const baseKp = 5 + seededRandom(todaySeed) * 2; // Consistent 5-7 for today per location
 
   for (let i = 0; i < hours; i++) {
     const date = new Date(baseDate);
     date.setHours(date.getHours() + i);
 
-    // Deterministic variation based on hour seed
-    const hourSeed = timeSeed(date);
+    // Deterministic variation based on hour seed AND location
+    const hourSeed = timeSeed(date) + locationSeed;
     const kpVariation = (Math.sin(i / 4) + seededRandom(hourSeed + 1) - 0.5) * 1.5;
     const kp = Math.max(0, Math.min(9, baseKp + kpVariation));
 
-    const cloudVariation = (Math.sin(i / 6) + seededRandom(hourSeed + 2)) * 30;
+    const cloudVariation = (Math.sin(i / 6 + locationSeed * 0.01) + seededRandom(hourSeed + 2)) * 30;
     const cloudCoverage = Math.max(0, Math.min(100, 30 + cloudVariation));
 
     const probability = Math.floor(

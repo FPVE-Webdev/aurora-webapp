@@ -91,10 +91,11 @@ export function AuroraLiveMap() {
           const weatherRes = await fetch(`/api/weather/${spot.latitude}/${spot.longitude}`);
           const weatherData = weatherRes.ok ? await weatherRes.json() : null;
 
-          // Use real weather or fallback (Deterministic)
-          const cloudCoverage = weatherData?.cloudCoverage ?? 20;
-          const temperature = weatherData?.temperature ?? -5;
-          const windSpeed = weatherData?.windSpeed ?? 5;
+          // Use real weather if available, otherwise use location-specific fallback
+          const locationSeed = spot.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          const cloudCoverage = weatherData?.cloudCoverage ?? (20 + (locationSeed % 40));
+          const temperature = weatherData?.temperature ?? (-8 + (locationSeed % 6));
+          const windSpeed = weatherData?.windSpeed ?? (4 + (locationSeed % 8));
 
           // Calculate probability based on real conditions
           const { probability } = calculateAuroraProbability({
@@ -119,8 +120,11 @@ export function AuroraLiveMap() {
           };
         } catch (error) {
           console.warn(`Failed to fetch weather for ${spot.name}, using fallback`);
-          const cloudCoverage = 20;
-          const temperature = -5;
+          const locationSeed = spot.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          const cloudCoverage = 20 + (locationSeed % 40);
+          const temperature = -8 + (locationSeed % 6);
+          const windSpeed = 4 + (locationSeed % 8);
+
           const { probability } = calculateAuroraProbability({
             kpIndex,
             cloudCoverage,
@@ -135,8 +139,8 @@ export function AuroraLiveMap() {
             weather: {
               cloudCoverage: Math.round(cloudCoverage),
               temperature: Math.round(temperature),
-              windSpeed: 5,
-              symbolCode: 'clearsky_night'
+              windSpeed: Math.round(windSpeed),
+              symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night'
             }
           };
         }
