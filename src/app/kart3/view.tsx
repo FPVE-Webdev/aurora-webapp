@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { clamp01 } from '@/lib/utils/mathUtils';
 import { shareStoryImage } from '@/lib/shareStory';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNext4HoursPeak } from '@/hooks/useNext4HoursPeak';
+import { Tooltip } from '@/components/ui/Tooltip';
 import Kart3VideoOverlay from './components/Kart3VideoOverlay';
 
 type Kart3WeatherData = {
@@ -59,6 +62,10 @@ export default function Kart3View() {
   const [bestSpot, setBestSpot] = useState<BestSpotResponse | null>(null);
   const [bestSpotError, setBestSpotError] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
+
+  // Fetch 4-hour peak probability
+  const { peakProbability } = useNext4HoursPeak('tromso');
+  const displayProbability = peakProbability > 0 ? peakProbability : auroraProbability;
 
   const intensity01 = useMemo(() => {
     return clamp01((kpIndex / 9) * 0.65 + (auroraProbability / 100) * 0.55);
@@ -186,9 +193,17 @@ export default function Kart3View() {
           <div className="rounded-2xl border border-white/10 bg-black/45 backdrop-blur-xl p-5 shadow-2xl">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-xs text-white/60">{t('tromsoNow')}</div>
+                <div className="flex items-center gap-1.5 text-xs text-white/60">
+                  {t('tromsoNow')}
+                  <Tooltip content={t('probabilityTooltip') || 'Prognose basert på solaraktivitet og værdata. Lokale forhold kan variere.'}>
+                    <Info className="w-3 h-3 text-white/40 hover:text-white/60 cursor-help" />
+                  </Tooltip>
+                </div>
                 <div className="text-white text-lg font-semibold">
-                  KP {kpIndex.toFixed(1)} · {Math.round(auroraProbability)}%
+                  KP {kpIndex.toFixed(1)} · {Math.round(displayProbability)}%
+                </div>
+                <div className="text-[10px] text-white/50 mt-0.5">
+                  {t('next4Hours') || 'Neste 4 timer'}
                 </div>
               </div>
               <Link

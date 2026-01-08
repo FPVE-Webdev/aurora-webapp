@@ -144,6 +144,8 @@ const translations: Record<Language, Record<string, string>> = {
     // AuroraStatusCard
     auroraProbability: 'Nordlyssannsynlighet',
     tonight: 'i kveld',
+    probabilityTooltip: 'Prognose basert på solaraktivitet og værdata. Lokale forhold kan variere.',
+    next4Hours: 'Neste 4 timer',
 
     // ProbabilityGauge
     auroraVisibility: 'Aurora synlighet',
@@ -328,6 +330,8 @@ const translations: Record<Language, Record<string, string>> = {
     // AuroraStatusCard
     auroraProbability: 'Aurora Probability',
     tonight: 'tonight',
+    probabilityTooltip: 'Forecast based on solar activity and weather data. Local conditions may vary.',
+    next4Hours: 'Next 4 hours',
 
     // ProbabilityGauge
     auroraVisibility: 'Aurora Visibility',

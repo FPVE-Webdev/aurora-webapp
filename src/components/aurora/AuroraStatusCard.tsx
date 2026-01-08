@@ -7,7 +7,7 @@
 
 'use client';
 
-import { Zap, Cloud, Thermometer, Clock } from 'lucide-react';
+import { Zap, Cloud, Thermometer, Clock, Info } from 'lucide-react';
 import { SpotForecast } from '@/types/aurora';
 import {
   auroraGlows,
@@ -17,6 +17,8 @@ import {
 } from '@/lib/auroraTheme';
 import { getProbabilityEmoji, getProbabilityLabel } from '@/lib/constants/auroraStatus';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNext4HoursPeak } from '@/hooks/useNext4HoursPeak';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 interface AuroraStatusCardProps {
   data: SpotForecast;
@@ -27,6 +29,12 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
   const { currentProbability, weather, bestViewingTime } = data;
   const kpIndex = data.hourlyForecast[0]?.kpIndex || 3;
 
+  // Fetch 4-hour peak probability
+  const { peakProbability, peakHour } = useNext4HoursPeak(data.spot.id);
+
+  // Use peak probability for display instead of current
+  const displayProbability = peakProbability > 0 ? peakProbability : currentProbability;
+
   const getProbabilityColor = (probability: number): string => {
     if (probability >= 70) return 'text-green-500';
     if (probability >= 50) return 'text-purple-400';
@@ -35,10 +43,10 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
   };
 
 
-  // Dynamic glow strength based on probability
+  // Dynamic glow strength based on probability (use displayProbability)
   const glowStrength =
-    currentProbability >= 80 ? auroraGlows.strong :
-    currentProbability >= 60 ? auroraGlows.medium :
+    displayProbability >= 80 ? auroraGlows.strong :
+    displayProbability >= 60 ? auroraGlows.medium :
     auroraGlows.soft;
 
   // Dynamic gradient based on probability
@@ -66,7 +74,7 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
         className="card-aurora animate-fade-in rounded-3xl"
         style={{
           padding: auroraSpacing.normal,
-          background: getGradient(currentProbability),
+          background: getGradient(displayProbability),
           transition: "background 1.8s ease-in-out",
         }}
       >
@@ -75,18 +83,24 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
           <div className="flex items-center justify-center gap-2 mb-3">
             <Zap className="w-6 h-6 text-primary animate-pulse" />
             <h2 className="text-lg font-display font-semibold text-white">{t('auroraProbability')}</h2>
+            <Tooltip content={t('probabilityTooltip') || 'Prognose basert på solaraktivitet og værdata. Lokale forhold kan variere.'}>
+              <Info className="w-4 h-4 text-white/50 hover:text-white/80 cursor-help" />
+            </Tooltip>
           </div>
 
           {/* Emoji Indicator */}
           <div className="text-5xl mb-2 animate-bounce" style={{ animationDuration: '2s' }}>
-            {getProbabilityEmoji(currentProbability)}
+            {getProbabilityEmoji(displayProbability)}
           </div>
 
-          <div className={`text-7xl font-display font-black ${getProbabilityColor(currentProbability)} mb-2`}>
-            {currentProbability}%
+          <div className={`text-7xl font-display font-black ${getProbabilityColor(displayProbability)} mb-2`}>
+            {displayProbability}%
           </div>
           <p className="text-base font-semibold text-white/90 bg-white/10 px-4 py-2 rounded-full inline-block">
-            {getProbabilityLabel(currentProbability)} {t('tonight')}
+            {getProbabilityLabel(displayProbability)} {t('tonight')}
+          </p>
+          <p className="text-xs text-white/60 mt-2">
+            {t('next4Hours') || 'Neste 4 timer'}
           </p>
         </div>
 
