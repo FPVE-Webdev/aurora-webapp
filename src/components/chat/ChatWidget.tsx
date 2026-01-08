@@ -41,12 +41,17 @@ export function ChatWidget() {
   // Inject a status-based intro once the Master Status is ready
   useEffect(() => {
     if (hasIntro || statusLoading || !result) return;
-    const introText =
+
+    const baseIntro =
       result.status === 'GO'
-        ? 'YES! Put on your jacket. Tromsø ser lovende ut nå. Spør meg hvor du bør dra eller om det lønner seg å vente.'
+        ? 'YES! Put on your jacket. Tromsø ser lovende ut nå.'
         : result.status === 'WAIT'
-        ? 'Ikke helt enda. Aktivitet er på gang, men skyene kan plage. Spør om beste sted å kjøre til.'
-        : 'Akkurat nå er det for lyst eller for skyet. Jeg kan tipse deg om når det er verdt å sjekke igjen.';
+        ? 'Ikke helt enda. Aktivitet er på gang, men skyene kan plage.'
+        : 'Akkurat nå er det for lyst eller for skyet.';
+
+    const introText = isPremium
+      ? `${baseIntro} Spør meg hvor du bør dra eller om det lønner seg å vente.`
+      : `${baseIntro} Jeg kan gi deg generelle retninger. 🔒 Lås opp for GPS-koordinater og eksakte ruter.`;
 
     setMessages([
       {
@@ -57,7 +62,7 @@ export function ChatWidget() {
       },
     ]);
     setHasIntro(true);
-  }, [hasIntro, result, statusLoading]);
+  }, [hasIntro, result, statusLoading, isPremium]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -148,26 +153,44 @@ export function ChatWidget() {
 
         {/* Messages */}
         <div className="h-[400px] overflow-y-auto p-4 space-y-4 bg-black/20 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "flex w-full mb-2",
-                msg.sender === 'user' ? "justify-end" : "justify-start"
-              )}
-            >
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                  msg.sender === 'user' 
-                    ? "bg-primary text-white rounded-br-sm" 
-                    : "bg-white/10 text-white/90 rounded-bl-sm backdrop-blur-sm"
+          {messages.map((msg) => {
+            const hasLockIcon = msg.sender === 'bot' && msg.text.includes('🔒');
+            return (
+              <div key={msg.id}>
+                <div
+                  className={cn(
+                    "flex w-full mb-2",
+                    msg.sender === 'user' ? "justify-end" : "justify-start"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                      msg.sender === 'user'
+                        ? "bg-primary text-white rounded-br-sm"
+                        : "bg-white/10 text-white/90 rounded-bl-sm backdrop-blur-sm"
+                    )}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
+                {/* Upgrade CTA for locked features */}
+                {hasLockIcon && !isPremium && (
+                  <div className="flex justify-start mb-2">
+                    <button
+                      onClick={() => {
+                        // TODO: Open payment modal
+                        console.log('Open upgrade modal from chat');
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-primary to-purple-500 text-white text-xs font-semibold hover:shadow-lg hover:scale-105 transition-all"
+                    >
+                      Lås opp Premium • Fra 49 kr
+                    </button>
+                  </div>
                 )}
-              >
-                {msg.text}
               </div>
-            </div>
-          ))}
+            );
+          })}
           {isSending && (
             <div className="flex w-full mb-2 justify-start">
               <div className="bg-white/10 text-white/80 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm flex items-center gap-2">
