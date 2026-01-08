@@ -1,14 +1,10 @@
 import { ObservationSpot } from "@/types/aurora";
 
 // Main regional observation spots available to all users (free tier)
-// These are the 4 main regions + Bjørnøya & Hopen (always visible for arctic coverage)
+// These are the 2 main regions with multiple detailed spots
 export const FREE_OBSERVATION_SPOTS: ObservationSpot[] = [
   { id: 'troms', name: 'Troms', latitude: 69.6492, longitude: 18.9553, region: 'troms' },
-  { id: 'finnmark', name: 'Finnmark', latitude: 70.0689, longitude: 25.0, region: 'finnmark' },
   { id: 'nordland', name: 'Nordland', latitude: 68.4385, longitude: 15.5, region: 'nordland' },
-  { id: 'svalbard', name: 'Svalbard', latitude: 78.2232, longitude: 15.6469, region: 'nordic' },
-  { id: 'bjornoya', name: 'Bjørnøya', latitude: 74.4300, longitude: 19.0200, region: 'nordic' },
-  { id: 'hopen', name: 'Hopen', latitude: 76.5070, longitude: 25.0030, region: 'nordic' },
 ];
 
 // Premium observation spots (detailed locations within each region)

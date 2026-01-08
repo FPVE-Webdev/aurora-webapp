@@ -17,6 +17,7 @@ interface HourlyData {
     conditions: string;
   };
   visibility: string;
+  canSeeAurora?: boolean;
 }
 
 interface SpotForecast {
@@ -59,16 +60,22 @@ function getMarkerColor(probability: number): string {
   return '#64748b'; // Gray - Poor
 }
 
-function calculateProbabilityFromOvalPosition(latitude: number, kpIndex: number): number {
-  // Use real calculation based on latitude and KP index
+function calculateProbabilityFromOvalPosition(
+  latitude: number,
+  longitude: number,
+  kpIndex: number
+): number {
+  // Use real calculation based on latitude, longitude and KP index
   // Assume moderate cloud coverage for aurora oval positions
-  const { probability } = calculateAuroraProbability({
+  const { probability, canView } = calculateAuroraProbability({
     kpIndex,
     cloudCoverage: 30, // Assume good conditions along aurora oval
     temperature: -10, // Typical northern temperature
     latitude,
+    longitude, // Required for daylight check
   });
-  return probability;
+  // Return 0 if daylight prevents viewing
+  return canView ? probability : 0;
 }
 
 export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelectSpot, kpIndex, animationHour = 0 }: Props) {
@@ -271,7 +278,10 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
         const hourData = forecast.hourlyForecast[hourIndex];
 
         if (hourData) {
-          displayProbability = hourData.probability;
+          // Use canSeeAurora if available, otherwise use probability directly
+          displayProbability = (hourData.canSeeAurora !== false)
+            ? hourData.probability
+            : 0;
           displayKp = hourData.kp;
           displayWeather = {
             cloudCoverage: hourData.weather.cloudCoverage,
@@ -342,7 +352,7 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
     const badgePoints = auroraData.filter((_, i) => i % 5 === 0);
 
     badgePoints.forEach((point, index) => {
-      const probability = calculateProbabilityFromOvalPosition(point.lat, kpIndex);
+      const probability = calculateProbabilityFromOvalPosition(point.lat, point.lon, kpIndex);
       const color = getMarkerColor(probability);
 
       const badge = L.divIcon({

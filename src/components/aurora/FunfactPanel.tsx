@@ -30,7 +30,7 @@ export function FunfactPanel({ funfacts }: FunfactPanelProps) {
       <div className="flex items-center gap-2 mb-4">
         <Lightbulb className="w-5 h-5 text-primary" />
         <h3 className="text-sm font-display font-semibold text-white">
-          Visste du?
+          Did you know?
         </h3>
       </div>
 

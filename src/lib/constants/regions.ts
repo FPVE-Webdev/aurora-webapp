@@ -70,7 +70,6 @@ export const REGIONS: Record<string, Region> = {
       west: 22.5
     },
     spots: [
-      'finnmark',
       'alta',
       'lakselv',
       'karasjok',

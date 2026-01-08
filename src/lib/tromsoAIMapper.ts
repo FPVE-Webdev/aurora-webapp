@@ -89,7 +89,7 @@ export function mapTromsøForecastToSpotForecast(
     return {
       time: hour.toISOString(),
       hour: hour.toTimeString().slice(0, 5),
-      probability: Math.round(hourProbability),
+      probability: hourCanView ? Math.round(hourProbability) : 0, // Return 0 during daylight
       cloudCoverage: Math.round(hourCloudCoverage),
       temperature: Math.round(hourTemperature),
       kpIndex: hourKpIndex,
