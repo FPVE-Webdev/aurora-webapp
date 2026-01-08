@@ -36,7 +36,7 @@ export default function IntroOverlay({ onClose }: Props) {
     return clamp01((kpIndex / 9) * 0.65 + (auroraProbability / 100) * 0.55);
   }, [kpIndex, auroraProbability]);
 
-  const cloud01 = useMemo(() => Math.max(0, Math.min(1, cloudCoverage / 100)), [cloudCoverage]);
+  const cloud01 = useMemo(() => clamp01(cloudCoverage / 100), [cloudCoverage]);
 
   useEffect(() => {
     let cancelled = false;

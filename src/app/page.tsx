@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 import { useAuroraData } from '@/hooks/useAuroraData';
+import { clamp01 } from '@/lib/utils/mathUtils';
 import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
 import { AuroraStatusCard } from '@/components/aurora/AuroraStatusCard';
 import { QuickStats } from '@/components/aurora/QuickStats';
@@ -68,12 +67,12 @@ export default function HomePage() {
   const intensity01 = useMemo(() => {
     const kpPart = (currentKp || 3) / 9;
     const probPart = currentForecast ? currentForecast.currentProbability / 100 : 0.45;
-    return Math.max(0, Math.min(1, kpPart * 0.5 + probPart * 0.6));
+    return clamp01(kpPart * 0.5 + probPart * 0.6);
   }, [currentKp, currentForecast]);
 
   const cloud01 = useMemo(() => {
     const clouds = currentForecast ? currentForecast.weather.cloudCoverage : 60;
-    return Math.max(0, Math.min(1, clouds / 100));
+    return clamp01(clouds / 100);
   }, [currentForecast]);
 
   const handleShare = async () => {
