@@ -2,11 +2,15 @@
  * Beregner nordlyssannsynlighet basert på værdata og solaktivitet
  */
 
+import { canSeeAurora, getNextAuroraTime, getBestAuroraTimeTonight } from './sunCalculations';
+
 export interface AuroraInputs {
   kpIndex: number;           // 0-9 (NOAA KP Index)
   cloudCoverage: number;     // 0-100 (%)
   temperature: number;       // Celsius
   latitude: number;          // 60-70 for Norge
+  longitude?: number;        // Required for daylight check
+  date?: Date;               // Timestamp for calculation (default: now)
   moonPhase?: number;        // 0-1 (0=new, 0.5=full)
   humidity?: number;         // 0-100 (%)
 }
@@ -14,6 +18,10 @@ export interface AuroraInputs {
 export interface ProbabilityResult {
   probability: number;       // 0-100 (%)
   score: number;            // Debugging: breakdown av beregningen
+  canView: boolean;         // Can aurora be seen (daylight check)
+  reason?: string;          // Why not viewable (e.g., 'daylight')
+  nextViewableTime?: Date;  // Next time aurora is visible
+  bestTimeTonight?: Date;   // Best viewing time tonight
   factors: {
     kpIndex: number;        // 0-100 score
     clouds: number;         // 0-100 score (inverted: less clouds = higher)
@@ -27,6 +35,35 @@ export interface ProbabilityResult {
  * Hovedfunksjon for sannsynlighetsberegning
  */
 export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityResult {
+  const date = inputs.date || new Date();
+
+  // Check daylight conditions first (if longitude provided)
+  if (inputs.longitude !== undefined) {
+    const isDark = canSeeAurora(inputs.latitude, inputs.longitude, date);
+
+    if (!isDark) {
+      // Too bright to see aurora
+      const nextTime = getNextAuroraTime(inputs.latitude, inputs.longitude, date);
+      const bestTime = getBestAuroraTimeTonight(inputs.latitude, inputs.longitude, date);
+
+      return {
+        probability: 0,
+        score: 0,
+        canView: false,
+        reason: 'daylight',
+        nextViewableTime: nextTime || undefined,
+        bestTimeTonight: bestTime || undefined,
+        factors: {
+          kpIndex: 0,
+          clouds: 0,
+          temperature: 0,
+          latitude: 0,
+          moonFactor: 0,
+        },
+      };
+    }
+  }
+
   // 1. KP-Index faktor (40% vekt)
   const kpScore = Math.min(100, (inputs.kpIndex / 9) * 100);
 
@@ -66,6 +103,7 @@ export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityRes
   return {
     probability,
     score: Math.round(weightedScore * 100) / 100,
+    canView: true,
     factors: {
       kpIndex: Math.round(kpScore),
       clouds: Math.round(cloudScore),
