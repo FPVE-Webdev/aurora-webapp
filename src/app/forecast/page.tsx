@@ -15,6 +15,7 @@ import { MasterStatusCard } from '@/components/aurora/MasterStatusCard';
 import { REGIONS, REGION_ORDER } from '@/lib/constants/regions';
 import { getAllRegionalForecasts } from '@/lib/calculations/regionalForecast';
 import { ViewMode } from '@/types/regions';
+import { usePremium } from '@/contexts/PremiumContext';
 
 export default function ForecastPage() {
   const {
@@ -31,10 +32,10 @@ export default function ForecastPage() {
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
-  const spotIdParam = searchParams.get('spotId');
+  const spotIdParam = searchParams.get('spotId') || searchParams.get('location');
 
   // Check if user has premium access
-  const isPremium = false; // TODO: Implement premium check
+  const { isPremium } = usePremium();
 
   // Calculate regional forecasts
   const regionalForecasts = useMemo(() => {

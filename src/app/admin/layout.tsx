@@ -1,14 +1,109 @@
 'use client';
 
-import { Building2, Key, BarChart3, Settings } from 'lucide-react';
+import { Building2, Key, BarChart3, Settings, Lock } from 'lucide-react';
 import Link from 'next/link';
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if already authenticated in session
+    const auth = sessionStorage.getItem('admin_authenticated');
+    if (auth === 'true') {
+      setIsAuthenticated(true);
+    }
+    setIsLoading(false);
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      const response = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordInput }),
+      });
+
+      if (response.ok) {
+        sessionStorage.setItem('admin_authenticated', 'true');
+        setIsAuthenticated(true);
+        setPasswordInput('');
+      } else {
+        setError('Incorrect password');
+      }
+    } catch (err) {
+      setError('Authentication failed');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-arctic-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-arctic-900 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-arctic-800 border border-white/10 rounded-2xl p-8 shadow-2xl">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
+                <Lock className="w-8 h-8 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold text-white mb-2">Admin Access</h1>
+              <p className="text-white/60">Enter password to continue</p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full px-4 py-3 bg-arctic-900 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-primary transition-colors"
+                  autoFocus
+                />
+              </div>
+
+              {error && (
+                <div className="text-red-400 text-sm text-center">{error}</div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full px-4 py-3 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg transition-colors"
+              >
+                Unlock Admin
+              </button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <Link
+                href="/"
+                className="text-white/60 hover:text-white text-sm transition-colors"
+              >
+                Back to App
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-arctic-900">

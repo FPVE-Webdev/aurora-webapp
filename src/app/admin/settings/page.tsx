@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, MapIcon, Code, Tag, Save, Loader2 } from 'lucide-react';
+import { Settings as SettingsIcon, MapIcon, Code, Tag, Save, Loader2, Crown } from 'lucide-react';
+import { usePremium } from '@/contexts/PremiumContext';
 
 interface AppSettings {
   mapMode: 'demo' | 'live';
@@ -10,6 +11,7 @@ interface AppSettings {
 }
 
 export default function SettingsPage() {
+  const { isPremium, setIsPremium, subscriptionTier, hoursRemaining } = usePremium();
   const [settings, setSettings] = useState<AppSettings>({
     mapMode: 'live',
     devMode: true,
@@ -215,6 +217,57 @@ export default function SettingsPage() {
                 className="sr-only peer"
               />
               <div className="w-14 h-8 bg-arctic-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Premium Settings (Testing) */}
+      <div className="bg-arctic-800 border border-white/10 rounded-lg p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-yellow-500/10 rounded-lg">
+            <Crown className="w-6 h-6 text-yellow-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-white">Premium Access (Testing)</h2>
+            <p className="text-white/60 text-sm">Toggle premium features for testing purposes</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {/* Premium Toggle */}
+          <div className="flex items-center justify-between p-4 bg-arctic-900 rounded-lg border border-white/5">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-white font-medium">Premium Access</h3>
+                {isPremium && (
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/10 text-yellow-500">
+                    ACTIVE
+                  </span>
+                )}
+              </div>
+              <p className="text-white/60 text-sm">
+                Enable premium features for testing (24 observation spots, detailed forecasts)
+              </p>
+              {isPremium && subscriptionTier !== 'free' && hoursRemaining && (
+                <p className="text-white/50 text-xs mt-2">
+                  {hoursRemaining}h remaining · {subscriptionTier}
+                </p>
+              )}
+              {isPremium && settings.devMode && (
+                <p className="text-purple-400/70 text-xs mt-2">
+                  ⚡ Premium auto-enabled in Dev Mode
+                </p>
+              )}
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer ml-4">
+              <input
+                type="checkbox"
+                checked={isPremium}
+                onChange={(e) => setIsPremium(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-14 h-8 bg-arctic-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-500/20 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-yellow-500"></div>
             </label>
           </div>
         </div>

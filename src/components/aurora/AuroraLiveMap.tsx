@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Cloud, Thermometer, Wind, ChevronDown, Play, Pause, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Cloud, Thermometer, Wind, ChevronDown, Play, Pause, Loader2, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OBSERVATION_SPOTS, FREE_OBSERVATION_SPOTS, PREMIUM_OBSERVATION_SPOTS } from '@/lib/constants';
 import { ObservationSpot } from '@/types/aurora';
@@ -316,7 +317,7 @@ export function AuroraLiveMap() {
                       }}
                     >
                       <div className="py-1">
-                        {OBSERVATION_SPOTS.map((spot) => (
+                        {spots.map((spot) => (
                           <button
                             key={spot.id}
                             onClick={() => {
@@ -331,6 +332,18 @@ export function AuroraLiveMap() {
                             {spot.name}
                           </button>
                         ))}
+                      </div>
+
+                      {/* Link to full forecast */}
+                      <div className="border-t border-white/10 p-2">
+                        <Link
+                          href={`/forecast?location=${selectedSpotId}`}
+                          className="flex items-center justify-between w-full px-2 py-1.5 text-[12px] text-primary hover:bg-primary/10 rounded transition-colors"
+                          onClick={() => setShowLocationDropdown(false)}
+                        >
+                          <span>Se full 48t prognose</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
                       </div>
                     </div>
                   </>
