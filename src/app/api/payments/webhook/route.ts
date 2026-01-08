@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, STRIPE_PRODUCTS } from '@/lib/stripe';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -50,24 +50,30 @@ export async function POST(request: NextRequest) {
         expiresAt.setHours(expiresAt.getHours() + parseInt(duration_hours));
 
         // Store in Supabase
-        const { error } = await supabase
-          .from('stripe_customers')
-          .upsert({
-            user_email: customerEmail,
-            stripe_customer_id: session.customer as string,
-            subscription_status: 'active',
-            current_tier: tier,
-            expires_at: expiresAt.toISOString(),
-            payment_session_id: session.id,
-            updated_at: new Date().toISOString(),
-          }, {
-            onConflict: 'user_email',
-          });
+        const supabase = getSupabaseClient();
 
-        if (error) {
-          console.error('Error storing payment in Supabase:', error);
+        if (supabase) {
+          const { error } = await supabase
+            .from('stripe_customers')
+            .upsert({
+              user_email: customerEmail,
+              stripe_customer_id: session.customer as string,
+              subscription_status: 'active',
+              current_tier: tier,
+              expires_at: expiresAt.toISOString(),
+              payment_session_id: session.id,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'user_email',
+            });
+
+          if (error) {
+            console.error('Error storing payment in Supabase:', error);
+          } else {
+            console.log(`✅ Payment successful for ${customerEmail} - ${tier} until ${expiresAt}`);
+          }
         } else {
-          console.log(`✅ Payment successful for ${customerEmail} - ${tier} until ${expiresAt}`);
+          console.warn('Supabase not configured - payment received but not stored');
         }
 
         break;
