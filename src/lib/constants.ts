@@ -1,10 +1,11 @@
 import { ObservationSpot } from "@/types/aurora";
 
 // Main regional observation spots available to all users (free tier)
-// These are the 2 main regions with multiple detailed spots
+// These are the 3 main regions (region-level view only, not specific spots)
 export const FREE_OBSERVATION_SPOTS: ObservationSpot[] = [
   { id: 'troms', name: 'Troms', latitude: 69.6492, longitude: 18.9553, region: 'troms' },
-  { id: 'nordland', name: 'Nordland', latitude: 68.4385, longitude: 15.5, region: 'nordland' },
+  { id: 'nordland', name: 'Nordland', latitude: 68.4385, longitude: 17.4272, region: 'nordland' },
+  { id: 'finnmark', name: 'Finnmark', latitude: 69.9689, longitude: 23.2717, region: 'finnmark' },
 ];
 
 // Premium observation spots (detailed locations within each region)

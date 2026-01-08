@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useAppSettings } from '@/hooks/useAppSettings';
 
 export type SubscriptionTier = 'free' | 'premium_24h' | 'premium_7d';
 
@@ -29,6 +30,7 @@ interface PremiumContextType {
 const PremiumContext = createContext<PremiumContextType | undefined>(undefined);
 
 export function PremiumProvider({ children }: { children: ReactNode }) {
+  const { settings } = useAppSettings();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +49,8 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
 
   // Derived state
   const isExpired = expiresAt ? Date.now() > expiresAt : false;
-  const isPremium = subscriptionTier !== 'free' && !isExpired;
+  // Enable premium in devMode for testing
+  const isPremium = settings.devMode || (subscriptionTier !== 'free' && !isExpired);
 
   const hoursRemaining = expiresAt && !isExpired
     ? Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60))

@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Cloud, Thermometer, Wind, ChevronDown, Play, Pause, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { OBSERVATION_SPOTS } from '@/lib/constants';
+import { OBSERVATION_SPOTS, FREE_OBSERVATION_SPOTS, PREMIUM_OBSERVATION_SPOTS } from '@/lib/constants';
 import { ObservationSpot } from '@/types/aurora';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
+import { usePremium } from '@/contexts/PremiumContext';
 
 // Dynamically import map to avoid SSR issues with Leaflet
 const AuroraMapFullscreen = dynamic(
@@ -50,8 +51,9 @@ interface SpotForecast {
 }
 
 export function AuroraLiveMap() {
+  const { isPremium } = usePremium();
   const [forecasts, setForecasts] = useState<SpotForecast[]>([]);
-  const [selectedSpotId, setSelectedSpotId] = useState('tromso');
+  const [selectedSpotId, setSelectedSpotId] = useState('troms');
   const [currentKp, setCurrentKp] = useState(3);
   const [isLoading, setIsLoading] = useState(true);
   const [animationProgress, setAnimationProgress] = useState(0);
@@ -60,6 +62,10 @@ export function AuroraLiveMap() {
 
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
+
+  // Use appropriate spots based on premium status
+  // Free: 3 regions only, Premium: all detailed spots
+  const spots = isPremium ? PREMIUM_OBSERVATION_SPOTS : FREE_OBSERVATION_SPOTS;
 
   // Fetch aurora data from Tromsø.AI API
   const fetchAuroraData = useCallback(async () => {
@@ -75,8 +81,8 @@ export function AuroraLiveMap() {
 
 
 
-      // Fetch weather data for all spots in parallel
-      const spotForecastsPromises = OBSERVATION_SPOTS.map(async (spot) => {
+      // Fetch weather data for visible spots in parallel
+      const spotForecastsPromises = spots.map(async (spot) => {
         try {
           // Fetch hourly forecast for this spot specifically
           const hourlyRes = await fetch(`/api/aurora/hourly?hours=12&location=${spot.id}`);
@@ -108,6 +114,11 @@ export function AuroraLiveMap() {
 
           // If it's daylight, force probability to 0
           const actualProbability = canView ? probability : 0;
+
+          // Debug logging for daylight check
+          if (!canView) {
+            console.log(`🌞 Daylight at ${spot.name}: probability forced to 0% (was ${probability}%)`);
+          }
 
           return {
             spot,
@@ -162,7 +173,7 @@ export function AuroraLiveMap() {
       console.error('Failed to fetch aurora data:', error);
       setIsLoading(false);
     }
-  }, []);
+  }, [spots]);
 
   useEffect(() => {
     fetchAuroraData();

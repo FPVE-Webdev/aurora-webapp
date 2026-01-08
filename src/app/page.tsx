@@ -227,8 +227,8 @@ export default function HomePage() {
             {/* Stats Row */}
             <div className="flex flex-wrap items-center justify-center gap-6 pt-6 border-t border-white/10 max-w-3xl mx-auto">
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary">24</div>
-                <div className="text-xs text-white/60">Observation spots</div>
+                <div className="text-3xl font-bold text-primary">3</div>
+                <div className="text-xs text-white/60">Regions</div>
               </div>
               <div className="h-8 w-px bg-white/20" />
               <div className="text-center">

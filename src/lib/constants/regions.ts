@@ -70,6 +70,7 @@ export const REGIONS: Record<string, Region> = {
       west: 22.5
     },
     spots: [
+      'finnmark', // Region-level spot for free users
       'alta',
       'lakselv',
       'karasjok',
