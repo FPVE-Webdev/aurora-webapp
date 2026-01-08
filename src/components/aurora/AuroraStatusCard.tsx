@@ -16,12 +16,14 @@ import {
   auroraSpacing
 } from '@/lib/auroraTheme';
 import { getProbabilityEmoji, getProbabilityLabel } from '@/lib/constants/auroraStatus';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AuroraStatusCardProps {
   data: SpotForecast;
 }
 
 export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
+  const { t } = useLanguage();
   const { currentProbability, weather, bestViewingTime } = data;
   const kpIndex = data.hourlyForecast[0]?.kpIndex || 3;
 
@@ -72,7 +74,7 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Zap className="w-6 h-6 text-primary animate-pulse" />
-            <h2 className="text-lg font-display font-semibold text-white">Nordlyssannsynlighet</h2>
+            <h2 className="text-lg font-display font-semibold text-white">{t('auroraProbability')}</h2>
           </div>
 
           {/* Emoji Indicator */}
@@ -84,7 +86,7 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
             {currentProbability}%
           </div>
           <p className="text-base font-semibold text-white/90 bg-white/10 px-4 py-2 rounded-full inline-block">
-            {getProbabilityLabel(currentProbability)} i kveld
+            {getProbabilityLabel(currentProbability)} {t('tonight')}
           </p>
         </div>
 
@@ -92,7 +94,7 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
         <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/10">
           <div className="flex flex-col items-center">
             <Zap className="w-5 h-5 text-white/60 mb-1" />
-            <span className="text-xs text-white/60">KP Index</span>
+            <span className="text-xs text-white/60">{t('kpIndex')}</span>
             <span className="text-xl font-display font-semibold text-white">
               {kpIndex.toFixed(1)}
             </span>
@@ -100,7 +102,7 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
 
           <div className="flex flex-col items-center">
             <Cloud className="w-5 h-5 text-white/60 mb-1" />
-            <span className="text-xs text-white/60">Skydekke</span>
+            <span className="text-xs text-white/60">{t('cloudCover')}</span>
             <span className="text-xl font-display font-semibold text-white">
               {weather.cloudCoverage}%
             </span>
@@ -108,7 +110,7 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
 
           <div className="flex flex-col items-center">
             <Thermometer className="w-5 h-5 text-white/60 mb-1" />
-            <span className="text-xs text-white/60">Temperatur</span>
+            <span className="text-xs text-white/60">{t('temperature')}</span>
             <span className="text-xl font-display font-semibold text-white">
               {weather.temperature}°
             </span>
@@ -118,7 +120,7 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
         {/* Best viewing time */}
         <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-center gap-2">
           <Clock className="w-4 h-4 text-primary" />
-          <span className="text-sm text-white/70">Beste tid:</span>
+          <span className="text-sm text-white/70">{t('bestTime')}:</span>
           <span className="text-sm font-semibold text-white">{bestViewingTime}</span>
         </div>
       </div>

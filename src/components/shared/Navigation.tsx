@@ -5,18 +5,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, MapIcon, Calendar, Settings, Menu, X, Eye, Brain, Zap } from 'lucide-react';
 import { useRetention } from '@/contexts/RetentionContext';
-
-const navItems = [
-  { href: '/', label: 'Hjem', icon: Home },
-  { href: '/live', label: 'Live Kart', icon: MapIcon },
-  { href: '/forecast', label: 'Prognose', icon: Calendar },
-  { href: '/settings', label: 'Innstillinger', icon: Settings },
-];
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function Navigation() {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const { liveViewers, userMode, setUserMode } = useRetention();
+
+  const navItems = [
+    { href: '/', label: t('home'), icon: Home },
+    { href: '/live', label: t('liveMap'), icon: MapIcon },
+    { href: '/forecast', label: t('forecast'), icon: Calendar },
+    { href: '/settings', label: t('settings'), icon: Settings },
+  ];
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -34,7 +36,7 @@ export function Navigation() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
               ⭐
             </div>
-            <span className="hidden sm:inline">Nordlys Tromsø</span>
+            <span className="hidden sm:inline">{t('nordlysTromso')}</span>
           </Link>
 
           {/* Live Viewers & Mode Toggle - Desktop */}
@@ -43,7 +45,7 @@ export function Navigation() {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
               <Eye className="w-4 h-4 text-primary" />
               <span className="text-sm text-white/70">
-                <span className="font-semibold text-white">{liveViewers.toLocaleString()}</span> følger nordlyset
+                <span className="font-semibold text-white">{liveViewers.toLocaleString()}</span> {t('followingAurora').replace('{count}', '')}
               </span>
             </div>
 
@@ -51,17 +53,17 @@ export function Navigation() {
             <button
               onClick={() => setUserMode(userMode === 'tourist' ? 'geek' : 'tourist')}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
-              title={userMode === 'tourist' ? 'Bytt til Geek Mode' : 'Bytt til Tourist Mode'}
+              title={userMode === 'tourist' ? t('switchToGeekMode') : t('switchToTouristMode')}
             >
               {userMode === 'tourist' ? (
                 <>
                   <Brain className="w-4 h-4 text-primary" />
-                  <span className="text-sm text-white/70">Turist</span>
+                  <span className="text-sm text-white/70">{t('tourist')}</span>
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4 text-primary" />
-                  <span className="text-sm text-white/70">Geek</span>
+                  <span className="text-sm text-white/70">{t('geek')}</span>
                 </>
               )}
             </button>
@@ -108,7 +110,7 @@ export function Navigation() {
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
                 <Eye className="w-4 h-4 text-primary" />
                 <span className="text-sm text-white/70">
-                  <span className="font-semibold text-white">{liveViewers.toLocaleString()}</span> følger nordlyset
+                  <span className="font-semibold text-white">{liveViewers.toLocaleString()}</span> {t('followingAurora').replace('{count}', '')}
                 </span>
               </div>
 
@@ -119,12 +121,12 @@ export function Navigation() {
                 {userMode === 'tourist' ? (
                   <>
                     <Brain className="w-4 h-4 text-primary" />
-                    <span className="text-sm text-white/70">Turist Modus</span>
+                    <span className="text-sm text-white/70">{t('touristMode')}</span>
                   </>
                 ) : (
                   <>
                     <Zap className="w-4 h-4 text-primary" />
-                    <span className="text-sm text-white/70">Geek Modus</span>
+                    <span className="text-sm text-white/70">{t('geekMode')}</span>
                   </>
                 )}
               </button>

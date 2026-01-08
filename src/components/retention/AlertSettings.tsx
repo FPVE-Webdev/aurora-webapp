@@ -2,16 +2,18 @@
 
 import { Bell, BellOff, Zap, AlertCircle } from 'lucide-react';
 import { useRetention } from '@/contexts/RetentionContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function AlertSettings() {
   const { alertPreference, setAlertPreference } = useRetention();
+  const { t } = useLanguage();
 
   const options = [
     {
       id: 'strict' as const,
       icon: Zap,
-      title: 'Strict Mode',
-      description: 'Bare varsle ved perfekte forhold (mørkt + klart + høy aktivitet)',
+      title: t('strictMode'),
+      description: t('strictModeDesc'),
       color: 'text-primary',
       bgColor: 'bg-primary/20',
       borderColor: 'border-primary/30',
@@ -19,8 +21,8 @@ export function AlertSettings() {
     {
       id: 'eager' as const,
       icon: Bell,
-      title: 'Eager Mode',
-      description: 'Varsle ved enhver nordlysaktivitet (kan gi flere varsler)',
+      title: t('eagerMode'),
+      description: t('eagerModeDesc'),
       color: 'text-blue-400',
       bgColor: 'bg-blue-500/20',
       borderColor: 'border-blue-500/30',
@@ -28,8 +30,8 @@ export function AlertSettings() {
     {
       id: 'off' as const,
       icon: BellOff,
-      title: 'Av',
-      description: 'Ingen varsler (du sjekker selv når du vil)',
+      title: t('off'),
+      description: t('offDesc'),
       color: 'text-white/60',
       bgColor: 'bg-white/5',
       borderColor: 'border-white/10',
@@ -43,8 +45,8 @@ export function AlertSettings() {
           <Bell className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-white font-semibold">Smart Varsler</h3>
-          <p className="text-white/60 text-sm">Velg når du vil varsles</p>
+          <h3 className="text-white font-semibold">{t('smartAlerts')}</h3>
+          <p className="text-white/60 text-sm">{t('chooseWhenToAlert')}</p>
         </div>
       </div>
 
@@ -72,7 +74,7 @@ export function AlertSettings() {
                     </h4>
                     {isSelected && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-primary/30 text-primary border border-primary/50">
-                        Aktiv
+                        {t('active')}
                       </span>
                     )}
                   </div>
@@ -90,9 +92,9 @@ export function AlertSettings() {
       <div className="mt-6 flex items-start gap-3 p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
         <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
         <div className="text-sm text-blue-300">
-          <p className="font-medium mb-1">Kommer snart!</p>
+          <p className="font-medium mb-1">{t('comingSoon')}</p>
           <p className="text-blue-300/80">
-            Push-varsler og SMS-varsler kommer i neste oppdatering. Dine preferanser blir lagret.
+            {t('pushAndSmsComingSoon')}
           </p>
         </div>
       </div>

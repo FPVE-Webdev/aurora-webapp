@@ -9,12 +9,15 @@
 
 import { Lightbulb } from 'lucide-react';
 import { auroraShadows, auroraSpacing } from '@/lib/auroraTheme';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FunfactPanelProps {
   funfacts: string[];
 }
 
 export function FunfactPanel({ funfacts }: FunfactPanelProps) {
+  const { t } = useLanguage();
+
   if (!funfacts || funfacts.length === 0) {
     return null;
   }
@@ -30,7 +33,7 @@ export function FunfactPanel({ funfacts }: FunfactPanelProps) {
       <div className="flex items-center gap-2 mb-4">
         <Lightbulb className="w-5 h-5 text-primary" />
         <h3 className="text-sm font-display font-semibold text-white">
-          Did you know?
+          {t('didYouKnow')}
         </h3>
       </div>
 

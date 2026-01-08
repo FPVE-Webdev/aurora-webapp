@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { clamp01 } from '@/lib/utils/mathUtils';
 import { shareStoryImage } from '@/lib/shareStory';
+import { useLanguage } from '@/contexts/LanguageContext';
 import Kart3VideoOverlay from './components/Kart3VideoOverlay';
 
 type Kart3WeatherData = {
@@ -45,6 +46,7 @@ function classifyWeatherType(cloudCoverage: number): number {
 }
 
 export default function Kart3View() {
+  const { t } = useLanguage();
   const [kpIndex, setKpIndex] = useState(3.2);
   const [auroraProbability, setAuroraProbability] = useState(45);
   const [cloudCoverage, setCloudCoverage] = useState(75);
@@ -89,7 +91,7 @@ export default function Kart3View() {
         setBestSpotError(null);
       } catch (err) {
         if (cancelled) return;
-        setBestSpotError('Kunne ikke hente beste sted nå.');
+        setBestSpotError(t('couldNotFetchBestSpot'));
       }
     };
 
@@ -103,10 +105,10 @@ export default function Kart3View() {
   }, []);
 
   const cloudCategory = (value?: number) => {
-    if (value === undefined) return { label: 'Ukjent', color: 'text-white/70 bg-white/10 border-white/15' };
-    if (value < 30) return { label: 'Lav sky', color: 'text-emerald-200 bg-emerald-500/10 border-emerald-500/40' };
-    if (value < 60) return { label: 'Middels sky', color: 'text-amber-200 bg-amber-500/10 border-amber-500/40' };
-    return { label: 'Høy sky', color: 'text-rose-200 bg-rose-500/10 border-rose-500/40' };
+    if (value === undefined) return { label: t('cloudUnknown'), color: 'text-white/70 bg-white/10 border-white/15' };
+    if (value < 30) return { label: t('cloudLow'), color: 'text-emerald-200 bg-emerald-500/10 border-emerald-500/40' };
+    if (value < 60) return { label: t('cloudMedium'), color: 'text-amber-200 bg-amber-500/10 border-amber-500/40' };
+    return { label: t('cloudHigh'), color: 'text-rose-200 bg-rose-500/10 border-rose-500/40' };
   };
 
   const handleShare = async () => {
@@ -118,7 +120,7 @@ export default function Kart3View() {
       });
       console.info('[share-story] kart3_success', { spot: bestSpot.bestRegion?.name || 'Tromsø' });
     } catch (err) {
-      alert('Kunne ikke lage delingsbilde. Prøv igjen.');
+      alert(t('couldNotShareImage'));
     } finally {
       setIsSharing(false);
     }
@@ -184,7 +186,7 @@ export default function Kart3View() {
           <div className="rounded-2xl border border-white/10 bg-black/45 backdrop-blur-xl p-5 shadow-2xl">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-xs text-white/60">Tromsø nå</div>
+                <div className="text-xs text-white/60">{t('tromsoNow')}</div>
                 <div className="text-white text-lg font-semibold">
                   KP {kpIndex.toFixed(1)} · {Math.round(auroraProbability)}%
                 </div>
@@ -193,7 +195,7 @@ export default function Kart3View() {
                 href="/home"
                 className="inline-flex items-center justify-center rounded-xl bg-white text-black px-4 py-2 text-sm font-semibold hover:bg-white/90 transition-colors"
               >
-                Gå til dagens hjem
+                {t('goToDailyHome')}
               </Link>
             </div>
             <div className="mt-3 text-[11px] text-white/55">
@@ -210,7 +212,7 @@ export default function Kart3View() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-white font-semibold text-sm">
                       <span className="text-lg">🔥</span>
-                      Best spot nå
+                      {t('bestSpotNow')}
                     </div>
                     <div
                       className={cn(
@@ -223,8 +225,11 @@ export default function Kart3View() {
                   </div>
                   <div className="text-sm text-white/85">
                     {bestSpot.bestRegion
-                      ? `Kjør mot ${bestSpot.bestRegion.name} (~${bestSpot.bestRegion.driveMinutes} min). Skydekke ca ${bestSpot.bestRegion.cloudCoverage}%`
-                      : 'Tromsø er det beste valget nå – bli i byen.'}
+                      ? t('driveToSpot')
+                          .replace('{name}', bestSpot.bestRegion.name)
+                          .replace('{minutes}', String(bestSpot.bestRegion.driveMinutes))
+                          .replace('{cloudCoverage}', String(bestSpot.bestRegion.cloudCoverage))
+                      : t('stayInTromso')}
                   </div>
                   <div className="flex items-center gap-2">
                     {bestSpot.bestRegion && (
@@ -234,21 +239,21 @@ export default function Kart3View() {
                         onClick={() => console.info('[best-spot] open_maps', { spot: bestSpot.bestRegion?.name })}
                         className="inline-flex items-center justify-center text-xs font-semibold px-3 py-2 rounded-md bg-white text-black hover:bg-white/90 transition-colors"
                       >
-                        Åpne i Google Maps
+                        {t('openInGoogleMaps')}
                       </Link>
                     )}
                     <Link
                       href="/home"
                       className="text-xs text-white/60 hover:text-white underline underline-offset-4"
                     >
-                      Se hele kartet i appen
+                      {t('seeFullMap')}
                     </Link>
                     <button
                       onClick={handleShare}
                       disabled={isSharing}
                       className="text-xs font-semibold px-3 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-60"
                     >
-                      {isSharing ? 'Lager...' : 'Del status'}
+                      {isSharing ? t('creatingShare') : t('shareStatus')}
                     </button>
                   </div>
                 </div>

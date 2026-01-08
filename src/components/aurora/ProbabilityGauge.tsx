@@ -8,6 +8,7 @@
 
 import { getProbabilityLevel, AURORA_EMOJI_MAP, AURORA_STATUS_LABELS } from '@/lib/constants/auroraStatus';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ProbabilityGaugeProps {
   probability: number;
@@ -24,6 +25,7 @@ export function ProbabilityGauge({
   nextViewableTime,
   bestTimeTonight
 }: ProbabilityGaugeProps) {
+  const { t } = useLanguage();
   const level = getProbabilityLevel(probability);
 
   const label = AURORA_STATUS_LABELS[level];
@@ -58,9 +60,9 @@ export function ProbabilityGauge({
       {size === 'lg' && (
         <div className="text-center">
           <h3 className="text-lg font-bold text-primary flex items-center gap-2 justify-center">
-            🌌 Aurora synlighet
+            🌌 {t('auroraVisibility')}
           </h3>
-          <p className="text-xs text-white/60 mt-1">Sanntidsdata basert på solaktivitet og værmeldinger</p>
+          <p className="text-xs text-white/60 mt-1">{t('realtimeDataBasedOn')}</p>
         </div>
       )}
 
@@ -68,16 +70,16 @@ export function ProbabilityGauge({
       {!canView && size === 'lg' && (
         <div className="w-full max-w-xs bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
           <div className="flex items-center gap-2 text-yellow-300 text-sm font-semibold">
-            ☀️ For lyst for nordlys
+            ☀️ {t('tooLightForAurora')}
           </div>
           {nextViewableTime && (
             <p className="text-xs text-white/70 mt-1">
-              Neste mulighet: kl {formatTime(nextViewableTime)}
+              {t('nextOpportunity')} {formatTime(nextViewableTime)}
             </p>
           )}
           {bestTimeTonight && (
             <p className="text-xs text-white/70">
-              Beste tid i kveld: kl {formatTime(bestTimeTonight)}
+              {t('bestTimeTonight')} {formatTime(bestTimeTonight)}
             </p>
           )}
         </div>
@@ -106,7 +108,7 @@ export function ProbabilityGauge({
 
         {/* Sub-label: CHANCE */}
         {size === 'lg' && (
-          <span className="text-white/70 text-xs font-medium uppercase tracking-wider">SJANSE</span>
+          <span className="text-white/70 text-xs font-medium uppercase tracking-wider">{t('chance')}</span>
         )}
 
         {/* Label */}
@@ -145,10 +147,10 @@ export function ProbabilityGauge({
                 level === 'good' && 'text-emerald-400',
                 level === 'moderate' && 'text-yellow-400'
               )}>
-                ✅ {level === 'excellent' ? 'Utmerkede forhold!' : level === 'good' ? 'Gode forhold!' : 'Moderate forhold'}
+                ✅ {level === 'excellent' ? t('excellentConditions') : level === 'good' ? t('goodConditions') : t('moderateConditions')}
               </p>
               {level === 'excellent' && (
-                <p className="text-xs text-white/60 mt-1">Gå ut nå hvis det er mørkt!</p>
+                <p className="text-xs text-white/60 mt-1">{t('goOutNowIfDark')}</p>
               )}
             </div>
           )}

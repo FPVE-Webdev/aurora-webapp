@@ -16,8 +16,10 @@ import { REGIONS, REGION_ORDER } from '@/lib/constants/regions';
 import { getAllRegionalForecasts } from '@/lib/calculations/regionalForecast';
 import { ViewMode } from '@/types/regions';
 import { usePremium } from '@/contexts/PremiumContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function ForecastPage() {
+  const { t } = useLanguage();
   const {
     spotForecasts,
     selectedSpot,
@@ -101,7 +103,7 @@ export default function ForecastPage() {
       <div className="min-h-screen flex items-center justify-center bg-arctic-900">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-          <p className="text-white/70">Laster prognoser...</p>
+          <p className="text-white/70">{t('loadingForecasts')}</p>
         </div>
       </div>
     );
@@ -112,10 +114,10 @@ export default function ForecastPage() {
       <div className="min-h-screen flex items-center justify-center p-4 bg-arctic-900">
         <div className="text-center space-y-4 max-w-md">
           <div className="text-red-400 text-5xl">⚠️</div>
-          <h2 className="text-xl font-semibold text-white">Kunne ikke laste prognoser</h2>
+          <h2 className="text-xl font-semibold text-white">{t('couldNotLoadForecasts')}</h2>
           <p className="text-white/60">{error}</p>
           <Link href="/" className="text-primary hover:text-primary/80">
-            Tilbake til forsiden
+            {t('backToHome')}
           </Link>
         </div>
       </div>
@@ -143,7 +145,7 @@ export default function ForecastPage() {
               className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              Tilbake til regioner
+              {t('backToRegions')}
             </button>
           ) : (
             <Link
@@ -151,25 +153,25 @@ export default function ForecastPage() {
               className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              Tilbake
+              {t('back')}
             </Link>
           )}
           <div className="flex-1">
             <h1 className="text-4xl font-display font-bold text-white flex items-center gap-3">
               <Calendar className="w-8 h-8 text-primary" />
-              Nordlysprognose
+              {t('auroraForecast')}
             </h1>
             {viewMode === 'regional' ? (
               <p className="text-white/60 mt-2">
-                Regional oversikt for Nord-Norge
+                {t('regionalOverview')}
               </p>
             ) : (
               <p className="text-white/60 mt-2">
-                12-timers prognose for {currentForecast?.spot.name}
+                {t('hourForecastForSpot').replace('{spot}', currentForecast?.spot.name || '')}
               </p>
             )}
             <div className="text-sm text-white/50 mt-1">
-              Sist oppdatert: {format(new Date(lastUpdate), 'dd. MMM yyyy HH:mm', { locale: nb })}
+              {t('lastUpdated')} {format(new Date(lastUpdate), 'dd. MMM yyyy HH:mm', { locale: nb })}
             </div>
           </div>
         </div>
@@ -187,25 +189,25 @@ export default function ForecastPage() {
             <div className="mb-6">
               <Lock className="w-16 h-16 text-primary mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-white mb-2">
-                Premium-funksjon
+                {t('premiumFeature')}
               </h2>
               <p className="text-white/70">
-                Detaljerte prognoser for individuelle observasjonssteder er tilgjengelig for premium-brukere.
+                {t('detailedForecastsDescription')}
               </p>
             </div>
 
             <div className="space-y-3 text-left max-w-md mx-auto mb-8">
               <div className="flex items-start gap-3">
                 <span className="text-primary mt-1">✓</span>
-                <span className="text-white/80">Alle observasjonssteder i Nord-Norge</span>
+                <span className="text-white/80">{t('allObservationSpots')}</span>
               </div>
               <div className="flex items-start gap-3">
                 <span className="text-primary mt-1">✓</span>
-                <span className="text-white/80">12-timers detaljert prognose per sted</span>
+                <span className="text-white/80">{t('hourDetailedForecast')}</span>
               </div>
               <div className="flex items-start gap-3">
                 <span className="text-primary mt-1">✓</span>
-                <span className="text-white/80">Værdata og visningsmuligheter</span>
+                <span className="text-white/80">{t('weatherDataAndVisibility')}</span>
               </div>
             </div>
 
@@ -214,13 +216,13 @@ export default function ForecastPage() {
                 onClick={handleBackToRegional}
                 className="px-6 py-3 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
               >
-                Tilbake til regioner
+                {t('backToRegions')}
               </button>
               <Link
                 href="/premium"
                 className="px-6 py-3 rounded-lg bg-primary text-white font-semibold hover:bg-primary/80 transition-colors"
               >
-                Oppgrader til Premium
+                {t('upgradeToPremiumTitle')}
               </Link>
             </div>
           </div>
@@ -240,7 +242,7 @@ export default function ForecastPage() {
               {/* Current probability gauge */}
               {currentForecast && (
                 <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-6">
-                  <h3 className="text-sm font-medium text-white/70 mb-4">Nå</h3>
+                  <h3 className="text-sm font-medium text-white/70 mb-4">{t('now')}</h3>
                   <div className="flex justify-center">
                     <ProbabilityGauge
                       probability={currentForecast.currentProbability}
@@ -252,19 +254,19 @@ export default function ForecastPage() {
                   </div>
                   <div className="mt-6 space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-white/60 text-sm">KP-indeks</span>
+                      <span className="text-white/60 text-sm">{t('kpIndex')}</span>
                       <span className="text-white font-semibold">{currentKp.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-white/60 text-sm">Skydekke</span>
+                      <span className="text-white/60 text-sm">{t('cloudCover')}</span>
                       <span className="text-white font-semibold">{Math.round(currentForecast.weather.cloudCoverage)}%</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-white/60 text-sm">Temperatur</span>
+                      <span className="text-white/60 text-sm">{t('temperature')}</span>
                       <span className="text-white font-semibold">{Math.round(currentForecast.weather.temperature)}°C</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-white/60 text-sm">Vindstyrke</span>
+                      <span className="text-white/60 text-sm">{t('windSpeed')}</span>
                       <span className="text-white font-semibold">{Math.round(currentForecast.weather.windSpeed)} m/s</span>
                     </div>
                   </div>
@@ -273,10 +275,9 @@ export default function ForecastPage() {
 
               {/* Info card */}
               <div className="card-aurora bg-primary/10 rounded-lg border border-primary/20 p-4">
-                <h3 className="text-sm font-semibold text-primary mb-2">Om prognosen</h3>
+                <h3 className="text-sm font-semibold text-primary mb-2">{t('aboutForecast')}</h3>
                 <p className="text-xs text-white/70 leading-relaxed">
-                  Prognosen baseres på NOAA KP-indeks, værmeldinger fra MET.no, og geografisk plassering.
-                  Jo høyere KP-indeks og jo mindre skydekke, desto større sjanse for nordlys.
+                  {t('forecastDescription')}
                 </p>
               </div>
             </div>
@@ -290,40 +291,40 @@ export default function ForecastPage() {
                 />
               ) : (
                 <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-8 text-center">
-                  <p className="text-white/60">Ingen timesprognose tilgjengelig</p>
+                  <p className="text-white/60">{t('noHourlyForecast')}</p>
                 </div>
               )}
 
               {/* Probability legend */}
               <div className="mt-6 card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-4">
-                <h3 className="text-sm font-medium text-white/70 mb-4">Forklaring</h3>
+                <h3 className="text-sm font-medium text-white/70 mb-4">{t('legend')}</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <div className="w-full h-3 rounded bg-gradient-to-r from-green-400 to-green-600"></div>
                     <div className="text-xs">
-                      <div className="text-white font-medium">Utmerket (70%+)</div>
-                      <div className="text-white/60">Svært gode forhold</div>
+                      <div className="text-white font-medium">{t('excellent70Plus')}</div>
+                      <div className="text-white/60">{t('veryGoodConditions')}</div>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="w-full h-3 rounded bg-gradient-to-r from-purple-400 to-purple-600"></div>
                     <div className="text-xs">
-                      <div className="text-white font-medium">Gode (50-69%)</div>
-                      <div className="text-white/60">Gode muligheter</div>
+                      <div className="text-white font-medium">{t('good50to69')}</div>
+                      <div className="text-white/60">{t('goodOpportunities')}</div>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="w-full h-3 rounded bg-gradient-to-r from-orange-400 to-orange-600"></div>
                     <div className="text-xs">
-                      <div className="text-white font-medium">Moderate (30-49%)</div>
-                      <div className="text-white/60">Noe mulighet</div>
+                      <div className="text-white font-medium">{t('moderate30to49')}</div>
+                      <div className="text-white/60">{t('someChance')}</div>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="w-full h-3 rounded bg-gradient-to-r from-slate-400 to-slate-600"></div>
                     <div className="text-xs">
-                      <div className="text-white font-medium">Dårlige (&lt;30%)</div>
-                      <div className="text-white/60">Liten sjanse</div>
+                      <div className="text-white font-medium">{t('poor30Minus')}</div>
+                      <div className="text-white/60">{t('littleChance')}</div>
                     </div>
                   </div>
                 </div>

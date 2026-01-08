@@ -7,17 +7,17 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { unit, setUnit } = useTemperature();
 
   const handleLanguageChange = (newLang: 'no' | 'en') => {
     setLanguage(newLang);
-    toast.success(newLang === 'no' ? 'Språk endret til norsk' : 'Language changed to English');
+    toast.success(newLang === 'no' ? t('languageChangedToNorwegian') : t('languageChangedToEnglish'));
   };
 
   const handleUnitChange = (newUnit: 'C' | 'F') => {
     setUnit(newUnit);
-    toast.success(`Temperatureenhet endret til °${newUnit}`);
+    toast.success(t('temperatureUnitChanged').replace('{unit}', newUnit));
   };
 
   return (
@@ -35,9 +35,9 @@ export default function SettingsPage() {
             className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            Tilbake
+            {t('back')}
           </Link>
-          <h1 className="text-4xl font-display font-bold text-white">Innstillinger</h1>
+          <h1 className="text-4xl font-display font-bold text-white">{t('settings')}</h1>
         </div>
 
         <div className="space-y-6">
@@ -48,8 +48,8 @@ export default function SettingsPage() {
                 <Languages className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-white">Språk</h2>
-                <p className="text-sm text-white/60">Velg foretrukket språk</p>
+                <h2 className="text-lg font-semibold text-white">{t('language')}</h2>
+                <p className="text-sm text-white/60">{t('selectPreferredLanguage')}</p>
               </div>
             </div>
 
@@ -63,7 +63,7 @@ export default function SettingsPage() {
                 }`}
               >
                 <div className="text-2xl mb-2">🇳🇴</div>
-                <div className="font-semibold">Norsk</div>
+                <div className="font-semibold">{t('norwegian')}</div>
                 <div className="text-xs text-white/60">Norwegian</div>
               </button>
 
@@ -76,7 +76,7 @@ export default function SettingsPage() {
                 }`}
               >
                 <div className="text-2xl mb-2">🇬🇧</div>
-                <div className="font-semibold">English</div>
+                <div className="font-semibold">{t('english')}</div>
                 <div className="text-xs text-white/60">Engelsk</div>
               </button>
             </div>
@@ -89,8 +89,8 @@ export default function SettingsPage() {
                 <Thermometer className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-white">Temperaturenhet</h2>
-                <p className="text-sm text-white/60">Velg Celsius eller Fahrenheit</p>
+                <h2 className="text-lg font-semibold text-white">{t('temperatureUnit')}</h2>
+                <p className="text-sm text-white/60">{t('selectCelsiusOrFahrenheit')}</p>
               </div>
             </div>
 
@@ -105,7 +105,7 @@ export default function SettingsPage() {
               >
                 <div className="text-2xl mb-2">°C</div>
                 <div className="font-semibold">Celsius</div>
-                <div className="text-xs text-white/60">Grader Celsius</div>
+                <div className="text-xs text-white/60">{t('degreesCelsius')}</div>
               </button>
 
               <button
@@ -118,7 +118,7 @@ export default function SettingsPage() {
               >
                 <div className="text-2xl mb-2">°F</div>
                 <div className="font-semibold">Fahrenheit</div>
-                <div className="text-xs text-white/60">Grader Fahrenheit</div>
+                <div className="text-xs text-white/60">{t('degreesFahrenheit')}</div>
               </button>
             </div>
           </div>
@@ -130,17 +130,17 @@ export default function SettingsPage() {
                 <Info className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-white">Om appen</h2>
+                <h2 className="text-lg font-semibold text-white">{t('aboutApp')}</h2>
               </div>
             </div>
 
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center">
-                <span className="text-white/60">Versjon</span>
+                <span className="text-white/60">{t('version')}</span>
                 <span className="text-white font-medium">1.0.0</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-white/60">Datakilde</span>
+                <span className="text-white/60">{t('dataSource')}</span>
                 <span className="text-white font-medium">Tromsø.AI + MET.no</span>
               </div>
             </div>
@@ -150,13 +150,13 @@ export default function SettingsPage() {
                 href="/privacy"
                 className="block text-primary hover:text-primary/80 transition-colors"
               >
-                Personvern
+                {t('privacy')}
               </Link>
               <Link
                 href="/terms"
                 className="block text-primary hover:text-primary/80 transition-colors"
               >
-                Vilkår for bruk
+                {t('termsOfUse')}
               </Link>
             </div>
           </div>

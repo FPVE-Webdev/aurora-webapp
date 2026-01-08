@@ -10,6 +10,7 @@
 import { Moon, Clock } from 'lucide-react';
 import { getDarkHours, calculateTwilightPhase } from '@/lib/auroraCalculations';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface DarkHoursInfoProps {
   latitude: number;
@@ -17,29 +18,30 @@ interface DarkHoursInfoProps {
 }
 
 export function DarkHoursInfo({ latitude, locationName }: DarkHoursInfoProps) {
+  const { t } = useLanguage();
   const darkHours = getDarkHours(latitude);
   const twilight = calculateTwilightPhase(latitude);
 
   const getTwilightLabel = () => {
     switch (twilight.phase) {
       case 'day':
-        return 'Dagtid - for lyst for nordlys';
+        return t('daylightTooLight');
       case 'civil':
-        return 'Skumring - fortsatt for lyst';
+        return t('civilTwilightStillLight');
       case 'nautical':
-        return 'Nautisk skumring - svakt nordlys kan ses';
+        return t('nauticalTwilightFaint');
       case 'astronomical':
-        return 'Astronomisk skumring - gode forhold';
+        return t('astronomicalTwilightGood');
       case 'night':
-        return 'Mørkt - optimale forhold';
+        return t('nightOptimal');
       default:
-        return 'Ukjent';
+        return t('unknown');
     }
   };
 
   const formatDarkHours = () => {
     if (darkHours.start === 0 && darkHours.end === 24) {
-      return 'Mørkt hele døgnet (mørketid)';
+      return t('darkAllDay');
     }
     const startStr = darkHours.start.toString().padStart(2, '0');
     const endStr = darkHours.end.toString().padStart(2, '0');
@@ -54,7 +56,7 @@ export function DarkHoursInfo({ latitude, locationName }: DarkHoursInfoProps) {
           twilight.canSeeAurora ? "text-primary animate-pulse" : "text-yellow-400"
         )} />
         <h3 className="font-semibold text-white">
-          Lysforhold
+          {t('lightConditions')}
         </h3>
         <span className="text-xs text-white/60 bg-white/5 px-2 py-0.5 rounded-full">
           {locationName}, {latitude.toFixed(1)}°N
@@ -81,7 +83,7 @@ export function DarkHoursInfo({ latitude, locationName }: DarkHoursInfoProps) {
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-primary" />
           <div className="flex-1">
-            <p className="text-xs text-white/60">Mørke timer</p>
+            <p className="text-xs text-white/60">{t('darkHours')}</p>
             <p className="font-medium text-sm text-white">{formatDarkHours()}</p>
           </div>
         </div>
@@ -93,8 +95,8 @@ export function DarkHoursInfo({ latitude, locationName }: DarkHoursInfoProps) {
           <span className="text-primary">💡</span>
           <span>
             {darkHours.start === 0 && darkHours.end === 24
-              ? 'Selv i mørketiden er 22:00-02:00 best for nordlys - da er solen dypest under horisonten.'
-              : 'Nordlys ses best når solen er mer enn 6° under horisonten (nautisk skumring eller mørkere).'
+              ? t('polarNightBestTime')
+              : t('bestWhenSunBelow6')
             }
           </span>
         </p>

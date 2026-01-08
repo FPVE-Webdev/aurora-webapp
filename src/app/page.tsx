@@ -25,8 +25,10 @@ import { shareStoryImage } from '@/lib/shareStory';
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
 import { SightingsWidget } from '@/components/retention/SightingsWidget';
 import { AlertSettings } from '@/components/retention/AlertSettings';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HomePage() {
+  const { t } = useLanguage();
   const {
     currentKp,
     spotForecasts,
@@ -85,7 +87,7 @@ export default function HomePage() {
       });
       console.info('[share-story] home_success', { status: masterStatus, spot: currentForecast?.spot.name });
     } catch (err) {
-      alert('Kunne ikke lage delingsbilde. Prøv igjen.');
+      alert(t('couldNotShareImage'));
     } finally {
       setIsSharing(false);
     }
@@ -99,7 +101,7 @@ export default function HomePage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-          <p className="text-white/70">Laster nordlysdata...</p>
+          <p className="text-white/70">{t('loadingAuroraData')}</p>
         </div>
       </div>
     );
@@ -110,7 +112,7 @@ export default function HomePage() {
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4 max-w-md">
           <div className="text-red-400 text-5xl">⚠️</div>
-          <h2 className="text-xl font-semibold text-white">Kunne ikke laste nordlysdata</h2>
+          <h2 className="text-xl font-semibold text-white">{t('couldNotLoadAuroraData')}</h2>
           <p className="text-white/60">{error}</p>
         </div>
       </div>
@@ -155,7 +157,7 @@ export default function HomePage() {
           <div className="text-center mb-12 space-y-6">
             <div className="flex items-center justify-center gap-4">
               <h1 className="text-5xl md:text-7xl font-display font-black text-white drop-shadow-2xl">
-                🌌 Nordlys i Tromsø
+                {t('auroraInTromso')}
               </h1>
               {settings.showBetaBadge && (
                 <span className="px-3 py-1.5 rounded-full text-sm font-semibold bg-primary/20 text-primary border border-primary/30 animate-pulse">
@@ -164,7 +166,7 @@ export default function HomePage() {
               )}
             </div>
             <p className="text-xl text-white/80 max-w-2xl mx-auto font-medium">
-              Live nordlysvarsel for Nord-Norge basert på solaktivitet, værmeldinger og geografisk plassering
+              {t('liveAuroraForecastSubtitle')}
             </p>
 
             {/* Stats Row */}
@@ -176,17 +178,17 @@ export default function HomePage() {
               <div className="h-8 w-px bg-white/20" />
               <div className="text-center">
                 <div className="text-3xl font-bold text-primary">48t</div>
-                <div className="text-xs text-white/60">Værprognose</div>
+                <div className="text-xs text-white/60">{t('weatherForecast')}</div>
               </div>
               <div className="h-8 w-px bg-white/20" />
               <div className="text-center">
                 <div className="text-3xl font-bold text-primary">Live</div>
-                <div className="text-xs text-white/60">Sanntidsdata</div>
+                <div className="text-xs text-white/60">{t('realtimeData')}</div>
               </div>
               <div className="h-8 w-px bg-white/20" />
               <div className="text-center">
                 <div className="text-xs text-white/50">
-                  Oppdatert: {new Date(lastUpdate).toLocaleTimeString('no', { hour: '2-digit', minute: '2-digit' })}
+                  {t('updated')} {new Date(lastUpdate).toLocaleTimeString('no', { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
             </div>
@@ -244,7 +246,7 @@ export default function HomePage() {
             <div className="max-w-4xl mx-auto mb-8">
               <details className="group">
                 <summary className="flex items-center justify-between cursor-pointer p-4 bg-arctic-800/50 rounded-lg border border-white/10 hover:bg-arctic-800/70 transition-colors">
-                  <span className="text-white/70 text-sm font-medium">📊 Avanserte data (for entusiaster)</span>
+                  <span className="text-white/70 text-sm font-medium">{t('advancedDataForEnthusiasts')}</span>
                   <span className="text-white/50 text-xs group-open:rotate-180 transition-transform">▼</span>
                 </summary>
                 <div className="mt-2">
@@ -298,14 +300,14 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 px-8 py-4 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-primary/50"
             >
               <MapIcon className="w-5 h-5" />
-              Se live kart
+              {t('seeLiveMap')}
             </Link>
             <button
               onClick={handleShare}
               disabled={isSharing}
               className="ml-3 inline-flex items-center gap-2 px-8 py-4 bg-white/90 text-black font-semibold rounded-lg transition-all shadow-lg hover:bg-white disabled:opacity-60"
             >
-              {isSharing ? 'Lager bilde...' : 'Del status'}
+              {isSharing ? t('creatingImage') : t('shareStatus')}
             </button>
           </div>
         </div>
