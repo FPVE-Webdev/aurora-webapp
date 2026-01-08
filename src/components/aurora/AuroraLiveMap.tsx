@@ -97,12 +97,13 @@ export function AuroraLiveMap() {
           const temperature = weatherData?.temperature ?? (-8 + (locationSeed % 6));
           const windSpeed = weatherData?.windSpeed ?? (4 + (locationSeed % 8));
 
-          // Calculate probability based on real conditions
+          // Calculate probability based on real conditions (with daylight check)
           const { probability } = calculateAuroraProbability({
             kpIndex,
             cloudCoverage,
             temperature,
             latitude: spot.latitude,
+            longitude: spot.longitude,
           });
 
           return {
@@ -130,6 +131,7 @@ export function AuroraLiveMap() {
             cloudCoverage,
             temperature,
             latitude: spot.latitude,
+            longitude: spot.longitude,
           });
 
           return {

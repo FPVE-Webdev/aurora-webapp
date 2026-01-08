@@ -42,6 +42,9 @@ export interface SpotForecast {
   weather: WeatherData;
   hourlyForecast: HourlyForecast[];
   bestViewingTime: string;
+  canView?: boolean;
+  nextViewableTime?: Date;
+  bestTimeTonight?: Date;
 }
 
 export type ProbabilityLevel = 'excellent' | 'good' | 'moderate' | 'poor';

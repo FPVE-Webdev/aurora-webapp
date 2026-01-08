@@ -244,6 +244,9 @@ export default function ForecastPage() {
                     <ProbabilityGauge
                       probability={currentForecast.currentProbability}
                       size="lg"
+                      canView={currentForecast.canView}
+                      nextViewableTime={currentForecast.nextViewableTime}
+                      bestTimeTonight={currentForecast.bestTimeTonight}
                     />
                   </div>
                   <div className="mt-6 space-y-3">

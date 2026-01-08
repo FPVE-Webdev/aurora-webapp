@@ -44,29 +44,19 @@ export function mapTromsøForecastToSpotForecast(
   const temperature = weatherData?.temperature ?? (-10 + (spotHash % 20));
   const windSpeed = weatherData?.windSpeed ?? Math.round(5 + (spotHash % 10));
 
-  // Calculate probability based on spot's latitude and REAL weather
-  const { probability } = calculateAuroraProbability({
+  // Calculate probability based on spot's latitude and REAL weather (with daylight check)
+  const { probability, canView, nextViewableTime, bestTimeTonight } = calculateAuroraProbability({
     kpIndex,
     cloudCoverage,
     temperature,
     latitude: spot.latitude,
+    longitude: spot.longitude, // Add longitude for daylight check
   });
 
-  // Create a simple hourly forecast with realistic variations
+  // Create a simple hourly forecast with realistic variations and daylight awareness
   const hourlyForecast: HourlyForecast[] = Array.from({ length: 24 }, (_, i) => {
     const hour = new Date();
     hour.setHours(hour.getHours() + i);
-
-    // Add time-based variations (peak at midnight)
-    const timeOfDay = hour.getHours();
-    const peakBonus = (timeOfDay >= 21 || timeOfDay <= 3) ? 15 : 0;
-
-    // Deterministic variation based on hour index (sine wave for natural variation)
-    const hourVariation = Math.sin(i * 0.5) * 10; // ±10% variation based on hour
-
-    const hourProbability = Math.max(0, Math.min(100,
-      probability + peakBonus + hourVariation
-    ));
 
     // Deterministic cloud coverage variation (cosine wave offset from probability)
     const cloudVariation = Math.cos(i * 0.7) * 10;
@@ -84,6 +74,18 @@ export function mapTromsøForecastToSpotForecast(
       kpIndex + kpVariation
     ));
 
+    // Calculate probability for this specific hour WITH DAYLIGHT CHECK
+    const { probability: hourProbability, canView: hourCanView } = calculateAuroraProbability({
+      kpIndex: hourKpIndex,
+      cloudCoverage: hourCloudCoverage,
+      temperature: hourTemperature,
+      latitude: spot.latitude,
+      longitude: spot.longitude,
+      date: hour
+    });
+
+    const timeOfDay = hour.getHours();
+
     return {
       time: hour.toISOString(),
       hour: hour.toTimeString().slice(0, 5),
@@ -93,7 +95,7 @@ export function mapTromsøForecastToSpotForecast(
       kpIndex: hourKpIndex,
       symbolCode: hourCloudCoverage > 50 ? 'cloudy' : 'clearsky_night',
       twilightPhase: (timeOfDay >= 21 || timeOfDay <= 6) ? 'night' : 'day',
-      canSeeAurora: (timeOfDay >= 21 || timeOfDay <= 6) && hourProbability > 20
+      canSeeAurora: hourCanView // Use calculated daylight check
     };
   });
 
@@ -109,7 +111,10 @@ export function mapTromsøForecastToSpotForecast(
       timestamp: forecast.updated
     },
     hourlyForecast,
-    bestViewingTime: forecast.best_time
+    bestViewingTime: forecast.best_time,
+    canView,
+    nextViewableTime,
+    bestTimeTonight
   };
 }
 

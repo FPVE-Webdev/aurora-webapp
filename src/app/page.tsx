@@ -255,6 +255,9 @@ export default function HomePage() {
               <ProbabilityGauge
                 probability={currentForecast.currentProbability}
                 size="lg"
+                canView={currentForecast.canView}
+                nextViewableTime={currentForecast.nextViewableTime}
+                bestTimeTonight={currentForecast.bestTimeTonight}
               />
             )}
           </div>

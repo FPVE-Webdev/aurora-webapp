@@ -12,9 +12,18 @@ import { cn } from '@/lib/utils';
 interface ProbabilityGaugeProps {
   probability: number;
   size?: 'sm' | 'md' | 'lg';
+  canView?: boolean;
+  nextViewableTime?: Date;
+  bestTimeTonight?: Date;
 }
 
-export function ProbabilityGauge({ probability, size = 'lg' }: ProbabilityGaugeProps) {
+export function ProbabilityGauge({
+  probability,
+  size = 'lg',
+  canView = true,
+  nextViewableTime,
+  bestTimeTonight
+}: ProbabilityGaugeProps) {
   const level = getProbabilityLevel(probability);
 
   // Emoji indicators based on probability level
@@ -54,6 +63,11 @@ export function ProbabilityGauge({ probability, size = 'lg' }: ProbabilityGaugeP
     lg: 'text-4xl'
   };
 
+  // Format time helper
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <div className="flex flex-col items-center gap-4">
       {/* Header Title */}
@@ -63,6 +77,25 @@ export function ProbabilityGauge({ probability, size = 'lg' }: ProbabilityGaugeP
             🌌 Aurora synlighet
           </h3>
           <p className="text-xs text-white/60 mt-1">Sanntidsdata basert på solaktivitet og værmeldinger</p>
+        </div>
+      )}
+
+      {/* Daylight Notice */}
+      {!canView && size === 'lg' && (
+        <div className="w-full max-w-xs bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-yellow-300 text-sm font-semibold">
+            ☀️ For lyst for nordlys
+          </div>
+          {nextViewableTime && (
+            <p className="text-xs text-white/70 mt-1">
+              Neste mulighet: kl {formatTime(nextViewableTime)}
+            </p>
+          )}
+          {bestTimeTonight && (
+            <p className="text-xs text-white/70">
+              Beste tid i kveld: kl {formatTime(bestTimeTonight)}
+            </p>
+          )}
         </div>
       )}
 
