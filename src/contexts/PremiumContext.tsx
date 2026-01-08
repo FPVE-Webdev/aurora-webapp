@@ -75,25 +75,61 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     console.log(`✅ Unlocked ${tier} for ${durationHours}h (expires: ${new Date(expiryTimestamp).toLocaleString('no-NO')})`);
   }, []);
 
-  // Check subscription status (placeholder for future backend integration)
+  // Check subscription status with backend verification
   const checkSubscriptionStatus = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Check if subscription has expired
+      // Check local expiry first
       if (expiresAt && Date.now() > expiresAt) {
         setSubscriptionTier('free');
         setExpiresAt(null);
         if (typeof window !== 'undefined') {
           localStorage.removeItem('subscription_tier');
           localStorage.removeItem('subscription_expires_at');
+          localStorage.removeItem('user_email');
         }
         console.log('⏰ Subscription expired, reverted to free');
       }
 
-      // TODO: Integrate with backend API to validate subscription token
-      // For now, trust localStorage
+      // Verify with backend if email is stored
+      if (typeof window !== 'undefined') {
+        const userEmail = localStorage.getItem('user_email');
+
+        if (userEmail) {
+          try {
+            const response = await fetch('/api/payments/verify-subscription', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: userEmail }),
+            });
+
+            const data = await response.json();
+
+            if (data.isPremium && data.tier && data.expiresAt) {
+              // Update from backend
+              const backendExpiresAt = new Date(data.expiresAt).getTime();
+              setSubscriptionTier(data.tier);
+              setExpiresAt(backendExpiresAt);
+              localStorage.setItem('subscription_tier', data.tier);
+              localStorage.setItem('subscription_expires_at', backendExpiresAt.toString());
+              console.log('✅ Subscription verified from backend:', data.tier);
+            } else if (!data.isPremium && isPremium) {
+              // Backend says not premium, clear local
+              setSubscriptionTier('free');
+              setExpiresAt(null);
+              localStorage.removeItem('subscription_tier');
+              localStorage.removeItem('subscription_expires_at');
+              console.log('⚠️ Backend invalidated local premium status');
+            }
+          } catch (err) {
+            // Fallback to local state if backend check fails
+            console.warn('⚠️ Backend verification failed, using local state:', err);
+          }
+        }
+      }
+
       console.log('✅ Premium status checked:', isPremium ? `${subscriptionTier} (${hoursRemaining}h left)` : 'Free');
     } catch (err) {
       console.error('❌ Failed to check subscription:', err);

@@ -1,9 +1,10 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { usePremium } from '@/contexts/PremiumContext';
-import { Lock, Sparkles } from 'lucide-react';
+import { Lock, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { StripeProductKey } from '@/lib/stripe';
 
 interface PremiumLockProps {
   children: ReactNode;
@@ -37,6 +38,8 @@ export function PremiumLock({
   blurStrength = 'medium',
 }: PremiumLockProps) {
   const { isPremium, isExpired, hoursRemaining } = usePremium();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Show content if premium and not expired
   if (isPremium && !isExpired) {
@@ -50,6 +53,56 @@ export function PremiumLock({
       : blurStrength === 'strong'
       ? 'blur-[8px]'
       : 'blur-[4px]';
+
+  const handlePurchase = async (productKey: StripeProductKey) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Collect email (prompt user)
+      const email = prompt('Skriv inn e-postadressen din for kvittering:');
+      if (!email) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Validate email
+      if (!email.includes('@')) {
+        setError('Ugyldig e-postadresse');
+        setIsLoading(false);
+        return;
+      }
+
+      // Store email for verification later
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user_email', email);
+      }
+
+      // Create Stripe Checkout Session
+      const response = await fetch('/api/payments/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productKey, email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError(err instanceof Error ? err.message : 'Betalingsfeil');
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className={cn('relative', className)}>
@@ -78,36 +131,47 @@ export function PremiumLock({
 
           {/* Pricing */}
           <div className="space-y-3 mb-6">
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-white/5 border border-white/10">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-50"
+              onClick={() => handlePurchase('PREMIUM_24H')}
+              disabled={isLoading}
+            >
               <div className="text-left">
                 <p className="text-white font-semibold">1-Night Pass</p>
                 <p className="text-slate-400 text-xs">Perfekt for i kveld</p>
               </div>
               <p className="text-primary font-bold text-lg">49 kr</p>
-            </div>
+            </button>
 
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/30">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/30 hover:from-primary/20 hover:to-purple-500/20 transition-colors disabled:opacity-50"
+              onClick={() => handlePurchase('PREMIUM_96H')}
+              disabled={isLoading}
+            >
               <div className="text-left">
                 <p className="text-white font-semibold">7-Day Pass</p>
                 <p className="text-slate-400 text-xs">Best value · Populær</p>
               </div>
               <div className="text-right">
                 <p className="text-primary font-bold text-lg">149 kr</p>
-                <p className="text-xs text-slate-400 line-through">343 kr</p>
               </div>
-            </div>
+            </button>
           </div>
 
-          {/* CTA */}
-          <button
-            className="w-full px-6 py-3 rounded-lg bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white font-semibold shadow-lg transition-all"
-            onClick={() => {
-              // TODO: Open Stripe Checkout
-              console.log('Open payment modal for feature:', feature);
-            }}
-          >
-            Lås opp Aurora Guide
-          </button>
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Loading state */}
+          {isLoading && (
+            <div className="flex items-center justify-center gap-2 mb-4 text-primary">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Åpner betalingsvindu...</span>
+            </div>
+          )}
 
           {/* Trust signals */}
           <p className="text-slate-500 text-xs mt-4">
