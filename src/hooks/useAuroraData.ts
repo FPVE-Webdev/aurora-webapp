@@ -13,7 +13,7 @@ import { tromsøAIService } from '@/services/tromsoAIService';
 import { mapTromsøForecastToSpotForecast, scoreToKpIndex } from '@/lib/tromsoAIMapper';
 import { OBSERVATION_SPOTS, FREE_OBSERVATION_SPOTS } from '@/lib/constants';
 import { SpotForecast, ObservationSpot } from '@/types/aurora';
-import { TromsøAuroraForecast } from '@/types/tromsoAI';
+import { TromsøAuroraForecast, ExtendedMetrics } from '@/types/tromsoAI';
 
 interface AuroraState {
   currentKp: number;
@@ -25,6 +25,7 @@ interface AuroraState {
   lastUpdate: Date;
   error: string | null;
   predictiveHint: string | null;
+  extendedMetrics: ExtendedMetrics | null;
 }
 
 const SELECTED_SPOT_ID_KEY = 'selected-spot-id';
@@ -128,7 +129,8 @@ export function useAuroraData() {
     isLoading: true,
     lastUpdate: new Date(),
     error: null,
-    predictiveHint: null
+    predictiveHint: null,
+    extendedMetrics: null
   });
 
   const isFetchingRef = useRef(false);
@@ -196,7 +198,8 @@ export function useAuroraData() {
         isLoading: false,
         lastUpdate: new Date(),
         error: null,
-        predictiveHint
+        predictiveHint,
+        extendedMetrics: forecast.extended_metrics || null
       }));
     } catch (error) {
       const message =
@@ -251,8 +254,8 @@ export function useAuroraData() {
   useEffect(() => {
     fetchData();
 
-    // Auto-refresh every 30 minutes (on the hour and half-hour)
-    const interval = setInterval(fetchData, 30 * 60 * 1000);
+    // Auto-refresh every 5 minutes (synced with MasterStatusContext)
+    const interval = setInterval(fetchData, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [fetchData]);

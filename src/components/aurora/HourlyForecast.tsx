@@ -9,7 +9,7 @@
 
 import { memo } from 'react';
 import { HourlyForecast as HourlyForecastType } from '@/types/aurora';
-import { getProbabilityLevel } from '@/lib/auroraCalculations';
+import { getProbabilityLevel, AURORA_EMOJI_MAP } from '@/lib/constants/auroraStatus';
 import { cn } from '@/lib/utils';
 import { Cloud, Thermometer, MapPin } from 'lucide-react';
 import { BestTimeWindow } from './BestTimeWindow';
@@ -112,7 +112,7 @@ function HourlyForecastComponent({ forecasts, locationName }: HourlyForecastProp
                   {forecast.probability}%
                 </p>
                 <p className="text-[10px] text-white/50">
-                  {level === 'excellent' ? '🌟' : level === 'good' ? '🟢' : level === 'moderate' ? '🟡' : '❄️'}
+                  {AURORA_EMOJI_MAP[level]}
                 </p>
               </div>
 
@@ -187,7 +187,7 @@ function HourlyForecastComponent({ forecasts, locationName }: HourlyForecastProp
                   {forecast.probability}%
                 </p>
                 <p className="text-sm mt-1">
-                  {level === 'excellent' ? '🌟' : level === 'good' ? '🟢' : level === 'moderate' ? '🟡' : '❄️'}
+                  {AURORA_EMOJI_MAP[level]}
                 </p>
               </div>
 

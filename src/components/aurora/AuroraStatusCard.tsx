@@ -15,6 +15,7 @@ import {
   auroraShadows,
   auroraSpacing
 } from '@/lib/auroraTheme';
+import { getProbabilityEmoji, getProbabilityLabel } from '@/lib/constants/auroraStatus';
 
 interface AuroraStatusCardProps {
   data: SpotForecast;
@@ -31,19 +32,6 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
     return 'text-slate-400';
   };
 
-  const getProbabilityLabel = (probability: number): string => {
-    if (probability >= 70) return 'Utmerket';
-    if (probability >= 50) return 'Gode forhold';
-    if (probability >= 30) return 'Moderate';
-    return 'Dårlige forhold';
-  };
-
-  const getProbabilityEmoji = (probability: number): string => {
-    if (probability >= 70) return '🌟';
-    if (probability >= 50) return '🟢';
-    if (probability >= 30) return '🟡';
-    return '❄️';
-  };
 
   // Dynamic glow strength based on probability
   const glowStrength =

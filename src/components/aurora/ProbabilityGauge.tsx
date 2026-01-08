@@ -6,7 +6,7 @@
 
 'use client';
 
-import { getProbabilityLevel } from '@/lib/auroraCalculations';
+import { getProbabilityLevel, AURORA_EMOJI_MAP, AURORA_STATUS_LABELS } from '@/lib/constants/auroraStatus';
 import { cn } from '@/lib/utils';
 
 interface ProbabilityGaugeProps {
@@ -26,24 +26,8 @@ export function ProbabilityGauge({
 }: ProbabilityGaugeProps) {
   const level = getProbabilityLevel(probability);
 
-  // Emoji indicators based on probability level
-  const emojiMap = {
-    excellent: '🌟',
-    good: '🟢',
-    moderate: '🟡',
-    poor: '❄️',
-  };
-
-  // Hardcoded Norwegian labels for now (will add LanguageContext in Day 9-11)
-  const statusLabels = {
-    excellent: 'Utmerket!',
-    good: 'Gode forhold!',
-    moderate: 'Moderat',
-    poor: 'Dårlige forhold',
-  };
-
-  const label = statusLabels[level];
-  const emoji = emojiMap[level];
+  const label = AURORA_STATUS_LABELS[level];
+  const emoji = AURORA_EMOJI_MAP[level];
 
   const sizeClasses = {
     sm: 'w-24 h-24',

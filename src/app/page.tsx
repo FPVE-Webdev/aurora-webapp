@@ -19,7 +19,6 @@ import { getRandomFunfacts } from '@/lib/funfactEngine';
 import { shouldShowGoNow } from '@/lib/auroraCalculations';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useAppSettings } from '@/hooks/useAppSettings';
-import { ExtendedMetrics as ExtendedMetricsType } from '@/types/tromsoAI';
 import IntroOverlay from '@/components/intro/IntroOverlay';
 import { MasterStatusCard } from '@/components/aurora/MasterStatusCard';
 import Kart3VideoOverlay from '@/app/kart3/components/Kart3VideoOverlay';
@@ -36,7 +35,8 @@ export default function HomePage() {
     isLoading,
     lastUpdate,
     error,
-    selectSpot // Need ability to force-reset spot
+    selectSpot, // Need ability to force-reset spot
+    extendedMetrics
   } = useAuroraData();
   const { isPremium } = usePremium();
   const { status: masterStatus } = useMasterStatus();
@@ -59,7 +59,6 @@ export default function HomePage() {
     }
   }, [isPremium, selectedSpot, selectSpot]);
   const { settings } = useAppSettings();
-  const [extendedMetrics, setExtendedMetrics] = useState<ExtendedMetricsType | null>(null);
   const [showIntro, setShowIntro] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
@@ -92,61 +91,6 @@ export default function HomePage() {
       setIsSharing(false);
     }
   };
-
-  // Fetch extended metrics (Phase 2 feature)
-  useEffect(() => {
-    let isMounted = true;
-    let controller: AbortController | null = null;
-
-    async function fetchExtendedMetrics() {
-      try {
-        // Cancel any in-flight request before starting a new one.
-        controller?.abort();
-        controller = new AbortController();
-
-        const response = await fetch('/api/aurora/tonight?lang=no', {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) return;
-
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) return;
-
-        const text = await response.text();
-        if (!text || !text.trim()) return;
-
-        try {
-          const data = JSON.parse(text) as { extended_metrics?: ExtendedMetricsType };
-          if (isMounted && data.extended_metrics) {
-            setExtendedMetrics(data.extended_metrics);
-          }
-        } catch (parseError) {
-          // Invalid JSON response - silently ignore
-          if (!IS_PRODUCTION) {
-            console.warn('Failed to parse extended metrics JSON:', parseError);
-          }
-          return;
-        }
-      } catch (error) {
-        // Ignore expected transient failures (navigation, aborted requests, offline).
-        if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
-          return;
-        }
-
-        console.warn('Failed to fetch extended metrics');
-      }
-    }
-
-    fetchExtendedMetrics();
-    const interval = setInterval(fetchExtendedMetrics, 30 * 60 * 1000); // Update every 30 minutes
-
-    return () => {
-      isMounted = false;
-      controller?.abort();
-      clearInterval(interval);
-    };
-  }, []);
 
   // Check if we should show "Go Now" alert
   const showGoNow = currentForecast && shouldShowGoNow(currentForecast.currentProbability, selectedSpot.latitude);
