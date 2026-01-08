@@ -2,17 +2,26 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
+export type SubscriptionTier = 'free' | 'premium_24h' | 'premium_7d';
+
 interface PremiumContextType {
   // State
   isPremium: boolean;
   isLoading: boolean;
   error: string | null;
-  
+
+  // Subscription info
+  subscriptionTier: SubscriptionTier;
+  expiresAt: number | null; // timestamp in ms
+  isExpired: boolean;
+  hoursRemaining: number | null;
+
   // Actions
   setIsPremium: (value: boolean) => void;
   checkSubscriptionStatus: () => Promise<void>;
-  
-  // Subscription info (for web)
+  unlockFeatures: (tier: SubscriptionTier, durationHours: number) => void;
+
+  // Legacy (deprecated)
   subscriptionType: 'free' | 'premium' | 'trial';
   trialDaysRemaining: number | null;
 }
@@ -20,77 +29,140 @@ interface PremiumContextType {
 const PremiumContext = createContext<PremiumContextType | undefined>(undefined);
 
 export function PremiumProvider({ children }: { children: ReactNode }) {
-  // For now, use localStorage for dev/testing
-  // In production, this would check against Stripe/backend
-  const [isPremium, setIsPremiumState] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('dev_premium_mode') === 'true';
-  });
-  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // New subscription tier system
+  const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>(() => {
+    if (typeof window === 'undefined') return 'free';
+    const stored = localStorage.getItem('subscription_tier');
+    return (stored as SubscriptionTier) || 'free';
+  });
+
+  const [expiresAt, setExpiresAt] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const stored = localStorage.getItem('subscription_expires_at');
+    return stored ? parseInt(stored, 10) : null;
+  });
+
+  // Derived state
+  const isExpired = expiresAt ? Date.now() > expiresAt : false;
+  const isPremium = subscriptionTier !== 'free' && !isExpired;
+
+  const hoursRemaining = expiresAt && !isExpired
+    ? Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60))
+    : null;
+
+  // Legacy state (deprecated, kept for backward compatibility)
   const [subscriptionType, setSubscriptionType] = useState<'free' | 'premium' | 'trial'>('free');
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
+
+  // Unlock features (called after successful payment)
+  const unlockFeatures = useCallback((tier: SubscriptionTier, durationHours: number) => {
+    const expiryTimestamp = Date.now() + durationHours * 60 * 60 * 1000;
+
+    setSubscriptionTier(tier);
+    setExpiresAt(expiryTimestamp);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('subscription_tier', tier);
+      localStorage.setItem('subscription_expires_at', expiryTimestamp.toString());
+    }
+
+    console.log(`✅ Unlocked ${tier} for ${durationHours}h (expires: ${new Date(expiryTimestamp).toLocaleString('no-NO')})`);
+  }, []);
 
   // Check subscription status (placeholder for future backend integration)
   const checkSubscriptionStatus = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      // TODO: Integrate with backend API to check subscription
-      // For now, just read from localStorage
-      const devPremium = localStorage.getItem('dev_premium_mode') === 'true';
-      setIsPremiumState(devPremium);
-      setSubscriptionType(devPremium ? 'premium' : 'free');
-      
-      console.log('✅ Premium status checked:', devPremium ? 'Premium' : 'Free');
+      // Check if subscription has expired
+      if (expiresAt && Date.now() > expiresAt) {
+        setSubscriptionTier('free');
+        setExpiresAt(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('subscription_tier');
+          localStorage.removeItem('subscription_expires_at');
+        }
+        console.log('⏰ Subscription expired, reverted to free');
+      }
+
+      // TODO: Integrate with backend API to validate subscription token
+      // For now, trust localStorage
+      console.log('✅ Premium status checked:', isPremium ? `${subscriptionTier} (${hoursRemaining}h left)` : 'Free');
     } catch (err) {
       console.error('❌ Failed to check subscription:', err);
       setError(err instanceof Error ? err.message : 'Failed to check subscription');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [expiresAt, isPremium, subscriptionTier, hoursRemaining]);
 
-  // Initialize on mount
+  // Initialize on mount and check expiry every minute
   useEffect(() => {
     checkSubscriptionStatus();
-  }, [checkSubscriptionStatus]);
 
-  // Listen for storage changes (for dev mode toggle)
+    const interval = setInterval(() => {
+      if (expiresAt && Date.now() > expiresAt) {
+        checkSubscriptionStatus();
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [checkSubscriptionStatus, expiresAt]);
+
+  // Listen for storage changes (sync across tabs)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'dev_premium_mode') {
-        const newValue = e.newValue === 'true';
-        setIsPremiumState(newValue);
-        setSubscriptionType(newValue ? 'premium' : 'free');
+      if (e.key === 'subscription_tier' && e.newValue) {
+        setSubscriptionTier(e.newValue as SubscriptionTier);
+      }
+      if (e.key === 'subscription_expires_at' && e.newValue) {
+        setExpiresAt(parseInt(e.newValue, 10));
       }
     };
-    
+
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', handleStorageChange);
       return () => window.removeEventListener('storage', handleStorageChange);
     }
   }, []);
 
-  // Manually set premium (for dev/testing)
+  // Legacy setIsPremium (for backward compatibility)
   const setIsPremium = useCallback((value: boolean) => {
-    setIsPremiumState(value);
-    setSubscriptionType(value ? 'premium' : 'free');
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('dev_premium_mode', value.toString());
+    if (value) {
+      // Default to 24h premium when using legacy method
+      unlockFeatures('premium_24h', 24);
+    } else {
+      setSubscriptionTier('free');
+      setExpiresAt(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('subscription_tier');
+        localStorage.removeItem('subscription_expires_at');
+      }
     }
-  }, []);
+  }, [unlockFeatures]);
 
   return (
-    <PremiumContext.Provider 
-      value={{ 
-        isPremium, 
+    <PremiumContext.Provider
+      value={{
+        // New subscription system
+        isPremium,
+        subscriptionTier,
+        expiresAt,
+        isExpired,
+        hoursRemaining,
+        unlockFeatures,
+
+        // Core actions
         isLoading,
         error,
         setIsPremium,
         checkSubscriptionStatus,
+
+        // Legacy (deprecated)
         subscriptionType,
         trialDaysRemaining,
       }}

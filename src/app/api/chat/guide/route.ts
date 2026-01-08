@@ -161,6 +161,9 @@ export async function POST(req: Request) {
     const lat = typeof body?.lat === 'number' ? body.lat : DEFAULT_LAT;
     const lon = typeof body?.lon === 'number' ? body.lon : DEFAULT_LON;
 
+    // Premium status from client
+    const isPremium = body?.isPremium === true;
+
     const [nowData, weather, bestSpot, forecast] = await Promise.all([
       resolveNow(req, lat, lon),
       resolveWeather(req, lat, lon),
@@ -187,6 +190,36 @@ export async function POST(req: Request) {
     const currentMinute = now.getMinutes();
     const timeString = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
 
+    // Premium gating: Only include specific routing details for premium users
+    const locationIntel = isPremium
+      ? [
+          `=== LOCATION INTEL (PREMIUM) ===`,
+          bestSpot
+            ? `Best spot RIGHT NOW: ${bestSpot.name} (~${bestSpot.driveMinutes} min drive, ${Math.round(bestSpot.visibilityScore)}% clear sky)`
+            : 'Best spot: Stay in Tromsø (clouds acceptable in city).',
+          bestSpot?.googleMapsUrl ? `Google Maps: ${bestSpot.googleMapsUrl}` : null,
+          ``,
+          `SPECIFIC ROUTING (Premium users only):`,
+          `- Telegrafbukta: 69.6408, 18.9817 (30 min walk from center)`,
+          `- Ersfjordbotn: 69.5828, 19.0247 (25 min drive, Route 862)`,
+          `- Kvaløya west: 69.7500, 18.6500 (30-40 min, beach spots)`,
+          `- Sommarøy: 69.6377, 17.9689 (1h drive, very dark)`,
+          `- Skibotn: 69.3847, 20.2797 (1.5h, E8 inland - only if coast cloudy)`,
+        ]
+      : [
+          `=== LOCATION INTEL (FREE TIER) ===`,
+          `General advice: ${master.status === 'GO' ? 'Leave the city for darker skies' : master.status === 'WAIT' ? 'Check coastal areas or wait for clouds to clear' : 'Save energy, conditions not ideal'}`,
+          ``,
+          `LOCATIONS (general):`,
+          `- Telegrafbukta (no car needed)`,
+          `- Ersfjordbotn (25 min drive)`,
+          `- Kvaløya west coast (beaches)`,
+          `- Sommarøy (1h, very dark)`,
+          `- Skibotn inland (1.5h backup)`,
+          ``,
+          `🔒 UPGRADE for GPS coordinates, drive times, and route planning.`,
+        ];
+
     const contextBlock = [
       `=== CURRENT CONDITIONS (${timeString}) ===`,
       `Master Status: ${master.status}`,
@@ -204,18 +237,7 @@ export async function POST(req: Request) {
         ? `Best window tonight: Around ${String(forecast.peakHour).padStart(2, '0')}:00 (${Math.round(forecast.peakProbability)}% probability peak)`
         : 'No specific peak identified - activity fairly constant',
       ``,
-      `=== LOCATION INTEL ===`,
-      bestSpot
-        ? `Best spot RIGHT NOW: ${bestSpot.name} (~${bestSpot.driveMinutes} min drive, ${Math.round(bestSpot.visibilityScore)}% clear sky)`
-        : 'Best spot: Stay in Tromsø (clouds acceptable in city).',
-      bestSpot?.googleMapsUrl ? `Google Maps: ${bestSpot.googleMapsUrl}` : null,
-      ``,
-      `Remember: You know these spots:`,
-      `- Telegrafbukta (no car needed, 30 min walk)`,
-      `- Ersfjordbotn (25 min drive, local favorite)`,
-      `- Kvaløya west coast (beaches, good when east cloudy)`,
-      `- Sommarøy (1h drive, very dark)`,
-      `- Skibotn inland (1.5h, ONLY if coast terrible)`,
+      ...locationIntel,
     ]
       .filter(Boolean)
       .join('\n');

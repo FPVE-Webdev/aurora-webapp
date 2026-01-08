@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageCircle, X, Send, Sparkles, Loader2 } from 'lucide-react';
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
+import { usePremium } from '@/contexts/PremiumContext';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -14,6 +15,7 @@ interface Message {
 
 export function ChatWidget() {
   const { status, result, isLoading: statusLoading } = useMasterStatus();
+  const { isPremium } = usePremium();
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -81,6 +83,7 @@ export function ChatWidget() {
           messages: messages
             .map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text }))
             .concat({ role: 'user', content: userMessage.text }),
+          isPremium, // Send premium status for gating
         }),
       });
 
