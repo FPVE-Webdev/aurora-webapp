@@ -155,7 +155,7 @@ export function useAuroraData() {
       // Convert to KP index for compatibility
       const kpIndex = scoreToKpIndex(forecast.score);
 
-      // Fetch weather data for all spots in parallel
+      // Fetch weather data and hourly forecasts for all spots in parallel
       const spotForecastsPromises = OBSERVATION_SPOTS.map(async (spot) => {
         try {
           // Fetch real weather for this spot
@@ -169,8 +169,16 @@ export function useAuroraData() {
             }
           }
 
-          // Map forecast with real or fallback weather data
-          return mapTromsøForecastToSpotForecast(forecast!, spot, weatherData);
+          // Fetch hourly forecast for this spot
+          const hourlyRes = await fetch(`/api/aurora/hourly?hours=48&location=${spot.id}`);
+          let hourlyData = null;
+          if (hourlyRes.ok) {
+            const hourlyJson = await hourlyRes.json();
+            hourlyData = hourlyJson.hourly_forecast;
+          }
+
+          // Map forecast with real weather data and hourly forecast
+          return mapTromsøForecastToSpotForecast(forecast!, spot, weatherData, hourlyData);
         } catch (error) {
           console.warn(`Failed to fetch weather for ${spot.name}, using fallback`);
           return mapTromsøForecastToSpotForecast(forecast!, spot);
@@ -217,7 +225,7 @@ export function useAuroraData() {
       if (cached) {
         const kpIndex = scoreToKpIndex(cached.score);
         const spotForecasts = OBSERVATION_SPOTS.map(spot =>
-          mapTromsøForecastToSpotForecast(cached, spot)
+          mapTromsøForecastToSpotForecast(cached, spot, undefined, undefined)
         );
 
         setState(prev => ({

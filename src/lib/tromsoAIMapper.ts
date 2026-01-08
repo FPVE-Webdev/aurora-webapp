@@ -28,11 +28,13 @@ export function scoreToKpIndex(score: number): number {
  * Map Tromsø.AI forecast to SpotForecast format
  *
  * Note: If weatherData is not provided, will use fallback defaults
+ * If hourlyApiData is provided, it will be used instead of generating synthetic hourly forecast
  */
 export function mapTromsøForecastToSpotForecast(
   forecast: TromsøAuroraForecast,
   spot: ObservationSpot,
-  weatherData?: { cloudCoverage: number; temperature: number; windSpeed?: number }
+  weatherData?: { cloudCoverage: number; temperature: number; windSpeed?: number },
+  hourlyApiData?: any[]
 ): SpotForecast {
   // Prioritize KP from API if available, otherwise derive from score
   const kpIndex = forecast.kp ?? scoreToKpIndex(forecast.score);
@@ -53,51 +55,77 @@ export function mapTromsøForecastToSpotForecast(
     longitude: spot.longitude, // Add longitude for daylight check
   });
 
-  // Create a simple hourly forecast with realistic variations and daylight awareness
-  const hourlyForecast: HourlyForecast[] = Array.from({ length: 24 }, (_, i) => {
-    const hour = new Date();
-    hour.setHours(hour.getHours() + i);
+  // Use API hourly data if available, otherwise generate synthetic forecast
+  let hourlyForecast: HourlyForecast[];
 
-    // Deterministic cloud coverage variation (cosine wave offset from probability)
-    const cloudVariation = Math.cos(i * 0.7) * 10;
-    const hourCloudCoverage = Math.max(0, Math.min(100,
-      cloudCoverage + cloudVariation
-    ));
+  if (hourlyApiData && hourlyApiData.length > 0) {
+    // Map API data to HourlyForecast format
+    hourlyForecast = hourlyApiData.map((apiHour) => {
+      const hourDate = new Date(apiHour.time);
+      const timeOfDay = hourDate.getHours();
 
-    // Small temperature variation based on time of day (colder at night)
-    const tempVariation = Math.sin((i - 12) * 0.26) * 2; // ±2°C variation
-    const hourTemperature = temperature + tempVariation;
-
-    // Keep KP index stable or slight deterministic variation
-    const kpVariation = Math.sin(i * 0.3) * 0.5;
-    const hourKpIndex = Math.max(0, Math.min(9,
-      kpIndex + kpVariation
-    ));
-
-    // Calculate probability for this specific hour WITH DAYLIGHT CHECK
-    const { probability: hourProbability, canView: hourCanView } = calculateAuroraProbability({
-      kpIndex: hourKpIndex,
-      cloudCoverage: hourCloudCoverage,
-      temperature: hourTemperature,
-      latitude: spot.latitude,
-      longitude: spot.longitude,
-      date: hour
+      return {
+        time: apiHour.time,
+        hour: typeof apiHour.hour === 'number'
+          ? `${apiHour.hour.toString().padStart(2, '0')}:00`
+          : apiHour.hour,
+        probability: Math.round(apiHour.probability),
+        cloudCoverage: Math.round(apiHour.weather?.cloudCoverage ?? apiHour.cloudCoverage ?? 50),
+        temperature: Math.round(apiHour.weather?.temperature ?? apiHour.temperature ?? 0),
+        kpIndex: apiHour.kp ?? kpIndex,
+        symbolCode: apiHour.weather?.symbolCode ??
+                   ((apiHour.weather?.cloudCoverage ?? 50) > 50 ? 'cloudy' : 'clearsky_night'),
+        twilightPhase: (timeOfDay >= 21 || timeOfDay <= 6) ? 'night' : 'day',
+        canSeeAurora: apiHour.probability > 0 // If probability is 0, can't see aurora
+      };
     });
+  } else {
+    // Fallback: Create a simple hourly forecast with realistic variations and daylight awareness
+    hourlyForecast = Array.from({ length: 24 }, (_, i) => {
+      const hour = new Date();
+      hour.setHours(hour.getHours() + i);
 
-    const timeOfDay = hour.getHours();
+      // Deterministic cloud coverage variation (cosine wave offset from probability)
+      const cloudVariation = Math.cos(i * 0.7) * 10;
+      const hourCloudCoverage = Math.max(0, Math.min(100,
+        cloudCoverage + cloudVariation
+      ));
 
-    return {
-      time: hour.toISOString(),
-      hour: hour.toTimeString().slice(0, 5),
-      probability: hourCanView ? Math.round(hourProbability) : 0, // Return 0 during daylight
-      cloudCoverage: Math.round(hourCloudCoverage),
-      temperature: Math.round(hourTemperature),
-      kpIndex: hourKpIndex,
-      symbolCode: hourCloudCoverage > 50 ? 'cloudy' : 'clearsky_night',
-      twilightPhase: (timeOfDay >= 21 || timeOfDay <= 6) ? 'night' : 'day',
-      canSeeAurora: hourCanView // Use calculated daylight check
-    };
-  });
+      // Small temperature variation based on time of day (colder at night)
+      const tempVariation = Math.sin((i - 12) * 0.26) * 2; // ±2°C variation
+      const hourTemperature = temperature + tempVariation;
+
+      // Keep KP index stable or slight deterministic variation
+      const kpVariation = Math.sin(i * 0.3) * 0.5;
+      const hourKpIndex = Math.max(0, Math.min(9,
+        kpIndex + kpVariation
+      ));
+
+      // Calculate probability for this specific hour WITH DAYLIGHT CHECK
+      const { probability: hourProbability, canView: hourCanView } = calculateAuroraProbability({
+        kpIndex: hourKpIndex,
+        cloudCoverage: hourCloudCoverage,
+        temperature: hourTemperature,
+        latitude: spot.latitude,
+        longitude: spot.longitude,
+        date: hour
+      });
+
+      const timeOfDay = hour.getHours();
+
+      return {
+        time: hour.toISOString(),
+        hour: hour.toTimeString().slice(0, 5),
+        probability: hourCanView ? Math.round(hourProbability) : 0, // Return 0 during daylight
+        cloudCoverage: Math.round(hourCloudCoverage),
+        temperature: Math.round(hourTemperature),
+        kpIndex: hourKpIndex,
+        symbolCode: hourCloudCoverage > 50 ? 'cloudy' : 'clearsky_night',
+        twilightPhase: (timeOfDay >= 21 || timeOfDay <= 6) ? 'night' : 'day',
+        canSeeAurora: hourCanView // Use calculated daylight check
+      };
+    });
+  }
 
   return {
     spot,
