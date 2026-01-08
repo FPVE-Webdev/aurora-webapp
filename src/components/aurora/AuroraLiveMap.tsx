@@ -93,9 +93,9 @@ export function AuroraLiveMap() {
 
           // Use real weather if available, otherwise use location-specific fallback
           const locationSeed = spot.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const cloudCoverage = weatherData?.cloudCoverage ?? (20 + (locationSeed % 40));
-          const temperature = weatherData?.temperature ?? (-8 + (locationSeed % 6));
-          const windSpeed = weatherData?.windSpeed ?? (4 + (locationSeed % 8));
+          const cloudCoverage = weatherData?.cloudCoverage ?? (10 + (locationSeed % 60)); // 10-70%
+          const temperature = weatherData?.temperature ?? (-15 + (locationSeed % 25)); // -15 to +10
+          const windSpeed = weatherData?.windSpeed ?? (2 + (locationSeed % 12)); // 2-14 m/s
 
           // Calculate probability based on real conditions (with daylight check)
           const { probability } = calculateAuroraProbability({
@@ -122,9 +122,9 @@ export function AuroraLiveMap() {
         } catch (error) {
           console.warn(`Failed to fetch weather for ${spot.name}, using fallback`);
           const locationSeed = spot.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const cloudCoverage = 20 + (locationSeed % 40);
-          const temperature = -8 + (locationSeed % 6);
-          const windSpeed = 4 + (locationSeed % 8);
+          const cloudCoverage = 10 + (locationSeed % 60); // 10-70%
+          const temperature = -15 + (locationSeed % 25); // -15 to +10
+          const windSpeed = 2 + (locationSeed % 12); // 2-14 m/s
 
           const { probability } = calculateAuroraProbability({
             kpIndex,

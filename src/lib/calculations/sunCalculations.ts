@@ -89,16 +89,28 @@ export function getBestAuroraTimeTonight(
   // Solar midnight is when sun is at nadir (lowest point)
   const times = SunCalc.getTimes(referenceDate, latitude, longitude);
 
-  // Nadir is typically between sunset and sunrise
-  // Use midnight as approximation, or actual nadir if available
-  if (times.nadir) {
+  // If nadir is in the future today, return it
+  if (times.nadir && times.nadir > referenceDate) {
     return times.nadir;
   }
 
-  // Fallback: use midnight local time
+  // Otherwise get nadir for next day (tonight/tomorrow night)
+  const tomorrow = new Date(referenceDate);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowTimes = SunCalc.getTimes(tomorrow, latitude, longitude);
+
+  if (tomorrowTimes.nadir) {
+    return tomorrowTimes.nadir;
+  }
+
+  // Fallback: use next midnight local time
   const midnight = new Date(referenceDate);
   midnight.setHours(0, 0, 0, 0);
-  midnight.setDate(midnight.getDate() + (referenceDate.getHours() < 12 ? 0 : 1));
+
+  // Always get NEXT midnight (not past)
+  if (midnight <= referenceDate) {
+    midnight.setDate(midnight.getDate() + 1);
+  }
 
   return midnight;
 }

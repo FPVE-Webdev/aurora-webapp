@@ -40,9 +40,9 @@ export function mapTromsøForecastToSpotForecast(
   // Use provided weather data or generate realistic fallbacks based on spot location
   // Use spot ID hash for deterministic but varied fallbacks
   const spotHash = spot.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const cloudCoverage = weatherData?.cloudCoverage ?? (30 + (spotHash % 50));
-  const temperature = weatherData?.temperature ?? (-10 + (spotHash % 20));
-  const windSpeed = weatherData?.windSpeed ?? Math.round(5 + (spotHash % 10));
+  const cloudCoverage = weatherData?.cloudCoverage ?? (10 + (spotHash % 60)); // 10-70%
+  const temperature = weatherData?.temperature ?? (-15 + (spotHash % 25)); // -15 to +10
+  const windSpeed = weatherData?.windSpeed ?? Math.round(2 + (spotHash % 12)); // 2-14 m/s
 
   // Calculate probability based on spot's latitude and REAL weather (with daylight check)
   const { probability, canView, nextViewableTime, bestTimeTonight } = calculateAuroraProbability({

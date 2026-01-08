@@ -37,6 +37,11 @@ export interface ProbabilityResult {
 export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityResult {
   const date = inputs.date || new Date();
 
+  // Calculate best time tonight ALWAYS (not just during daylight)
+  const bestTime = inputs.longitude !== undefined
+    ? getBestAuroraTimeTonight(inputs.latitude, inputs.longitude, date)
+    : undefined;
+
   // Check daylight conditions first (if longitude provided)
   if (inputs.longitude !== undefined) {
     const isDark = canSeeAurora(inputs.latitude, inputs.longitude, date);
@@ -44,7 +49,6 @@ export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityRes
     if (!isDark) {
       // Too bright to see aurora
       const nextTime = getNextAuroraTime(inputs.latitude, inputs.longitude, date);
-      const bestTime = getBestAuroraTimeTonight(inputs.latitude, inputs.longitude, date);
 
       return {
         probability: 0,
@@ -104,6 +108,7 @@ export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityRes
     probability,
     score: Math.round(weightedScore * 100) / 100,
     canView: true,
+    bestTimeTonight: bestTime || undefined,
     factors: {
       kpIndex: Math.round(kpScore),
       clouds: Math.round(cloudScore),
