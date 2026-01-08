@@ -83,7 +83,7 @@ const translations: Record<Language, Record<string, string>> = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('no');
+  const [language, setLanguageState] = useState<Language>('en'); // Default to English for tourists
 
   // Load language from localStorage on mount
   useEffect(() => {
@@ -92,6 +92,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       if (saved && (saved === 'no' || saved === 'en')) {
         setLanguageState(saved);
       }
+      // If no saved preference, stay with 'en' default (no browser detection)
     }
   }, []);
 

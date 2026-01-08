@@ -121,6 +121,11 @@ function buildSystemPrompt(isPremium: boolean): string {
 
 ${roleInstruction}
 
+LANGUAGE RULE:
+- Always reply in the SAME LANGUAGE the user asks in
+- If unclear, default to English (most tourists speak English)
+- Supported: English, Norwegian (Bokmål), German, Spanish, French
+
 TONE & STYLE:
 - Short answers (people are standing in the cold, on mobile)
 - Use emojis sparingly (🌌, 🔥, ❄️, ⭐)
@@ -262,7 +267,7 @@ export async function POST(req: Request) {
       ],
     });
 
-    const reply = completion.choices[0].message.content?.trim() || 'Jeg er her, men fikk ikke svar. Prøv igjen.';
+    const reply = completion.choices[0].message.content?.trim() || 'I\'m here, but didn\'t get a response. Try again.';
 
     return NextResponse.json({
       reply,

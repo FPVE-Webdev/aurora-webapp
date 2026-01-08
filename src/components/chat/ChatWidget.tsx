@@ -44,14 +44,14 @@ export function ChatWidget() {
 
     const baseIntro =
       result.status === 'GO'
-        ? 'YES! Put on your jacket. Tromsø ser lovende ut nå.'
+        ? 'YES! Put on your jacket. Tromsø looks promising right now.'
         : result.status === 'WAIT'
-        ? 'Ikke helt enda. Aktivitet er på gang, men skyene kan plage.'
-        : 'Akkurat nå er det for lyst eller for skyet.';
+        ? 'Not quite yet. Activity is building, but clouds might interfere.'
+        : 'Right now it\'s too bright or too cloudy.';
 
     const introText = isPremium
-      ? `${baseIntro} Spør meg hvor du bør dra eller om det lønner seg å vente.`
-      : `${baseIntro} Jeg kan gi deg generelle retninger. 🔒 Lås opp for GPS-koordinater og eksakte ruter.`;
+      ? `${baseIntro} Ask me where to go or if it's worth waiting.`
+      : `${baseIntro} I can give you general directions. 🔒 Unlock for GPS coordinates and exact routes.`;
 
     setMessages([
       {
@@ -100,7 +100,7 @@ export function ChatWidget() {
       console.info('[chat-guide] reply', { status: data.masterStatus, bestSpot: data.bestSpot?.name });
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: data.reply || 'Jeg er her, men fikk ikke svar. Prøv igjen.',
+        text: data.reply || 'I\'m here, but didn\'t get a response. Try again.',
         sender: 'bot',
         timestamp: new Date()
       };
@@ -108,7 +108,7 @@ export function ChatWidget() {
     } catch (err) {
       const botMessage: Message = {
         id: (Date.now() + 2).toString(),
-        text: 'Fikk ikke kontakt med guiden. Prøv igjen om litt.',
+        text: 'Couldn\'t reach the guide. Try again in a moment.',
         sender: 'bot',
         timestamp: new Date()
       };
@@ -134,18 +134,18 @@ export function ChatWidget() {
               <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="text-white font-medium text-sm">Nordlys Guide</h3>
+              <h3 className="text-white font-medium text-sm">Aurora Guide</h3>
               <p className="text-white/50 text-xs flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                {statusLoading ? 'Henter status...' : `Status: ${statusLabel}`}
+                {statusLoading ? 'Loading status...' : `Status: ${statusLabel}`}
               </p>
             </div>
           </div>
           <button 
             onClick={() => setIsOpen(false)}
             className="text-white/50 hover:text-white transition-colors p-1"
-            title="Lukk chat"
-            aria-label="Lukk chat"
+            title="Close chat"
+            aria-label="Close chat"
           >
             <X className="w-5 h-5" />
           </button>
@@ -184,7 +184,7 @@ export function ChatWidget() {
                       }}
                       className="px-4 py-2 rounded-lg bg-gradient-to-r from-primary to-purple-500 text-white text-xs font-semibold hover:shadow-lg hover:scale-105 transition-all"
                     >
-                      Lås opp Premium • Fra 49 kr
+                      Unlock Premium • From 49 NOK
                     </button>
                   </div>
                 )}
@@ -195,7 +195,7 @@ export function ChatWidget() {
             <div className="flex w-full mb-2 justify-start">
               <div className="bg-white/10 text-white/80 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Tenker...
+                Thinking...
               </div>
             </div>
           )}
@@ -209,15 +209,15 @@ export function ChatWidget() {
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Skriv en melding..."
+              placeholder="Type a message..."
               className="w-full bg-black/20 border border-white/10 rounded-full px-4 py-2.5 pr-12 text-sm text-white placeholder-white/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-light"
             />
             <button
               type="submit"
               disabled={!inputText.trim() || isSending}
               className="absolute right-1.5 p-1.5 bg-primary rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-hover transition-colors"
-              title="Send melding"
-              aria-label="Send melding"
+              title="Send message"
+              aria-label="Send message"
             >
               {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
@@ -236,8 +236,8 @@ export function ChatWidget() {
           "group relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-purple-600 text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300 pointer-events-auto",
           isOpen && "rotate-90 scale-0 opacity-0"
         )}
-        title="Åpne chat"
-        aria-label="Åpne chat"
+        title="Open chat"
+        aria-label="Open chat"
       >
         <span className="absolute inset-0 rounded-full bg-white/20 animate-ping opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
         <MessageCircle className="w-7 h-7" />
@@ -250,8 +250,8 @@ export function ChatWidget() {
           "absolute bottom-0 right-0 flex items-center justify-center w-14 h-14 rounded-full bg-slate-800 text-white shadow-lg hover:bg-slate-700 hover:scale-105 transition-all duration-300 pointer-events-auto",
           !isOpen && "scale-0 opacity-0 rotate-90"
         )}
-        title="Lukk chat"
-        aria-label="Lukk chat"
+        title="Close chat"
+        aria-label="Close chat"
       >
         <X className="w-7 h-7" />
       </button>
