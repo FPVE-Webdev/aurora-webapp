@@ -98,7 +98,7 @@ export function AuroraLiveMap() {
           const windSpeed = weatherData?.windSpeed ?? (2 + (locationSeed % 12)); // 2-14 m/s
 
           // Calculate probability based on real conditions (with daylight check)
-          const { probability } = calculateAuroraProbability({
+          const { probability, canView } = calculateAuroraProbability({
             kpIndex,
             cloudCoverage,
             temperature,
@@ -106,9 +106,12 @@ export function AuroraLiveMap() {
             longitude: spot.longitude,
           });
 
+          // If it's daylight, force probability to 0
+          const actualProbability = canView ? probability : 0;
+
           return {
             spot,
-            currentProbability: probability,
+            currentProbability: actualProbability,
             kp: kpIndex,
             weather: {
               cloudCoverage: Math.round(cloudCoverage),
@@ -126,7 +129,7 @@ export function AuroraLiveMap() {
           const temperature = -15 + (locationSeed % 25); // -15 to +10
           const windSpeed = 2 + (locationSeed % 12); // 2-14 m/s
 
-          const { probability } = calculateAuroraProbability({
+          const { probability, canView } = calculateAuroraProbability({
             kpIndex,
             cloudCoverage,
             temperature,
@@ -134,9 +137,12 @@ export function AuroraLiveMap() {
             longitude: spot.longitude,
           });
 
+          // If it's daylight, force probability to 0
+          const actualProbability = canView ? probability : 0;
+
           return {
             spot,
-            currentProbability: probability,
+            currentProbability: actualProbability,
             kp: kpIndex,
             weather: {
               cloudCoverage: Math.round(cloudCoverage),
