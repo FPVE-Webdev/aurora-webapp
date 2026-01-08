@@ -52,7 +52,7 @@ interface SpotForecast {
 }
 
 export function AuroraLiveMap() {
-  const { isPremium } = usePremium();
+  const { isPremium, subscriptionTier } = usePremium();
   const [forecasts, setForecasts] = useState<SpotForecast[]>([]);
   const [selectedSpotId, setSelectedSpotId] = useState('troms');
   const [currentKp, setCurrentKp] = useState(3);
@@ -396,6 +396,7 @@ export function AuroraLiveMap() {
               onSelectSpot={setSelectedSpotId}
               kpIndex={currentKp}
               animationHour={animationProgress}
+              subscriptionTier={subscriptionTier}
             />
           )}
         </div>

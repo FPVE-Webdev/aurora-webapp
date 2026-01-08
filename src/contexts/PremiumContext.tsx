@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAppSettings } from '@/hooks/useAppSettings';
 
-export type SubscriptionTier = 'free' | 'premium_24h' | 'premium_7d';
+export type SubscriptionTier = 'free' | 'premium_24h' | 'premium_7d' | 'enterprise';
 
 interface PremiumContextType {
   // State

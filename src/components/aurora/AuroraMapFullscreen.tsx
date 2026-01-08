@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
+import { SubscriptionTier } from '@/contexts/PremiumContext';
+
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
 interface HourlyData {
   time: string;
@@ -50,7 +53,14 @@ interface Props {
   onSelectSpot: (spotId: string) => void;
   kpIndex: number;
   animationHour?: number; // Current hour in animation (0-12)
+  subscriptionTier: SubscriptionTier;
 }
+
+// Tromsø area bounds for Free/Pro users
+const TROMSO_BOUNDS: [[number, number], [number, number]] = [
+  [18.6, 69.5],  // Southwest [lng, lat]
+  [19.2, 69.8]   // Northeast [lng, lat]
+];
 
 function getMarkerColor(probability: number): string {
   if (probability >= 70) return '#34f5c5'; // Primary cyan - Excellent
@@ -65,43 +75,44 @@ function calculateProbabilityFromOvalPosition(
   longitude: number,
   kpIndex: number
 ): number {
-  // Use real calculation based on latitude, longitude and KP index
-  // Assume moderate cloud coverage for aurora oval positions
   const { probability, canView } = calculateAuroraProbability({
     kpIndex,
-    cloudCoverage: 30, // Assume good conditions along aurora oval
-    temperature: -10, // Typical northern temperature
+    cloudCoverage: 30,
+    temperature: -10,
     latitude,
-    longitude, // Required for daylight check
+    longitude,
   });
-  // Return 0 if daylight prevents viewing
   return canView ? probability : 0;
 }
 
-export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelectSpot, kpIndex, animationHour = 0 }: Props) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.Marker[]>([]);
-  const ovalLayerRef = useRef<L.LayerGroup | null>(null);
+export default function AuroraMapFullscreen({
+  forecasts,
+  selectedSpotId,
+  onSelectSpot,
+  kpIndex,
+  animationHour = 0,
+  subscriptionTier
+}: Props) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [auroraData, setAuroraData] = useState<AuroraPoint[]>([]);
   const [showOverlay, setShowOverlay] = useState(true);
 
-  // Fetch aurora oval data from Tromsø.AI
+  // Determine if user has unrestricted map access (Enterprise only)
+  const hasUnrestrictedAccess = subscriptionTier === 'enterprise';
+
+  // Fetch aurora oval data
   const fetchAuroraData = useCallback(async () => {
     try {
-      // Use local API endpoint which will route correctly based on data mode
       const url = '/api/aurora/oval?resolution=medium';
-
       console.log('📡 Fetching aurora oval from:', url);
 
       const response = await fetch(url);
-
-      // Check HTTP status
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      // Check that response is JSON before parsing
       const contentType = response.headers.get('content-type');
       if (!contentType?.includes('application/json')) {
         const text = await response.text();
@@ -111,29 +122,24 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
       }
 
       const data = await response.json();
-
       console.log('✅ Aurora oval data loaded:', data);
 
-      // Handle GeoJSON format from API
       if (data && data.features && data.features.length > 0) {
         const feature = data.features[0];
         if (feature.geometry && feature.geometry.coordinates) {
-          // Convert GeoJSON polygon coordinates to AuroraPoint format
           const coordinates = feature.geometry.coordinates[0];
           const auroraPoints: AuroraPoint[] = coordinates.map(([lon, lat]: [number, number]) => ({
             lat,
             lon,
-            probability: 70 // Use default or extract from properties if available
+            probability: 70
           }));
           setAuroraData(auroraPoints);
         }
       } else if (data && data.coordinates && data.coordinates.length > 0) {
-        // Fallback: handle old format if API returns it
         setAuroraData(data.coordinates);
       }
     } catch (error) {
       console.error('❌ Failed to fetch aurora oval:', error);
-      // Don't throw error - let component work without aurora oval
       setAuroraData([]);
     }
   }, []);
@@ -144,69 +150,117 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
     return () => clearInterval(interval);
   }, [fetchAuroraData]);
 
-  // Initialize map
+  // Initialize Mapbox map
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapContainerRef.current) return;
 
     // Clean up existing map
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.remove();
-      mapInstanceRef.current = null;
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
     }
 
-    // Initialize map
-    const map = L.map(mapRef.current, {
-      center: [69.5, 20.0],
-      zoom: 6,
-      minZoom: 5,
-      maxZoom: 12,
-      maxBounds: [
-        [63.0, 4.0],  // Southwest corner (South of Helgeland)
-        [72.0, 32.0]  // Northeast corner (East of Varanager)
-      ],
+    // Create map with restrictions for Free/Pro users
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [18.9, 69.65], // Tromsø center
+      zoom: hasUnrestrictedAccess ? 6 : 8.5,
+      pitch: 65, // 3D angle view
+      bearing: -20, // Slight rotation for dramatic effect
       attributionControl: false,
-      zoomControl: true
+      ...(hasUnrestrictedAccess ? {
+        // Enterprise: Full map access
+        minZoom: 5,
+        maxZoom: 14,
+      } : {
+        // Free/Pro: Restricted to Tromsø
+        maxBounds: TROMSO_BOUNDS,
+        minZoom: 7,
+        maxZoom: 12,
+      })
     });
 
-    // Use dark theme map tiles
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map);
+    // Add zoom controls
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-    // Create aurora oval layer group
-    const ovalLayer = L.layerGroup().addTo(map);
-    ovalLayerRef.current = ovalLayer;
+    map.on('load', () => {
+      console.log('🗺️ Mapbox map loaded');
 
-    mapInstanceRef.current = map;
+      // Add 3D terrain
+      map.addSource('mapbox-dem', {
+        type: 'raster-dem',
+        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+        tileSize: 512,
+        maxzoom: 14
+      });
 
-    // Force resize after mount
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 100);
+      map.setTerrain({
+        source: 'mapbox-dem',
+        exaggeration: 1.8 // Dramatic terrain
+      });
+
+      // Add snow-covered land styling
+      map.setPaintProperty('land-structure-polygon', 'fill-color', '#f0f4f8');
+      map.setPaintProperty('land-structure-line', 'line-color', '#d0dce5');
+
+      // Override water to ice-blue
+      if (map.getLayer('water')) {
+        map.setPaintProperty('water', 'fill-color', '#b8d4e8');
+      }
+
+      // Add hillshade for dramatic snow-covered mountains
+      map.addSource('hillshade-source', {
+        type: 'raster-dem',
+        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+        tileSize: 512
+      });
+
+      map.addLayer({
+        id: 'hillshade',
+        type: 'hillshade',
+        source: 'hillshade-source',
+        paint: {
+          'hillshade-exaggeration': 0.8,
+          'hillshade-shadow-color': '#4a5568',
+          'hillshade-highlight-color': '#ffffff',
+          'hillshade-accent-color': '#e2e8f0'
+        }
+      }, 'waterway-label');
+
+      // Add winter sky layer
+      map.addLayer({
+        id: 'sky',
+        type: 'sky',
+        paint: {
+          'sky-type': 'atmosphere',
+          'sky-atmosphere-sun': [0.0, 90.0],
+          'sky-atmosphere-sun-intensity': 5,
+          'sky-atmosphere-color': '#c5d9e8',
+          'sky-atmosphere-halo-color': '#e8f1f7'
+        }
+      });
+
+      console.log('✅ 3D terrain and snow styling applied');
+    });
+
+    mapRef.current = map;
 
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
       }
     };
-  }, []);
+  }, [hasUnrestrictedAccess]);
 
-  // Render aurora oval
+  // Render aurora oval polygon
   useEffect(() => {
-    if (!ovalLayerRef.current) return;
+    const map = mapRef.current;
+    if (!map || !showOverlay || auroraData.length === 0) return;
 
-    // Always clear first
-    ovalLayerRef.current.clearLayers();
-
-    if (!showOverlay || auroraData.length === 0) {
-      return;
-    }
-
-    // Find the aurora belt - data is already filtered by API for Scandinavia region
     const beltPoints = auroraData
-      .filter(p => p.probability >= 10) // Match API threshold
+      .filter(p => p.probability >= 10)
       .sort((a, b) => a.lon - b.lon);
 
     if (beltPoints.length < 5) {
@@ -216,50 +270,66 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
 
     console.log(`✅ Rendering aurora oval with ${beltPoints.length} points`);
 
-    // Create polygon coordinates from aurora data points
-    const polygonCoords: L.LatLngExpression[] = beltPoints.map(p => [p.lat, p.lon]);
-
-    // Close the polygon if needed
-    if (polygonCoords.length > 0) {
-      const first = polygonCoords[0];
-      const last = polygonCoords[polygonCoords.length - 1];
-      if (first !== last) {
-        polygonCoords.push(first);
+    // Create GeoJSON for aurora oval
+    const ovalGeoJSON: GeoJSON.Feature<GeoJSON.Polygon> = {
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'Polygon',
+        coordinates: [beltPoints.map(p => [p.lon, p.lat])]
       }
-    }
+    };
 
-    // Calculate average intensity for color
     const avgProbability = beltPoints.reduce((sum, p) => sum + p.probability, 0) / beltPoints.length;
     const ovalColor = avgProbability >= 70 ? '#22c55e' : avgProbability >= 50 ? '#34d399' : '#10b981';
-    const ovalOpacity = Math.min(0.5, avgProbability / 100);
+    const ovalOpacity = Math.min(0.6, avgProbability / 100);
 
-    // Draw aurora oval as filled polygon
-    const ovalPolygon = L.polygon(polygonCoords, {
-      color: ovalColor,
-      fillColor: ovalColor,
-      fillOpacity: ovalOpacity * 0.4,
-      weight: 3,
-      opacity: ovalOpacity,
-      smoothFactor: 2,
-      interactive: false
-    });
-    ovalLayerRef.current.addLayer(ovalPolygon);
+    // Add source if it doesn't exist
+    if (!map.getSource('aurora-oval')) {
+      map.addSource('aurora-oval', {
+        type: 'geojson',
+        data: ovalGeoJSON
+      });
 
-    // Add glow effect with larger polygon
-    const glowPolygon = L.polygon(polygonCoords, {
-      color: ovalColor,
-      fillColor: 'transparent',
-      weight: 15,
-      opacity: ovalOpacity * 0.2,
-      smoothFactor: 2,
-      interactive: false
-    });
-    ovalLayerRef.current.addLayer(glowPolygon);
+      // Fill layer
+      map.addLayer({
+        id: 'aurora-oval-fill',
+        type: 'fill',
+        source: 'aurora-oval',
+        paint: {
+          'fill-color': ovalColor,
+          'fill-opacity': ovalOpacity * 0.3
+        }
+      });
+
+      // Outline layer
+      map.addLayer({
+        id: 'aurora-oval-line',
+        type: 'line',
+        source: 'aurora-oval',
+        paint: {
+          'line-color': ovalColor,
+          'line-width': 3,
+          'line-opacity': ovalOpacity,
+          'line-blur': 2
+        }
+      });
+    } else {
+      // Update existing source
+      const source = map.getSource('aurora-oval') as mapboxgl.GeoJSONSource;
+      source.setData(ovalGeoJSON);
+
+      // Update colors
+      map.setPaintProperty('aurora-oval-fill', 'fill-color', ovalColor);
+      map.setPaintProperty('aurora-oval-fill', 'fill-opacity', ovalOpacity * 0.3);
+      map.setPaintProperty('aurora-oval-line', 'line-color', ovalColor);
+      map.setPaintProperty('aurora-oval-line', 'line-opacity', ovalOpacity);
+    }
   }, [auroraData, showOverlay]);
 
-  // Add markers for forecasts
+  // Add forecast markers
   useEffect(() => {
-    const map = mapInstanceRef.current;
+    const map = mapRef.current;
     if (!map || forecasts.length === 0) return;
 
     // Clear existing markers
@@ -267,8 +337,7 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
     markersRef.current = [];
 
     // Add markers for each forecast
-    forecasts.forEach((forecast, index) => {
-      // Get probability for current animation hour if available
+    forecasts.forEach((forecast) => {
       let displayProbability = forecast.currentProbability;
       let displayKp = forecast.kp;
       let displayWeather = forecast.weather;
@@ -278,7 +347,6 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
         const hourData = forecast.hourlyForecast[hourIndex];
 
         if (hourData) {
-          // Use canSeeAurora if available, otherwise use probability directly
           displayProbability = (hourData.canSeeAurora !== false)
             ? hourData.probability
             : 0;
@@ -294,97 +362,97 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
 
       const color = getMarkerColor(displayProbability);
 
-      const icon = L.divIcon({
-        className: 'aurora-marker',
-        html: `
-          <div style="
-            background: ${color};
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-            border: 2px solid white;
-            white-space: nowrap;
-            font-family: system-ui, sans-serif;
-            cursor: pointer;
-          "
-          >
-            ${displayProbability}%
-          </div>
-        `,
-        iconSize: [50, 24],
-        iconAnchor: [25, 12]
+      // Create custom marker element
+      const el = document.createElement('div');
+      el.className = 'aurora-marker';
+      el.style.cssText = `
+        background: ${color};
+        color: white;
+        padding: 4px 10px;
+        border-radius: 14px;
+        font-weight: 700;
+        font-size: 13px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+        border: 2px solid white;
+        white-space: nowrap;
+        font-family: system-ui, sans-serif;
+        cursor: pointer;
+        transition: transform 0.2s;
+      `;
+      el.textContent = `${displayProbability}%`;
+      el.addEventListener('mouseenter', () => {
+        el.style.transform = 'scale(1.15)';
       });
-
-      const marker = L.marker([forecast.spot.latitude, forecast.spot.longitude], { icon })
-        .addTo(map)
-        .bindPopup(`
-          <div style="text-align: center; padding: 4px; min-width: 120px;">
-            <p style="font-weight: bold; margin: 0 0 4px 0; font-size: 14px;">${forecast.spot.name}</p>
-            <p style="font-size: 20px; font-weight: bold; margin: 0 0 4px 0; color: ${color};">${displayProbability}%</p>
-            <p style="font-size: 11px; color: #666; margin: 0 0 4px 0;">
-              ☁️ ${Math.round(displayWeather.cloudCoverage)}% • ${Math.round(displayWeather.temperature)}°C
-            </p>
-            <a href="/forecast?spotId=${forecast.spot.id}" style="display: inline-block; margin-top: 4px; padding: 4px 12px; background: ${color}; color: white; text-decoration: none; border-radius: 8px; font-size: 11px; font-weight: 600;">
-              Se 12t prognose →
-            </a>
-          </div>
-        `);
-
-      marker.on('click', () => {
+      el.addEventListener('mouseleave', () => {
+        el.style.transform = 'scale(1)';
+      });
+      el.addEventListener('click', () => {
         onSelectSpot(forecast.spot.id);
       });
+
+      // Create popup
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <div style="text-align: center; padding: 6px; min-width: 130px; font-family: system-ui;">
+          <p style="font-weight: bold; margin: 0 0 6px 0; font-size: 15px; color: #1a202c;">${forecast.spot.name}</p>
+          <p style="font-size: 22px; font-weight: bold; margin: 0 0 6px 0; color: ${color};">${displayProbability}%</p>
+          <p style="font-size: 12px; color: #666; margin: 0 0 8px 0;">
+            ☁️ ${Math.round(displayWeather.cloudCoverage)}% • ${Math.round(displayWeather.temperature)}°C
+          </p>
+          <a href="/forecast?spotId=${forecast.spot.id}" style="display: inline-block; margin-top: 4px; padding: 6px 14px; background: ${color}; color: white; text-decoration: none; border-radius: 10px; font-size: 12px; font-weight: 600;">
+            Se 12t prognose →
+          </a>
+        </div>
+      `);
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([forecast.spot.longitude, forecast.spot.latitude])
+        .setPopup(popup)
+        .addTo(map);
 
       markersRef.current.push(marker);
     });
   }, [forecasts, onSelectSpot, animationHour]);
 
-  // Add dynamic halo badges along aurora oval
+  // Add aurora oval halo badges
   useEffect(() => {
-    const map = mapInstanceRef.current;
+    const map = mapRef.current;
     if (!map || auroraData.length === 0 || !showOverlay) return;
 
     console.log('🎯 Rendering aurora halo badges along oval');
 
-    // Sample every 5th point from aurora oval for badges
     const badgePoints = auroraData.filter((_, i) => i % 5 === 0);
 
-    badgePoints.forEach((point, index) => {
+    badgePoints.forEach((point) => {
       const probability = calculateProbabilityFromOvalPosition(point.lat, point.lon, kpIndex);
       const color = getMarkerColor(probability);
 
-      const badge = L.divIcon({
-        className: 'aurora-halo-badge',
-        html: `
-          <div style="
-            background: ${color};
-            color: white;
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            white-space: nowrap;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-            border: 1.5px solid rgba(255,255,255,0.8);
-          ">
-            ${Math.round(probability)}%
-          </div>
-        `,
-        iconSize: [40, 20],
-        iconAnchor: [20, 10],
-      });
+      const el = document.createElement('div');
+      el.style.cssText = `
+        background: ${color};
+        color: white;
+        padding: 3px 9px;
+        border-radius: 11px;
+        font-size: 11px;
+        font-weight: bold;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        border: 1.5px solid rgba(255,255,255,0.9);
+        font-family: system-ui;
+      `;
+      el.textContent = `${Math.round(probability)}%`;
 
-      const marker = L.marker([point.lat, point.lon], { icon: badge })
-        .addTo(map)
-        .bindPopup(`
-          <div style="text-align: center; padding: 4px;">
-            <p style="font-weight: bold; margin: 0 0 4px 0;">Aurora Oval</p>
-            <p style="font-size: 16px; font-weight: bold; margin: 0; color: ${color};">${Math.round(probability)}%</p>
-            <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">Lat: ${point.lat.toFixed(2)}°</p>
-          </div>
-        `);
+      const popup = new mapboxgl.Popup({ offset: 15 }).setHTML(`
+        <div style="text-align: center; padding: 5px; font-family: system-ui;">
+          <p style="font-weight: bold; margin: 0 0 4px 0; font-size: 13px; color: #1a202c;">Aurora Oval</p>
+          <p style="font-size: 18px; font-weight: bold; margin: 0; color: ${color};">${Math.round(probability)}%</p>
+          <p style="font-size: 11px; color: #666; margin: 4px 0 0 0;">Lat: ${point.lat.toFixed(2)}°</p>
+        </div>
+      `);
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([point.lon, point.lat])
+        .setPopup(popup)
+        .addTo(map);
 
       markersRef.current.push(marker);
     });
@@ -394,7 +462,7 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
 
   return (
     <div className="relative w-full h-full">
-      <div ref={mapRef} className="w-full h-full" />
+      <div ref={mapContainerRef} className="w-full h-full" />
 
       {/* Aurora Oval Toggle */}
       <button
@@ -408,10 +476,15 @@ export default function AuroraMapFullscreen({ forecasts, selectedSpotId, onSelec
         🌌 Nordlysbelte
       </button>
 
+      {/* Map info badge */}
       <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-xs z-[1000]">
-        <span className="text-white/90">KP {kpIndex.toFixed(1)} • {forecasts.length} lokasjoner</span>
+        <span className="text-white/90">
+          KP {kpIndex.toFixed(1)} • {forecasts.length} lokasjoner
+          {!hasUnrestrictedAccess && ' • Tromsø-området'}
+        </span>
       </div>
 
+      {/* NOAA overlay indicator */}
       {showOverlay && auroraData.length > 0 && (
         <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-sm rounded-lg px-2 py-1 text-xs z-[1000] flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-green-500/70" />

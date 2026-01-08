@@ -11,7 +11,7 @@ interface AppSettings {
 }
 
 export default function SettingsPage() {
-  const { isPremium, setIsPremium, subscriptionTier, hoursRemaining } = usePremium();
+  const { isPremium, setIsPremium, subscriptionTier, hoursRemaining, unlockFeatures } = usePremium();
   const [settings, setSettings] = useState<AppSettings>({
     mapMode: 'live',
     devMode: true,
@@ -269,6 +269,78 @@ export default function SettingsPage() {
               />
               <div className="w-14 h-8 bg-arctic-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-500/20 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-yellow-500"></div>
             </label>
+          </div>
+
+          {/* Subscription Tier Selector (for testing map restrictions) */}
+          <div className="p-4 bg-arctic-900 rounded-lg border border-white/5">
+            <div className="mb-3">
+              <h3 className="text-white font-medium mb-1">Subscription Tier (Test Map Bounds)</h3>
+              <p className="text-white/60 text-sm">
+                Test different subscription levels to verify map restrictions
+              </p>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                onClick={() => {
+                  localStorage.setItem('subscription_tier', 'free');
+                  localStorage.removeItem('subscription_expires_at');
+                  window.location.reload();
+                }}
+                className={`px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                  subscriptionTier === 'free'
+                    ? 'bg-slate-500 text-white'
+                    : 'bg-arctic-700 text-white/70 hover:bg-arctic-600'
+                }`}
+              >
+                Free
+              </button>
+              <button
+                onClick={() => {
+                  unlockFeatures('premium_24h', 24);
+                  window.location.reload();
+                }}
+                className={`px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                  subscriptionTier === 'premium_24h'
+                    ? 'bg-yellow-500 text-white'
+                    : 'bg-arctic-700 text-white/70 hover:bg-arctic-600'
+                }`}
+              >
+                Pro 24h
+              </button>
+              <button
+                onClick={() => {
+                  unlockFeatures('premium_7d', 168);
+                  window.location.reload();
+                }}
+                className={`px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                  subscriptionTier === 'premium_7d'
+                    ? 'bg-yellow-500 text-white'
+                    : 'bg-arctic-700 text-white/70 hover:bg-arctic-600'
+                }`}
+              >
+                Pro 7d
+              </button>
+              <button
+                onClick={() => {
+                  unlockFeatures('enterprise', 999999);
+                  window.location.reload();
+                }}
+                className={`px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                  subscriptionTier === 'enterprise'
+                    ? 'bg-primary text-white'
+                    : 'bg-arctic-700 text-white/70 hover:bg-arctic-600'
+                }`}
+              >
+                Enterprise
+              </button>
+            </div>
+            <div className="mt-3 p-3 bg-arctic-800 rounded-lg">
+              <p className="text-xs text-white/50">
+                <strong className="text-white/70">Current tier:</strong> {subscriptionTier}
+                {subscriptionTier === 'enterprise' && ' (Full map access)'}
+                {(subscriptionTier === 'free' || subscriptionTier === 'premium_24h' || subscriptionTier === 'premium_7d') && ' (Tromsø area only)'}
+              </p>
+            </div>
           </div>
         </div>
       </div>
