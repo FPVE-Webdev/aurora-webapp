@@ -5,9 +5,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { fetchCurrentKp, fetchSolarWind, calculateAuroraProbability, kpToLevel } from '@/lib/fetchers/noaa';
+import { fetchCurrentKp, fetchSolarWind, kpToLevel } from '@/lib/fetchers/noaa';
 import { fetchWeather } from '@/lib/fetchers/metno';
 import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
+import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 
 // Tromsø coordinates (default location)
 const DEFAULT_LAT = 69.6492;
@@ -43,14 +44,17 @@ export async function GET(request: Request) {
       fetchSolarWind(),
     ]);
 
-    // Calculate aurora probability with enhanced factors
-    const probability = calculateAuroraProbability(
-      kp,
-      weather.cloudCoverage,
-      solarWind?.bz_gsm,
-      solarWind?.speed,
-      solarWind?.density
-    );
+    // Calculate aurora probability with daylight check
+    const probabilityResult = calculateAuroraProbability({
+      kpIndex: kp,
+      cloudCoverage: weather.cloudCoverage,
+      temperature: weather.temperature,
+      latitude: lat,
+      longitude: lon,
+      date: new Date(),
+    });
+    const probability = probabilityResult.probability;
+    const canView = probabilityResult.canView;
     const score = Math.round((kp / 9) * 100); // Convert KP to 0-100 score
     const level = kpToLevel(kp);
 
@@ -75,6 +79,7 @@ export async function GET(request: Request) {
       score,
       kp: Math.round(kp * 10) / 10,
       probability,
+      canView, // Daylight check result
       level,
       confidence: 'high' as const,
 
@@ -100,7 +105,9 @@ export async function GET(request: Request) {
         updated: solarWind.time_tag
       } : null,
       headline:
-        lang === 'no'
+        !canView
+          ? (lang === 'no' ? 'For lyst for nordlys' : 'Too bright for aurora')
+          : lang === 'no'
           ? probability > 70
             ? 'Nordlys synlig akkurat nå!'
             : probability > 40
@@ -112,7 +119,11 @@ export async function GET(request: Request) {
           ? 'Northern lights possible now'
           : 'Low chances for aurora now',
       summary:
-        lang === 'no'
+        !canView
+          ? (lang === 'no'
+            ? `Det er for lyst til å se nordlys nå (KP ${kp.toFixed(1)}). Sjekk igjen etter mørkets frembrudd.`
+            : `It's too bright to see aurora now (KP ${kp.toFixed(1)}). Check again after dark.`)
+          : lang === 'no'
           ? probability > 70
             ? `Sterk nordlysaktivitet (KP ${kp.toFixed(1)}). Gå ut nå for beste sjanse!`
             : probability > 40
@@ -123,7 +134,11 @@ export async function GET(request: Request) {
           : probability > 40
           ? `Moderate aurora activity (KP ${kp.toFixed(1)}). Check the sky regularly.`
           : `Low aurora activity (KP ${kp.toFixed(1)}). Be patient.`,
-      best_time: lang === 'no' ? 'Akkurat nå' : 'Right now',
+      best_time: !canView
+        ? (probabilityResult.nextViewableTime
+          ? new Date(probabilityResult.nextViewableTime).toLocaleTimeString('no', { hour: '2-digit', minute: '2-digit' })
+          : (lang === 'no' ? 'Senere i kveld' : 'Later tonight'))
+        : (lang === 'no' ? 'Akkurat nå' : 'Right now'),
       tips:
         lang === 'no'
           ? ['Gå bort fra bylys', 'La øynene tilpasse seg mørket (10 min)', 'Se mot nord']

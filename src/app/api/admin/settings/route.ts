@@ -7,8 +7,8 @@ type AppSettings = {
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
-  mapMode: 'demo',
-  devMode: false,
+  mapMode: 'live',
+  devMode: true,
   showBetaBadge: true,
 };
 

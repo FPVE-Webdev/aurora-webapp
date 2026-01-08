@@ -11,8 +11,8 @@ interface AppSettings {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>({
-    mapMode: 'demo',
-    devMode: false,
+    mapMode: 'live',
+    devMode: true,
     showBetaBadge: true,
   });
   const [isLoading, setIsLoading] = useState(true);
