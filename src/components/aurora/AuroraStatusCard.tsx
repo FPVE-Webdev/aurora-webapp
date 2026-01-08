@@ -17,7 +17,6 @@ import {
 } from '@/lib/auroraTheme';
 import { getProbabilityEmoji, getProbabilityLabel } from '@/lib/constants/auroraStatus';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useNext4HoursPeak } from '@/hooks/useNext4HoursPeak';
 import { Tooltip } from '@/components/ui/Tooltip';
 
 interface AuroraStatusCardProps {
@@ -29,11 +28,8 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
   const { currentProbability, weather, bestViewingTime } = data;
   const kpIndex = data.hourlyForecast[0]?.kpIndex || 3;
 
-  // Fetch 4-hour peak probability
-  const { peakProbability, peakHour } = useNext4HoursPeak(data.spot.id);
-
-  // Use peak probability for display instead of current
-  const displayProbability = peakProbability > 0 ? peakProbability : currentProbability;
+  // Use current probability (real-time value)
+  const displayProbability = currentProbability;
 
   const getProbabilityColor = (probability: number): string => {
     if (probability >= 70) return 'text-green-500';
@@ -98,9 +94,6 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
           </div>
           <p className="text-base font-semibold text-white/90 bg-white/10 px-4 py-2 rounded-full inline-block">
             {getProbabilityLabel(displayProbability)} {t('tonight')}
-          </p>
-          <p className="text-xs text-white/60 mt-2">
-            {t('next4Hours') || 'Neste 4 timer'}
           </p>
         </div>
 

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { clamp01 } from '@/lib/utils/mathUtils';
 import { shareStoryImage } from '@/lib/shareStory';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useNext4HoursPeak } from '@/hooks/useNext4HoursPeak';
+import { useAuroraData } from '@/hooks/useAuroraData';
 import { Tooltip } from '@/components/ui/Tooltip';
 import Kart3VideoOverlay from './components/Kart3VideoOverlay';
 
@@ -50,11 +50,23 @@ function classifyWeatherType(cloudCoverage: number): number {
 
 export default function Kart3View() {
   const { t } = useLanguage();
-  const [kpIndex, setKpIndex] = useState(3.2);
-  const [auroraProbability, setAuroraProbability] = useState(45);
-  const [cloudCoverage, setCloudCoverage] = useState(75);
+
+  // Use unified aurora data hook
+  const {
+    currentKp,
+    spotForecasts,
+    selectedSpot,
+    selectSpot
+  } = useAuroraData();
+
+  // Get Tromsø forecast
+  const tromsoForecast = spotForecasts.find(f => f.spot.id === 'troms') || spotForecasts[0];
+  const auroraProbability = tromsoForecast?.currentProbability || 0;
+  const cloudCoverage = tromsoForecast?.weather.cloudCoverage || 0;
+  const kpIndex = currentKp;
+
   const [weatherData, setWeatherData] = useState<Kart3WeatherData>({
-    windSpeed: 6,
+    windSpeed: tromsoForecast?.weather.windSpeed || 6,
     windDirection: 270,
     weatherType: 2,
     precipitation: 0,
@@ -63,9 +75,8 @@ export default function Kart3View() {
   const [bestSpotError, setBestSpotError] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
 
-  // Fetch 4-hour peak probability
-  const { peakProbability } = useNext4HoursPeak('tromso');
-  const displayProbability = peakProbability > 0 ? peakProbability : auroraProbability;
+  // Use current probability (synchronized with all other views)
+  const displayProbability = auroraProbability;
 
   const intensity01 = useMemo(() => {
     return clamp01((kpIndex / 9) * 0.65 + (auroraProbability / 100) * 0.55);
@@ -133,50 +144,16 @@ export default function Kart3View() {
     }
   };
 
+  // Update weather data when tromsoForecast changes
   useEffect(() => {
-    let cancelled = false;
-    let timer: number | null = null;
-
-    const fetchNow = async () => {
-      try {
-        const res = await fetch('/api/aurora/now?lang=no', { cache: 'no-store' });
-        if (!res.ok) return;
-        const json = (await res.json()) as NowResponse;
-
-        if (cancelled) return;
-
-        if (typeof json.kp === 'number') setKpIndex(json.kp);
-        if (typeof json.probability === 'number') setAuroraProbability(json.probability);
-
-        const clouds = typeof json.weather?.cloudCoverage === 'number' ? json.weather.cloudCoverage : undefined;
-        if (typeof clouds === 'number') {
-          setCloudCoverage(clouds);
-          setWeatherData((prev) => ({
-            ...prev,
-            weatherType: classifyWeatherType(clouds),
-          }));
-        }
-
-        const windSpeed = typeof json.weather?.windSpeed === 'number' ? json.weather.windSpeed : undefined;
-        if (typeof windSpeed === 'number') {
-          setWeatherData((prev) => ({
-            ...prev,
-            windSpeed,
-          }));
-        }
-      } catch {
-        // ignore; keep last values
-      }
-    };
-
-    fetchNow();
-    timer = window.setInterval(fetchNow, 5 * 60 * 1000);
-
-    return () => {
-      cancelled = true;
-      if (timer) window.clearInterval(timer);
-    };
-  }, []);
+    if (tromsoForecast) {
+      setWeatherData((prev) => ({
+        ...prev,
+        windSpeed: tromsoForecast.weather.windSpeed || prev.windSpeed,
+        weatherType: classifyWeatherType(tromsoForecast.weather.cloudCoverage),
+      }));
+    }
+  }, [tromsoForecast]);
 
   return (
     <div className="relative w-full h-[100svh] overflow-hidden bg-black" style={backgroundStyle}>
@@ -201,9 +178,6 @@ export default function Kart3View() {
                 </div>
                 <div className="text-white text-lg font-semibold">
                   KP {kpIndex.toFixed(1)} · {Math.round(displayProbability)}%
-                </div>
-                <div className="text-[10px] text-white/50 mt-0.5">
-                  {t('next4Hours') || 'Neste 4 timer'}
                 </div>
               </div>
               <Link
