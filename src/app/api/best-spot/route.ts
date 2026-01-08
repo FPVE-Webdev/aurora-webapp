@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { CHASE_REGIONS, MAP_CONFIG } from '@/app/kart2/map.config';
+import { CHASE_REGIONS, MAP_CONFIG } from '@/lib/constants/chaseRegions';
 
 type RegionVisibility = {
   id: string;

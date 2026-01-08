@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { clamp01 } from '@/lib/utils/mathUtils';
 import { shareStoryImage } from '@/lib/shareStory';
 import Kart3VideoOverlay from './components/Kart3VideoOverlay';
 
@@ -58,7 +59,6 @@ export default function Kart3View() {
   const [isSharing, setIsSharing] = useState(false);
 
   const intensity01 = useMemo(() => {
-    const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
     return clamp01((kpIndex / 9) * 0.65 + (auroraProbability / 100) * 0.55);
   }, [kpIndex, auroraProbability]);
 

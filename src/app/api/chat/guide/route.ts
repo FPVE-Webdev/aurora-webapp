@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
-import { CHASE_REGIONS } from '@/app/kart2/map.config';
+import { CHASE_REGIONS } from '@/lib/constants/chaseRegions';
 import { calculateMasterStatus, calculateSunElevation } from '@/lib/calculations/masterStatus';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 import { scoreToKpIndex } from '@/lib/tromsoAIMapper';

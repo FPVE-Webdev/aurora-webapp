@@ -1,3 +1,14 @@
+/**
+ * @deprecated This file is DEPRECATED and kept for backwards compatibility only.
+ *
+ * Use the following instead:
+ * - `/lib/calculations/probabilityCalculator.ts` for aurora probability calculations
+ * - `/lib/calculations/sunCalculations.ts` for twilight and sun position calculations
+ * - `/lib/utils/mathUtils.ts` for mathematical utility functions
+ *
+ * This file will be removed in a future version.
+ */
+
 import { ProbabilityLevel, ConfidenceLevel, TwilightPhase } from "@/types/aurora";
 
 // Twilight info for aurora visibility calculations

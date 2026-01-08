@@ -1,8 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-
-const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+import { clamp01 } from '@/lib/utils/mathUtils';
 
 type Props = {
   /** 0..1 */

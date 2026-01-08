@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { XIcon } from 'lucide-react';
+import { clamp01 } from '@/lib/utils/mathUtils';
 import Kart3VideoOverlay from '@/app/kart3/components/Kart3VideoOverlay';
 
 type NowResponse = {
@@ -32,7 +33,6 @@ export default function IntroOverlay({ onClose }: Props) {
   };
 
   const intensity01 = useMemo(() => {
-    const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
     return clamp01((kpIndex / 9) * 0.65 + (auroraProbability / 100) * 0.55);
   }, [kpIndex, auroraProbability]);
 
