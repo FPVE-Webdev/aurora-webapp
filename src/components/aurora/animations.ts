@@ -49,7 +49,7 @@ export function deriveOverlayState(
   const kpIndex =
     (hourData as any)?.kp ??
     (hourData as any)?.kpIndex ??
-    forecast.kp ??
+    (forecast as any)?.kp ??
     0;
 
   const cloudCoverage =
