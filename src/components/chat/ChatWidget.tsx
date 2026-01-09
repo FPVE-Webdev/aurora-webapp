@@ -5,6 +5,7 @@ import { MessageCircle, X, Send, Sparkles, Loader2 } from 'lucide-react';
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
 import { usePremium } from '@/contexts/PremiumContext';
 import { cn } from '@/lib/utils';
+import type { StripeProductKey } from '@/lib/stripe';
 
 interface Message {
   id: string;
@@ -21,6 +22,8 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [hasIntro, setHasIntro] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const statusLabel = useMemo(() => {
@@ -118,6 +121,54 @@ export function ChatWidget() {
     }
   };
 
+  const handleUpgrade = async (productKey: StripeProductKey = 'PREMIUM_24H') => {
+    try {
+      setUpgradeLoading(true);
+      setUpgradeError(null);
+
+      const email = prompt('Skriv inn e-postadressen din for kvittering:');
+      if (!email) {
+        setUpgradeLoading(false);
+        return;
+      }
+
+      if (!email.includes('@')) {
+        setUpgradeError('Ugyldig e-postadresse');
+        setUpgradeLoading(false);
+        return;
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user_email', email);
+      }
+
+      const response = await fetch('/api/payments/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productKey, email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Kunne ikke åpne betalingsvindu');
+      }
+
+      if (!data.url) {
+        throw new Error('Stripe returnerte ikke en betalingslenke');
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      setUpgradeError(
+        error instanceof Error ? error.message : 'Betaling feilet, prøv igjen'
+      );
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
+
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none">
       {/* Chat Window */}
@@ -176,16 +227,19 @@ export function ChatWidget() {
                 </div>
                 {/* Upgrade CTA for locked features */}
                 {hasLockIcon && !isPremium && (
-                  <div className="flex justify-start mb-2">
+                  <div className="flex flex-col justify-start mb-2 gap-2">
                     <button
-                      onClick={() => {
-                        // TODO: Open payment modal
-                        console.log('Open upgrade modal from chat');
-                      }}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-primary to-purple-500 text-white text-xs font-semibold hover:shadow-lg hover:scale-105 transition-all"
+                      onClick={() => handleUpgrade('PREMIUM_24H')}
+                      disabled={upgradeLoading}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-primary to-purple-500 text-white text-xs font-semibold hover:shadow-lg hover:scale-105 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Unlock Premium • From 49 NOK
+                      {upgradeLoading ? 'Åpner Stripe...' : 'Unlock Premium • From 49 NOK'}
                     </button>
+                    {upgradeError && (
+                      <span className="text-[11px] text-red-300">
+                        {upgradeError}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

@@ -8,6 +8,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
 
+function getBearerToken(request: NextRequest) {
+  const header = request.headers.get('authorization') || request.headers.get('Authorization');
+  if (!header) return null;
+  const [scheme, token] = header.split(' ');
+  if (!scheme || scheme.toLowerCase() !== 'bearer' || !token) return null;
+  return token;
+}
+
 /**
  * GET /api/organizations
  *
@@ -24,12 +32,33 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // TODO: Get user from auth token
-    // For now, return demo organization
+    const token = getBearerToken(request);
+
+    if (!token) {
+      return NextResponse.json({ error: 'Missing bearer token' }, { status: 401 });
+    }
+
+    // Validate token with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authData?.user) {
+      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
+    }
+
+    // Fetch the user row to determine organization
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('id, organization_id, role')
+      .eq('auth_id', authData.user.id)
+      .single();
+
+    if (userError || !userRow) {
+      return NextResponse.json({ error: 'User not linked to organization' }, { status: 403 });
+    }
+
     const { data, error } = await supabase
       .from('organizations')
       .select('*')
-      .eq('slug', 'demo')
+      .eq('id', userRow.organization_id)
       .single();
 
     if (error) {
@@ -65,6 +94,30 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const token = getBearerToken(request);
+
+    if (!token) {
+      return NextResponse.json({ error: 'Missing bearer token' }, { status: 401 });
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authData?.user) {
+      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
+    }
+
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('id, organization_id, role')
+      .eq('auth_id', authData.user.id)
+      .single();
+
+    if (userError || !userRow || !['owner', 'admin'].includes(userRow.role)) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { name, email, domain, phone, address, city, postal_code, country } = body;
 

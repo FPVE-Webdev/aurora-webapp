@@ -50,6 +50,9 @@ export const RATE_LIMITS = {
   },
 };
 
+// Cache dynamic limiters keyed by the per-hour limit to avoid recreating per request
+const dynamicLimiters = new Map<number, Ratelimit>();
+
 /**
  * Create rate limiter for a specific tier
  */
@@ -65,6 +68,26 @@ function createRateLimiter(limit: number, window: '1h') {
     analytics: true,
     prefix: 'ratelimit:aurora',
   });
+}
+
+/**
+ * Get (or create) a dynamic limiter for a custom limit returned from Supabase
+ */
+function getDynamicLimiter(limit: number) {
+  if (!Number.isFinite(limit) || limit <= 0) {
+    return null;
+  }
+
+  if (dynamicLimiters.has(limit)) {
+    return dynamicLimiters.get(limit)!;
+  }
+
+  const limiter = createRateLimiter(limit, '1h');
+  if (limiter) {
+    dynamicLimiters.set(limit, limiter);
+  }
+
+  return limiter;
 }
 
 // Create rate limiters for each tier
@@ -98,9 +121,10 @@ function getRateLimiterForKey(apiKey: string) {
  * Check if a request is allowed based on rate limits
  *
  * @param apiKey - The API key making the request
+ * @param limitOverride - Optional per-hour limit returned from Supabase
  * @returns Object with success status and limit info
  */
-export async function checkRateLimit(apiKey: string) {
+export async function checkRateLimit(apiKey: string, limitOverride?: number) {
   // If Upstash is not configured, allow all requests
   if (!isConfigured) {
     console.warn('[RATE_LIMIT] ⚠️ Upstash not configured, rate limiting disabled');
@@ -113,7 +137,10 @@ export async function checkRateLimit(apiKey: string) {
     };
   }
 
-  const limiter = getRateLimiterForKey(apiKey);
+  const limiter =
+    limitOverride && Number.isFinite(limitOverride)
+      ? getDynamicLimiter(limitOverride)
+      : getRateLimiterForKey(apiKey);
 
   // If no limiter (e.g., dev keys), allow request
   if (!limiter) {
@@ -154,11 +181,16 @@ export async function checkRateLimit(apiKey: string) {
  * Get rate limit info for an API key (without consuming a token)
  *
  * @param apiKey - The API key to check
+ * @param limitOverride - Optional per-hour limit returned from Supabase
  * @returns Rate limit configuration
  */
-export function getRateLimitInfo(apiKey: string) {
+export function getRateLimitInfo(apiKey: string, limitOverride?: number) {
+  if (limitOverride && Number.isFinite(limitOverride)) {
+    return { tier: 'custom', limit: limitOverride, window: '1h' as const };
+  }
+
   if (RATE_LIMITS.dev.keys.includes(apiKey)) {
-    return { tier: 'development', limit: Infinity, window: '1h' };
+    return { tier: 'development', limit: Infinity, window: '1h' as const };
   }
 
   if (RATE_LIMITS.ios.keys.includes(apiKey)) {

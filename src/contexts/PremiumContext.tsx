@@ -21,10 +21,6 @@ interface PremiumContextType {
   setIsPremium: (value: boolean) => void;
   checkSubscriptionStatus: () => Promise<void>;
   unlockFeatures: (tier: SubscriptionTier, durationHours: number) => void;
-
-  // Legacy (deprecated)
-  subscriptionType: 'free' | 'premium' | 'trial';
-  trialDaysRemaining: number | null;
 }
 
 const PremiumContext = createContext<PremiumContextType | undefined>(undefined);
@@ -56,10 +52,6 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     ? Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60))
     : null;
 
-  // Legacy state (deprecated, kept for backward compatibility)
-  const [subscriptionType, setSubscriptionType] = useState<'free' | 'premium' | 'trial'>('free');
-  const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
-
   // Unlock features (called after successful payment)
   const unlockFeatures = useCallback((tier: SubscriptionTier, durationHours: number) => {
     const expiryTimestamp = Date.now() + durationHours * 60 * 60 * 1000;
@@ -72,7 +64,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('subscription_expires_at', expiryTimestamp.toString());
     }
 
-    console.log(`✅ Unlocked ${tier} for ${durationHours}h (expires: ${new Date(expiryTimestamp).toLocaleString('no-NO')})`);
+
   }, []);
 
   // Check subscription status with backend verification
@@ -90,7 +82,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('subscription_expires_at');
           localStorage.removeItem('user_email');
         }
-        console.log('⏰ Subscription expired, reverted to free');
+
       }
 
       // Verify with backend if email is stored
@@ -114,14 +106,12 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
               setExpiresAt(backendExpiresAt);
               localStorage.setItem('subscription_tier', data.tier);
               localStorage.setItem('subscription_expires_at', backendExpiresAt.toString());
-              console.log('✅ Subscription verified from backend:', data.tier);
             } else if (!data.isPremium && isPremium) {
               // Backend says not premium, clear local
               setSubscriptionTier('free');
               setExpiresAt(null);
               localStorage.removeItem('subscription_tier');
               localStorage.removeItem('subscription_expires_at');
-              console.log('⚠️ Backend invalidated local premium status');
             }
           } catch (err) {
             // Fallback to local state if backend check fails
@@ -130,8 +120,6 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      console.log('✅ Premium status checked:', isPremium ? `${subscriptionTier} (${hoursRemaining}h left)` : 'Free');
-    } catch (err) {
       console.error('❌ Failed to check subscription:', err);
       setError(err instanceof Error ? err.message : 'Failed to check subscription');
     } finally {
@@ -200,10 +188,6 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
         error,
         setIsPremium,
         checkSubscriptionStatus,
-
-        // Legacy (deprecated)
-        subscriptionType,
-        trialDaysRemaining,
       }}
     >
       {children}

@@ -5,6 +5,8 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 import { SubscriptionTier } from '@/contexts/PremiumContext';
+import AuroraOverlay from '@/components/aurora/AuroraOverlay';
+import { deriveOverlayState } from '@/components/aurora/animations';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -108,6 +110,7 @@ export default function AuroraMapFullscreen({
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [auroraData, setAuroraData] = useState<AuroraPoint[]>([]);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [showAnimation, setShowAnimation] = useState(true);
   const [hoveredMarker, setHoveredMarker] = useState<{
     name: string;
     temp: number;
@@ -118,6 +121,9 @@ export default function AuroraMapFullscreen({
 
   // Determine if user has unrestricted map access (Enterprise only)
   const hasUnrestrictedAccess = subscriptionTier === 'enterprise';
+  const activeForecast =
+    forecasts.find((f) => f.spot.id === selectedSpotId) || forecasts[0];
+  const overlayState = deriveOverlayState(activeForecast as any, animationHour);
 
   // Fetch aurora oval data
   const fetchAuroraData = useCallback(async () => {
@@ -481,6 +487,14 @@ export default function AuroraMapFullscreen({
     <div className="relative w-full h-full">
       <div ref={mapContainerRef} className="w-full h-full" />
 
+      {/* Aurora + cloud overlay */}
+      {showAnimation && (
+        <AuroraOverlay
+          intensity01={overlayState.intensity01}
+          cloud01={overlayState.cloud01}
+        />
+      )}
+
       {/* Aurora Oval Toggle */}
       <button
         onClick={() => setShowOverlay(!showOverlay)}
@@ -491,6 +505,18 @@ export default function AuroraMapFullscreen({
         }`}
       >
         🌌 Nordlysbelte
+      </button>
+
+      {/* Animation toggle */}
+      <button
+        onClick={() => setShowAnimation(!showAnimation)}
+        className={`absolute top-2 left-2 z-[1000] px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          showAnimation
+            ? 'bg-gradient-to-br from-emerald-400 to-cyan-600 text-white'
+            : 'bg-black/50 text-white/70 hover:bg-black/70'
+        }`}
+      >
+        ✨ Animasjon
       </button>
 
       {/* Map info badge */}

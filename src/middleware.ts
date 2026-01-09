@@ -9,19 +9,53 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { checkRateLimit, getRateLimitInfo } from './lib/rateLimiter';
 import { logAuthEvent, logRateLimitEvent } from './lib/edgeLogger';
+import { createClient } from '@supabase/supabase-js';
 
-// Temporary in-memory API key storage
-// TODO Phase 3: Move to Supabase database
-const VALID_API_KEYS = new Set([
-  // iOS App - High priority, high rate limit
+type VerifiedKey = {
+  organization_id: string | null;
+  rate_limit_tier: string | null;
+  rate_limit_per_hour: number | null;
+  allowed_origins: string[] | null;
+};
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Edge-safe Supabase client for key verification (read-only)
+const supabase =
+  supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : null;
+
+// Fallback static keys only used if Supabase is not configured to avoid downtime
+const FALLBACK_API_KEYS = new Set([
   'tro_app_aurora_watcher_v1',
-
-  // Demo tier - For testing (will be generated dynamically later)
   'tro_demo_test_key',
-
-  // Development/Testing
   ...(process.env.NODE_ENV === 'development' ? ['dev_test_key'] : []),
 ]);
+
+async function verifyApiKey(apiKey: string): Promise<VerifiedKey | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase.rpc('verify_api_key', { p_key: apiKey });
+
+  if (error) {
+    console.error('[middleware] verify_api_key failed:', error);
+    return null;
+  }
+
+  if (!data || data.length === 0) {
+    return null;
+  }
+
+  const row = data[0] as VerifiedKey;
+  return {
+    organization_id: row.organization_id ?? null,
+    rate_limit_tier: row.rate_limit_tier ?? null,
+    rate_limit_per_hour: row.rate_limit_per_hour ?? null,
+    allowed_origins: (row.allowed_origins as unknown as string[]) ?? null,
+  };
+}
 
 /**
  * Middleware function - runs before API routes and admin routes
@@ -92,14 +126,17 @@ export async function middleware(request: NextRequest) {
         {
           error: 'Unauthorized',
           message: 'API key is required. Please provide X-API-Key header.',
-          documentation: 'https://aurora.tromso.ai/docs/authentication'
+          documentation: 'https://aurora.tromso.ai/docs/authentication',
         },
         { status: 401 }
       );
     }
 
-    // Validate API key
-    if (!VALID_API_KEYS.has(apiKey)) {
+    // Verify API key via Supabase (preferred) with fallback to static keys if Supabase is unavailable
+    const verified = await verifyApiKey(apiKey);
+    const apiKeyValid = verified !== null || (!supabase && FALLBACK_API_KEYS.has(apiKey));
+
+    if (!apiKeyValid) {
       logAuthEvent({
         path: pathname,
         apiKey,
@@ -111,8 +148,21 @@ export async function middleware(request: NextRequest) {
         {
           error: 'Forbidden',
           message: 'Invalid API key.',
-          documentation: 'https://aurora.tromso.ai/docs/authentication'
+          documentation: 'https://aurora.tromso.ai/docs/authentication',
         },
+        { status: 403 }
+      );
+    }
+
+    // Enforce allowed origins from Supabase if provided (always allow same-origin)
+    const allowedOrigins = verified?.allowed_origins;
+    if (
+      allowedOrigins &&
+      allowedOrigins.length > 0 &&
+      !allowedOrigins.some((originPattern) => origin?.includes(originPattern))
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden', message: 'Origin not allowed for this API key' },
         { status: 403 }
       );
     }
@@ -124,9 +174,9 @@ export async function middleware(request: NextRequest) {
       success: true,
     });
 
-    // Check rate limit
-    const rateLimitResult = await checkRateLimit(apiKey);
-    const tierInfo = getRateLimitInfo(apiKey);
+    // Check rate limit (use Supabase-provided per-hour limit when available)
+    const rateLimitResult = await checkRateLimit(apiKey, verified?.rate_limit_per_hour ?? undefined);
+    const tierInfo = getRateLimitInfo(apiKey, verified?.rate_limit_per_hour ?? undefined);
 
     // Log rate limit check
     logRateLimitEvent({

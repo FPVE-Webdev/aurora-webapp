@@ -47,18 +47,27 @@ export function AuroraLiveMap() {
   }, [selectedSpot.id]);
 
   // Map spotForecasts to the format expected by the map component
-  const forecasts = spotForecasts.map(sf => ({
-    spot: sf.spot,
-    currentProbability: sf.currentProbability,
-    kp: currentKp,
-    weather: {
-      cloudCoverage: sf.weather.cloudCoverage,
-      temperature: sf.weather.temperature,
-      windSpeed: sf.weather.windSpeed,
-      symbolCode: sf.weather.symbolCode
-    },
-    hourlyForecast: sf.hourlyForecast
-  }));
+  const forecasts = spotForecasts
+    .filter(Boolean)
+    .map((sf) => {
+      const cloudCoverage = sf.weather?.cloudCoverage ?? 50;
+      const temperature = sf.weather?.temperature ?? 0;
+      const windSpeed = sf.weather?.windSpeed ?? 0;
+      const symbolCode = sf.weather?.symbolCode ?? 'cloudy';
+
+      return {
+        spot: sf.spot,
+        currentProbability: sf.currentProbability ?? 0,
+        kp: currentKp,
+        weather: {
+          cloudCoverage,
+          temperature,
+          windSpeed,
+          symbolCode,
+        },
+        hourlyForecast: sf.hourlyForecast ?? [],
+      };
+    });
 
   // Animation loop
   useEffect(() => {
@@ -91,7 +100,8 @@ export function AuroraLiveMap() {
     };
   }, [isPlaying]);
 
-  const selectedForecast = forecasts.find(f => f.spot.id === selectedSpotId) || forecasts[0];
+  const selectedForecast =
+    forecasts.find((f) => f.spot.id === selectedSpotId) || forecasts[0];
 
   const toggleAnimation = () => {
     if (isPlaying) {
