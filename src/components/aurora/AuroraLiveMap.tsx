@@ -120,12 +120,20 @@ export function AuroraLiveMap() {
 
   const toggleAnimation = () => {
     if (isPlaying) {
+      // #region agent log
+      console.log('[debug-live] toggleAnimation', { next: false, prev: true, animationProgress });
+      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:111',message:'toggleAnimation stop',data:{animationProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
       setIsPlaying(false);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
     } else {
+      // #region agent log
+      console.log('[debug-live] toggleAnimation', { next: true, prev: false, animationProgress });
+      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:121',message:'toggleAnimation start',data:{animationProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
       setIsPlaying(true);
       setAnimationProgress(0);
       lastTimeRef.current = performance.now();

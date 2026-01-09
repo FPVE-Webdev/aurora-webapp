@@ -382,83 +382,94 @@ export default function AuroraMapFullscreen({
     const map = mapRef.current;
     if (!map || forecasts.length === 0) return;
 
+    // #region agent log
+    console.log('[debug-live] markers effect', {
+      forecastCount: forecasts.length,
+      animationHour,
+      hourIndex: Math.floor(animationHour),
+    });
+    fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:370',message:'markers effect run',data:{forecastCount:forecasts.length,animationHour,hourIndex:Math.floor(animationHour)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8'})}).catch(()=>{});
+    // #endregion
+
     // Clear existing markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
     // Add markers for each forecast
     forecasts.forEach((forecast) => {
-      let displayProbability = forecast.currentProbability;
-      let displayKp = forecast.kp;
-      let displayWeather = forecast.weather;
+      try {
+        let displayProbability = forecast.currentProbability;
+        let displayKp = (forecast as any).kp;
+        let displayWeather = forecast.weather;
 
-      if (forecast.hourlyForecast && forecast.hourlyForecast.length > 0) {
-        const hourIndex = Math.floor(animationHour);
-        const hourData = forecast.hourlyForecast[hourIndex];
+        if (forecast.hourlyForecast && forecast.hourlyForecast.length > 0) {
+          const hourIndex = Math.floor(animationHour);
+          const hourData = forecast.hourlyForecast[hourIndex];
 
-        if (hourData) {
-          // #region agent log
-          const hdLog: any = hourData as any;
-          const hasWeatherObj = !!hdLog?.weather;
-          const hdKeys = hdLog ? Object.keys(hdLog) : [];
-          console.log('[debug-live] hourly shape', {
-            spotId: forecast.spot.id,
-            hourIndex,
-            hasWeatherObj,
-            hdKeys: hdKeys.slice(0, 20),
-          });
-          fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:381',message:'hourly shape',data:{spotId:forecast.spot.id,hourIndex,hasWeatherObj,hdKeys:hdKeys.slice(0,20)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
-          // #endregion
+          if (hourData) {
+            // #region agent log
+            const hdLog: any = hourData as any;
+            const hasWeatherObj = !!hdLog?.weather;
+            const hdKeys = hdLog ? Object.keys(hdLog) : [];
+            console.log('[debug-live] hourly shape', {
+              spotId: forecast.spot.id,
+              hourIndex,
+              hasWeatherObj,
+              hdKeys: hdKeys.slice(0, 20),
+            });
+            fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:402',message:'hourly shape',data:{spotId:forecast.spot.id,hourIndex,hasWeatherObj,hdKeys:hdKeys.slice(0,20)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
+            // #endregion
 
-          displayProbability = (hourData.canSeeAurora !== false)
-            ? hourData.probability
-            : 0;
+            displayProbability = (hourData.canSeeAurora !== false)
+              ? hourData.probability
+              : 0;
 
-          // Hourly data shape differs between sources (sometimes flat, sometimes nested under `weather`).
-          // Prefer nested if present; otherwise fall back to flat fields; finally fall back to base forecast.
-          const hd: any = hourData as any;
-          displayKp = hd.kp ?? hd.kpIndex ?? displayKp;
+            // Hourly data shape differs between sources (sometimes flat, sometimes nested under `weather`).
+            // Prefer nested if present; otherwise fall back to flat fields; finally fall back to base forecast.
+            const hd: any = hourData as any;
+            displayKp = hd.kp ?? hd.kpIndex ?? displayKp;
 
-          const cloudCoverage =
-            hd.weather?.cloudCoverage ??
-            hd.cloudCoverage ??
-            forecast.weather?.cloudCoverage ??
-            50;
+            const cloudCoverage =
+              hd.weather?.cloudCoverage ??
+              hd.cloudCoverage ??
+              forecast.weather?.cloudCoverage ??
+              50;
 
-          const temperature =
-            hd.weather?.temperature ??
-            hd.temperature ??
-            forecast.weather?.temperature ??
-            0;
+            const temperature =
+              hd.weather?.temperature ??
+              hd.temperature ??
+              forecast.weather?.temperature ??
+              0;
 
-          const windSpeed =
-            hd.weather?.windSpeed ??
-            hd.windSpeed ??
-            forecast.weather?.windSpeed ??
-            0;
+            const windSpeed =
+              hd.weather?.windSpeed ??
+              hd.windSpeed ??
+              forecast.weather?.windSpeed ??
+              0;
 
-          const symbolCode =
-            hd.weather?.conditions ??
-            hd.weather?.symbolCode ??
-            hd.symbolCode ??
-            forecast.weather?.symbolCode ??
-            'cloudy';
+            const symbolCode =
+              hd.weather?.conditions ??
+              hd.weather?.symbolCode ??
+              hd.symbolCode ??
+              forecast.weather?.symbolCode ??
+              'cloudy';
 
-          displayWeather = {
-            cloudCoverage,
-            temperature,
-            windSpeed,
-            symbolCode,
-          };
+            displayWeather = {
+              cloudCoverage,
+              temperature,
+              windSpeed,
+              symbolCode,
+            };
+          }
         }
       }
 
-      const color = getMarkerColor(displayProbability);
+        const color = getMarkerColor(displayProbability);
 
-      // Create custom marker element
-      const el = document.createElement('div');
-      el.className = 'aurora-marker';
-      el.style.cssText = `
+        // Create custom marker element
+        const el = document.createElement('div');
+        el.className = 'aurora-marker';
+        el.style.cssText = `
         background: ${color};
         color: white;
         padding: 4px 10px;
@@ -473,36 +484,42 @@ export default function AuroraMapFullscreen({
         transition: transform 0.2s;
         transform-origin: center center;
       `;
-      el.textContent = `${displayProbability}%`;
+        el.textContent = `${displayProbability}%`;
 
-      // Hover: show tooltip
-      el.addEventListener('mouseenter', (e) => {
-        el.style.transform = 'scale(1.15)';
-        const rect = el.getBoundingClientRect();
-        setHoveredMarker({
-          name: forecast.spot.name,
-          temp: displayWeather.temperature,
-          emoji: getWeatherEmoji(displayWeather.symbolCode),
-          x: rect.left + rect.width / 2,
-          y: rect.top
+        // Hover: show tooltip
+        el.addEventListener('mouseenter', (e) => {
+          el.style.transform = 'scale(1.15)';
+          const rect = el.getBoundingClientRect();
+          setHoveredMarker({
+            name: forecast.spot.name,
+            temp: displayWeather.temperature,
+            emoji: getWeatherEmoji(displayWeather.symbolCode),
+            x: rect.left + rect.width / 2,
+            y: rect.top
+          });
         });
-      });
 
-      el.addEventListener('mouseleave', () => {
-        el.style.transform = 'scale(1)';
-        setHoveredMarker(null);
-      });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'scale(1)';
+          setHoveredMarker(null);
+        });
 
-      // Click: select location
-      el.addEventListener('click', () => {
-        onSelectSpot(forecast.spot.id);
-      });
+        // Click: select location
+        el.addEventListener('click', () => {
+          onSelectSpot(forecast.spot.id);
+        });
 
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([forecast.spot.longitude, forecast.spot.latitude])
-        .addTo(map);
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([forecast.spot.longitude, forecast.spot.latitude])
+          .addTo(map);
 
-      markersRef.current.push(marker);
+        markersRef.current.push(marker);
+      } catch (err) {
+        // #region agent log
+        console.error('[debug-live] marker build failed', { spotId: forecast?.spot?.id }, err);
+        fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:510',message:'marker build failed',data:{spotId:forecast?.spot?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H9'})}).catch(()=>{});
+        // #endregion
+      }
     });
   }, [forecasts, onSelectSpot, animationHour]);
 
