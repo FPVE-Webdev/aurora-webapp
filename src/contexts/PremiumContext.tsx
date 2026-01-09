@@ -119,7 +119,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
           }
         }
       }
-
+    } catch (err) {
       console.error('❌ Failed to check subscription:', err);
       setError(err instanceof Error ? err.message : 'Failed to check subscription');
     } finally {
