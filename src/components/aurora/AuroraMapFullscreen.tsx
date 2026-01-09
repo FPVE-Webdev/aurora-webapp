@@ -10,6 +10,11 @@ import { deriveOverlayState } from '@/components/aurora/animations';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
+// Debug logging flag: enabled in dev or when explicitly toggled via env
+const debugLive =
+  process.env.NODE_ENV === 'development' ||
+  process.env.NEXT_PUBLIC_DEBUG_LIVE === 'true';
+
 interface HourlyData {
   time: string;
   hour: number;
@@ -217,8 +222,18 @@ export default function AuroraMapFullscreen({
       })
     });
 
-    // Add zoom controls
+    // Match manual canvas offset from design preview
+    const canvas = map.getCanvas();
+    canvas.style.left = '-2px';
+    canvas.style.top = '63px';
+
+    // Add zoom controls and place them below the overlay toggle
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    const ctrlTopRight = map.getContainer().querySelector<HTMLElement>('.mapboxgl-ctrl-top-right');
+    if (ctrlTopRight) {
+      ctrlTopRight.style.top = '116px';
+      ctrlTopRight.style.right = '16px';
+    }
 
     // #region agent log
     const onMapError = (e: any) => {
@@ -382,20 +397,31 @@ export default function AuroraMapFullscreen({
     const map = mapRef.current;
     if (!map || forecasts.length === 0) return;
 
-    // #region agent log
-    console.log('[debug-live] markers effect', {
-      forecastCount: forecasts.length,
-      animationHour,
-      hourIndex: Math.floor(animationHour),
-    });
-    fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:370',message:'markers effect run',data:{forecastCount:forecasts.length,animationHour,hourIndex:Math.floor(animationHour)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8'})}).catch(()=>{});
-    // #endregion
+    if (debugLive) {
+      // #region agent log
+      console.log('[debug-live] markers effect', {
+        forecastCount: forecasts.length,
+        animationHour,
+        hourIndex: Math.floor(animationHour),
+      });
+      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:370',message:'markers effect run',data:{forecastCount:forecasts.length,animationHour,hourIndex:Math.floor(animationHour)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8'})}).catch(()=>{});
+      // #endregion
+    }
 
     // Clear existing markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
     // Add markers for each forecast
+    const computedSummaries: Record<string, {
+      name: string;
+      probability: number;
+      kp: number;
+      cloudCoverage: number;
+      temperature: number;
+      windSpeed: number;
+    }> = {};
+
     forecasts.forEach((forecast) => {
       try {
         let displayProbability = forecast.currentProbability;
@@ -407,18 +433,20 @@ export default function AuroraMapFullscreen({
           const hourData = forecast.hourlyForecast[hourIndex];
 
           if (hourData) {
-            // #region agent log
-            const hdLog: any = hourData as any;
-            const hasWeatherObj = !!hdLog?.weather;
-            const hdKeys = hdLog ? Object.keys(hdLog) : [];
-            console.log('[debug-live] hourly shape', {
-              spotId: forecast.spot.id,
-              hourIndex,
-              hasWeatherObj,
-              hdKeys: hdKeys.slice(0, 20),
-            });
-            fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:402',message:'hourly shape',data:{spotId:forecast.spot.id,hourIndex,hasWeatherObj,hdKeys:hdKeys.slice(0,20)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
-            // #endregion
+            if (debugLive) {
+              // #region agent log
+              const hdLog: any = hourData as any;
+              const hasWeatherObj = !!hdLog?.weather;
+              const hdKeys = hdLog ? Object.keys(hdLog) : [];
+              console.log('[debug-live] hourly shape', {
+                spotId: forecast.spot.id,
+                hourIndex,
+                hasWeatherObj,
+                hdKeys: hdKeys.slice(0, 20),
+              });
+              fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:402',message:'hourly shape',data:{spotId:forecast.spot.id,hourIndex,hasWeatherObj,hdKeys:hdKeys.slice(0,20)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
+              // #endregion
+            }
 
             displayProbability = (hourData.canSeeAurora !== false)
               ? hourData.probability
@@ -462,7 +490,15 @@ export default function AuroraMapFullscreen({
             };
           }
         }
-      }
+
+        computedSummaries[forecast.spot.id] = {
+          name: forecast.spot.name,
+          probability: displayProbability,
+          kp: displayKp ?? kpIndex,
+          cloudCoverage: displayWeather.cloudCoverage,
+          temperature: displayWeather.temperature,
+          windSpeed: displayWeather.windSpeed,
+        };
 
         const color = getMarkerColor(displayProbability);
 
@@ -507,18 +543,58 @@ export default function AuroraMapFullscreen({
         // Click: select location
         el.addEventListener('click', () => {
           onSelectSpot(forecast.spot.id);
+          if (typeof window !== 'undefined') {
+            const current = computedSummaries[forecast.spot.id];
+            const bestAlternative = Object.values(computedSummaries)
+              .filter((s) => s.name !== forecast.spot.name)
+              .reduce<{ name: string | null; probability: number }>(
+                (acc, s) => (s.probability > acc.probability ? { name: s.name, probability: s.probability } : acc),
+                { name: null, probability: 0 }
+              );
+
+            window.dispatchEvent(
+              new CustomEvent('aura-location-selected', {
+                detail: {
+                  name: forecast.spot.name,
+                  probability: current?.probability ?? displayProbability,
+                  kp: current?.kp ?? kpIndex,
+                  cloudCoverage: current?.cloudCoverage ?? displayWeather.cloudCoverage,
+                  temperature: current?.temperature ?? displayWeather.temperature,
+                  windSpeed: current?.windSpeed ?? displayWeather.windSpeed,
+                  bestAlternative: bestAlternative.name
+                    ? { name: bestAlternative.name, probability: bestAlternative.probability }
+                    : null,
+                },
+              })
+            );
+          }
         });
+
+        const popup = new mapboxgl.Popup({ offset: 15, closeButton: false }).setHTML(`
+          <div style="min-width: 160px; font-family: system-ui; padding: 6px 8px;">
+            <div style="font-weight: 700; margin-bottom: 4px;">${forecast.spot.name}</div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px;">
+              <span>Prob:</span><span>${Math.round(displayProbability)}%</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px;">
+              <span>Kp:</span><span>${(displayKp ?? kpIndex).toFixed(1)}</span>
+            </div>
+          </div>
+        `);
 
         const marker = new mapboxgl.Marker({ element: el })
           .setLngLat([forecast.spot.longitude, forecast.spot.latitude])
+          .setPopup(popup)
           .addTo(map);
 
         markersRef.current.push(marker);
       } catch (err) {
-        // #region agent log
-        console.error('[debug-live] marker build failed', { spotId: forecast?.spot?.id }, err);
-        fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:510',message:'marker build failed',data:{spotId:forecast?.spot?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H9'})}).catch(()=>{});
-        // #endregion
+        if (debugLive) {
+          // #region agent log
+          console.error('[debug-live] marker build failed', { spotId: forecast?.spot?.id }, err);
+          fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:510',message:'marker build failed',data:{spotId:forecast?.spot?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H9'})}).catch(()=>{});
+          // #endregion
+        }
       }
     });
   }, [forecasts, onSelectSpot, animationHour]);
@@ -528,7 +604,9 @@ export default function AuroraMapFullscreen({
     const map = mapRef.current;
     if (!map || auroraData.length === 0 || !showOverlay) return;
 
-    console.log('🎯 Rendering aurora halo badges along oval');
+    if (debugLive) {
+      console.log('🎯 Rendering aurora halo badges along oval');
+    }
 
     const badgePoints = auroraData.filter((_, i) => i % 5 === 0);
 
@@ -567,44 +645,49 @@ export default function AuroraMapFullscreen({
       markersRef.current.push(marker);
     });
 
-    console.log(`✅ Rendered ${badgePoints.length} halo badges along aurora oval`);
+    if (debugLive) {
+      console.log(`✅ Rendered ${badgePoints.length} halo badges along aurora oval`);
+    }
   }, [auroraData, showOverlay, kpIndex]);
 
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainerRef} className="w-full h-full" />
 
-      {/* Aurora + cloud overlay */}
+      {/* Aurora overlay (video only), visible when animation is playing */}
       {showAnimation && (
         <AuroraOverlay
           intensity01={overlayState.intensity01}
           cloud01={overlayState.cloud01}
+          isPlaying={showAnimation}
+          progress01={Math.max(0, Math.min(1, animationHour / 12))}
         />
       )}
 
-      {/* Aurora Oval Toggle */}
-      <button
-        onClick={() => setShowOverlay(!showOverlay)}
-        className={`absolute top-2 right-2 z-[1000] px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-          showOverlay
-            ? 'bg-gradient-to-br from-green-400 to-green-600 text-white'
-            : 'bg-black/50 text-white/70 hover:bg-black/70'
-        }`}
-      >
-        🌌 Nordlysbelte
-      </button>
+      {/* Overlay + animation toggles under top info bar */}
+      <div className="absolute top-16 left-0 right-0 z-[1000] px-4 flex items-center justify-between pointer-events-none">
+        <button
+          onClick={() => setShowAnimation(!showAnimation)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
+            showAnimation
+              ? 'bg-gradient-to-br from-emerald-400 to-cyan-600 text-white'
+              : 'bg-black/50 text-white/70 hover:bg-black/70'
+          }`}
+        >
+          {showAnimation ? '✨ Animasjon på' : '✨ Animasjon av'}
+        </button>
 
-      {/* Animation toggle */}
-      <button
-        onClick={() => setShowAnimation(!showAnimation)}
-        className={`absolute top-2 left-2 z-[1000] px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-          showAnimation
-            ? 'bg-gradient-to-br from-emerald-400 to-cyan-600 text-white'
-            : 'bg-black/50 text-white/70 hover:bg-black/70'
-        }`}
-      >
-        ✨ Animasjon
-      </button>
+        <button
+          onClick={() => setShowOverlay(!showOverlay)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
+            showOverlay
+              ? 'bg-gradient-to-br from-green-400 to-green-600 text-white'
+              : 'bg-black/50 text-white/70 hover:bg-black/70'
+          }`}
+        >
+          {showOverlay ? '🌌 Nordlysbelte på' : '🌌 Nordlysbelte av'}
+        </button>
+      </div>
 
       {/* Map info badge */}
       <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-xs z-[1000]">

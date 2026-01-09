@@ -8,6 +8,10 @@ import { cn } from '@/lib/utils';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useAuroraData } from '@/hooks/useAuroraData';
 
+const debugLive =
+  process.env.NODE_ENV === 'development' ||
+  process.env.NEXT_PUBLIC_DEBUG_LIVE === 'true';
+
 // Dynamically import map to avoid SSR issues with Leaflet
 const AuroraMapFullscreen = dynamic(
   () => import('@/components/aurora/AuroraMapFullscreen'),
@@ -46,19 +50,36 @@ export function AuroraLiveMap() {
     setSelectedSpotId(selectedSpot.id);
   }, [selectedSpot.id]);
 
+  // Ensure the live view does not inherit the global background.png
   useEffect(() => {
-    // #region agent log
-    const first = spotForecasts?.[0];
-    const firstHour = first?.hourlyForecast?.[0] as any;
-    const hourlyKeys = firstHour ? Object.keys(firstHour) : [];
-    console.log('[debug-live] AuroraLiveMap state', {
-      spotCount: spotForecasts?.length ?? 0,
-      selectedSpotId: selectedSpot?.id,
-      hasFirst: !!first,
-      firstHourlyKeys: hourlyKeys.slice(0, 20),
-    });
-    fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:54',message:'live map state snapshot',data:{spotCount:spotForecasts?.length??0,selectedSpotId:selectedSpot?.id,firstHourlyKeys:hourlyKeys.slice(0,20)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
+    const body = typeof document !== 'undefined' ? document.body : null;
+    if (!body) return;
+    const prevImage = body.style.backgroundImage;
+    const prevColor = body.style.backgroundColor;
+    body.style.backgroundImage = 'none';
+    body.style.backgroundColor = 'rgb(5,7,13)';
+
+    return () => {
+      body.style.backgroundImage = prevImage;
+      body.style.backgroundColor = prevColor;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (debugLive) {
+      // #region agent log
+      const first = spotForecasts?.[0];
+      const firstHour = first?.hourlyForecast?.[0] as any;
+      const hourlyKeys = firstHour ? Object.keys(firstHour) : [];
+      console.log('[debug-live] AuroraLiveMap state', {
+        spotCount: spotForecasts?.length ?? 0,
+        selectedSpotId: selectedSpot?.id,
+        hasFirst: !!first,
+        firstHourlyKeys: hourlyKeys.slice(0, 20),
+      });
+      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:54',message:'live map state snapshot',data:{spotCount:spotForecasts?.length??0,selectedSpotId:selectedSpot?.id,firstHourlyKeys:hourlyKeys.slice(0,20)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
+      // #endregion
+    }
   }, [spotForecasts, selectedSpot?.id]);
 
   // Map spotForecasts to the format expected by the map component
@@ -120,20 +141,24 @@ export function AuroraLiveMap() {
 
   const toggleAnimation = () => {
     if (isPlaying) {
-      // #region agent log
-      console.log('[debug-live] toggleAnimation', { next: false, prev: true, animationProgress });
-      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:111',message:'toggleAnimation stop',data:{animationProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7'})}).catch(()=>{});
-      // #endregion
+      if (debugLive) {
+        // #region agent log
+        console.log('[debug-live] toggleAnimation', { next: false, prev: true, animationProgress });
+        fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:111',message:'toggleAnimation stop',data:{animationProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7'})}).catch(()=>{});
+        // #endregion
+      }
       setIsPlaying(false);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
     } else {
-      // #region agent log
-      console.log('[debug-live] toggleAnimation', { next: true, prev: false, animationProgress });
-      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:121',message:'toggleAnimation start',data:{animationProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7'})}).catch(()=>{});
-      // #endregion
+      if (debugLive) {
+        // #region agent log
+        console.log('[debug-live] toggleAnimation', { next: true, prev: false, animationProgress });
+        fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:121',message:'toggleAnimation start',data:{animationProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7'})}).catch(()=>{});
+        // #endregion
+      }
       setIsPlaying(true);
       setAnimationProgress(0);
       lastTimeRef.current = performance.now();
@@ -178,9 +203,9 @@ export function AuroraLiveMap() {
   }
 
   return (
-    <div className="fixed inset-0 bg-arctic-900 overflow-hidden">
+    <div className="fixed inset-x-0 bottom-0 top-16 bg-arctic-900 overflow-hidden">
       {/* Aurora glow effect */}
-      <div className="fixed inset-0 pointer-events-none z-0">
+      <div className="absolute inset-0 pointer-events-none z-0">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-64 bg-gradient-to-b from-primary/20 to-transparent blur-3xl" />
       </div>
 

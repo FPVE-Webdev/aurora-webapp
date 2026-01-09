@@ -16,7 +16,7 @@ interface Message {
 
 export function ChatWidget() {
   const { status, result, isLoading: statusLoading } = useMasterStatus();
-  const { isPremium } = usePremium();
+  const { isPremium, subscriptionTier } = usePremium();
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -25,6 +25,10 @@ export function ChatWidget() {
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const auraVideoRef = useRef<HTMLVideoElement>(null);
+  const auraTriggerRef = useRef<HTMLButtonElement>(null);
+  const [showAuraVideo, setShowAuraVideo] = useState(false);
+  const [videoEligible, setVideoEligible] = useState(false);
 
   const statusLabel = useMemo(() => {
     if (!result) return 'Laster status...';
@@ -40,6 +44,101 @@ export function ChatWidget() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (!auraTriggerRef.current) return;
+    const el = auraTriggerRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting) setVideoEligible(true);
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const playAuraVideo = () => {
+    if (!videoEligible) return;
+    const video = auraVideoRef.current;
+    if (!video) return;
+    video.currentTime = 0;
+    setShowAuraVideo(true);
+    video.play().catch(() => setShowAuraVideo(false));
+  };
+
+  const stopAuraVideo = () => {
+    const video = auraVideoRef.current;
+    if (!video) return;
+    video.pause();
+    video.currentTime = 0;
+    setShowAuraVideo(false);
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onLocationSelected = (event: Event) => {
+      const custom = event as CustomEvent<{
+        name: string;
+        probability: number;
+        kp?: number;
+        cloudCoverage?: number;
+        temperature?: number;
+        windSpeed?: number;
+        bestAlternative?: { name: string; probability: number } | null;
+      }>;
+      const detail = custom.detail;
+      if (!detail) return;
+
+      setIsOpen(true);
+      const summaryParts = [
+        detail.probability != null ? `Nordlyssjanse: ${Math.round(detail.probability)}%` : null,
+        detail.kp != null ? `KP: ${detail.kp.toFixed(1)}` : null,
+        detail.cloudCoverage != null ? `Skydekke: ${Math.round(detail.cloudCoverage)}%` : null,
+        detail.temperature != null ? `Temperatur: ${Math.round(detail.temperature)}°C` : null,
+        detail.windSpeed != null ? `Vind: ${Math.round(detail.windSpeed)} m/s` : null,
+      ].filter(Boolean);
+
+      const summary = summaryParts.join(' · ');
+
+      const isPro24h = subscriptionTier === 'premium_24h' || subscriptionTier === 'premium_7d' || subscriptionTier === 'enterprise';
+
+      let text: string;
+      if (subscriptionTier === 'free') {
+        text = `Status Tromsø (generelt): ${summary || 'oppdaterte tall ikke tilgjengelig'}.
+Vil du ha rutevalg og beste spot akkurat nå? Oppgrader for detaljer.`;
+      } else if (isPro24h) {
+        const better =
+          detail.bestAlternative &&
+          detail.bestAlternative.probability > (detail.probability ?? 0) + 5;
+        if (better && detail.bestAlternative) {
+          text = `For ${detail.name} ser det moderat ut (${summary}). 
+Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.bestAlternative.probability)}% der. Skal jeg hjelpe deg med neste steg?`;
+        } else {
+          text = `Her er oppdatert status for ${detail.name}: ${summary || 'ingen ferske tall'}. Gi beskjed hvis du vil ha råd om hvor du bør dra.`;
+        }
+      } else {
+        text = `Her er fersk info for ${detail.name}: ${summary}`;
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `spot-${Date.now()}`,
+          text,
+          sender: 'bot',
+          timestamp: new Date(),
+        },
+      ]);
+    };
+
+    window.addEventListener('aura-location-selected', onLocationSelected as EventListener);
+    return () => {
+      window.removeEventListener('aura-location-selected', onLocationSelected as EventListener);
+    };
+  }, []);
 
   // Inject a status-based intro once the Master Status is ready
   useEffect(() => {
@@ -279,23 +378,65 @@ export function ChatWidget() {
         </form>
       </div>
 
-      {/* FAB Toggle */}
-      <button
-        onClick={() => {
-          const next = !isOpen;
-          setIsOpen(next);
-          if (next) console.info('[chat-guide] open');
-        }}
-        className={cn(
-          "group relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-purple-600 text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300 pointer-events-auto",
-          isOpen && "rotate-90 scale-0 opacity-0"
-        )}
-        title="Open chat"
-        aria-label="Open chat"
-      >
-        <span className="absolute inset-0 rounded-full bg-white/20 animate-ping opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-        <MessageCircle className="w-7 h-7" />
-      </button>
+      {/* Aura FAB Toggle */}
+      <div className="flex items-center gap-3 pointer-events-auto">
+        <div
+          className={cn(
+            "px-3 py-2 rounded-xl bg-black/60 border border-white/10 shadow-lg text-white/90 text-sm font-medium backdrop-blur-md hidden sm:block transition-all duration-200",
+            isOpen && "opacity-0 translate-y-1 pointer-events-none"
+          )}
+        >
+          Snakk med Aura
+        </div>
+
+        <button
+          ref={auraTriggerRef}
+          onClick={() => {
+            const next = !isOpen;
+            setIsOpen(next);
+            if (next) console.info('[chat-guide] open');
+          }}
+          onMouseEnter={playAuraVideo}
+          onMouseLeave={stopAuraVideo}
+          onFocus={playAuraVideo}
+          onBlur={stopAuraVideo}
+          className={cn(
+            "group relative flex items-center justify-center p-0 bg-transparent text-white transition-transform duration-300 pointer-events-auto hover:scale-105 active:scale-100 focus-visible:drop-shadow-[0_0_18px_rgba(52,245,197,0.8)] outline-none",
+            isOpen && "scale-0 opacity-0"
+          )}
+          title="Snakk med Aura"
+          aria-label="Snakk med Aura"
+        >
+          <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-2 rounded-xl bg-black/75 border border-white/10 text-sm text-white/90 shadow-lg opacity-0 translate-x-2 transition-all duration-200 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0">
+            Snakk med Aura
+          </div>
+          <div className="relative w-72 h-72 flex items-center justify-center">
+            <img
+              src="/Aurahalo.png"
+              alt="Aura"
+              className={cn(
+                "w-full h-full object-contain transition-opacity duration-200 drop-shadow-[0_8px_24px_rgba(52,245,197,0.35)]",
+                showAuraVideo ? "opacity-0" : "opacity-100"
+              )}
+            />
+            <video
+              ref={auraVideoRef}
+              className={cn(
+                "absolute inset-0 w-full h-full object-contain transition-opacity duration-200 drop-shadow-[0_8px_24px_rgba(52,245,197,0.35)]",
+                showAuraVideo ? "opacity-100" : "opacity-0"
+              )}
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster="/Aurahalo.png"
+              aria-hidden="true"
+            >
+              <source src="/Aura_interaktiv.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </button>
+      </div>
 
       {/* Close FAB (visible when open) */}
        <button
