@@ -74,7 +74,7 @@ function parseTextForecast(textContent: string): DayForecast[] {
 
       const values = match.slice(1, 4).map((v) => parseInt(v, 10));
 
-      let target: keyof Omit<DayForecast, 'date' | 'majorStorm'> | null = null;
+      let target: keyof Omit<DayForecast, 'date'> | null = null;
       const lower = line.toLowerCase();
 
       if (lower.includes('quiet')) target = 'quiet';
