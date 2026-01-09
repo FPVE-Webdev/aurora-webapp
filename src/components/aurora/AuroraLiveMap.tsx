@@ -1,15 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Cloud, Thermometer, Wind, ChevronDown, Play, Pause, Loader2, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { OBSERVATION_SPOTS, FREE_OBSERVATION_SPOTS, PREMIUM_OBSERVATION_SPOTS } from '@/lib/constants';
-import { ObservationSpot } from '@/types/aurora';
-import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
-import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
 import { usePremium } from '@/contexts/PremiumContext';
+import { useAuroraData } from '@/hooks/useAuroraData';
 
 // Dynamically import map to avoid SSR issues with Leaflet
 const AuroraMapFullscreen = dynamic(
@@ -24,39 +21,19 @@ const AuroraMapFullscreen = dynamic(
   }
 );
 
-interface HourlyData {
-  time: string;
-  hour: number;
-  probability: number;
-  kp: number;
-  weather: {
-    cloudCoverage: number;
-    temperature: number;
-    windSpeed: number;
-    conditions: string;
-  };
-  visibility: string;
-}
-
-interface SpotForecast {
-  spot: ObservationSpot;
-  currentProbability: number;
-  kp: number;
-  weather: {
-    cloudCoverage: number;
-    temperature: number;
-    windSpeed: number;
-    symbolCode: string;
-  };
-  hourlyForecast?: HourlyData[];
-}
-
 export function AuroraLiveMap() {
-  const { isPremium, subscriptionTier } = usePremium();
-  const [forecasts, setForecasts] = useState<SpotForecast[]>([]);
-  const [selectedSpotId, setSelectedSpotId] = useState('troms');
-  const [currentKp, setCurrentKp] = useState(3);
-  const [isLoading, setIsLoading] = useState(true);
+  const { subscriptionTier } = usePremium();
+  
+  // Use shared aurora data hook (same as /home, /forecast, /kart3)
+  const {
+    spotForecasts,
+    currentKp,
+    isLoading,
+    selectedSpot,
+    selectSpot
+  } = useAuroraData();
+
+  const [selectedSpotId, setSelectedSpotId] = useState(selectedSpot.id);
   const [animationProgress, setAnimationProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
@@ -64,123 +41,24 @@ export function AuroraLiveMap() {
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
 
-  // Use appropriate spots based on premium status
-  // Free: 3 regions only, Premium: all detailed spots
-  const spots = isPremium ? PREMIUM_OBSERVATION_SPOTS : FREE_OBSERVATION_SPOTS;
-
-  // Fetch aurora data from Tromsø.AI API
-  const fetchAuroraData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-
-      // Fetch current aurora conditions from main API
-      const response = await fetch('/api/aurora/now?lang=no');
-      const data = await response.json();
-
-      const kpIndex = scoreToKpIndex(data.score || 50);
-      setCurrentKp(kpIndex);
-
-
-
-      // Fetch weather data for visible spots in parallel
-      const spotForecastsPromises = spots.map(async (spot) => {
-        try {
-          // Fetch hourly forecast for this spot specifically
-          const hourlyRes = await fetch(`/api/aurora/hourly?hours=12&location=${spot.id}`);
-          const hourlyData = hourlyRes.ok ? await hourlyRes.json() : null;
-          const spotHourlyForecast = hourlyData?.hourly_forecast || [];
-
-
-          // Use hourly forecast data for the current hour if available
-          const currentHourData = spotHourlyForecast.find((h: HourlyData) => h.hour === new Date().getHours());
-
-          // Fetch real weather for this spot
-          const weatherRes = await fetch(`/api/weather/${spot.latitude}/${spot.longitude}`);
-          const weatherData = weatherRes.ok ? await weatherRes.json() : null;
-
-          // Use real weather if available, otherwise use location-specific fallback
-          const locationSeed = spot.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const cloudCoverage = weatherData?.cloudCoverage ?? (10 + (locationSeed % 60)); // 10-70%
-          const temperature = weatherData?.temperature ?? (-15 + (locationSeed % 25)); // -15 to +10
-          const windSpeed = weatherData?.windSpeed ?? (2 + (locationSeed % 12)); // 2-14 m/s
-
-          // Calculate probability based on real conditions (with daylight check)
-          const { probability, canView } = calculateAuroraProbability({
-            kpIndex,
-            cloudCoverage,
-            temperature,
-            latitude: spot.latitude,
-            longitude: spot.longitude,
-          });
-
-          // If it's daylight, force probability to 0
-          const actualProbability = canView ? probability : 0;
-
-          // Debug logging for daylight check
-          if (!canView) {
-            console.log(`🌞 Daylight at ${spot.name}: probability forced to 0% (was ${probability}%)`);
-          }
-
-          return {
-            spot,
-            currentProbability: actualProbability,
-            kp: kpIndex,
-            weather: {
-              cloudCoverage: Math.round(cloudCoverage),
-              temperature: Math.round(temperature),
-              windSpeed: Math.round(windSpeed),
-              symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night'
-            },
-            // Add hourly forecast for animation
-            hourlyForecast: spotHourlyForecast
-          };
-        } catch (error) {
-          console.warn(`Failed to fetch weather for ${spot.name}, using fallback`);
-          const locationSeed = spot.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const cloudCoverage = 10 + (locationSeed % 60); // 10-70%
-          const temperature = -15 + (locationSeed % 25); // -15 to +10
-          const windSpeed = 2 + (locationSeed % 12); // 2-14 m/s
-
-          const { probability, canView } = calculateAuroraProbability({
-            kpIndex,
-            cloudCoverage,
-            temperature,
-            latitude: spot.latitude,
-            longitude: spot.longitude,
-          });
-
-          // If it's daylight, force probability to 0
-          const actualProbability = canView ? probability : 0;
-
-          return {
-            spot,
-            currentProbability: actualProbability,
-            kp: kpIndex,
-            weather: {
-              cloudCoverage: Math.round(cloudCoverage),
-              temperature: Math.round(temperature),
-              windSpeed: Math.round(windSpeed),
-              symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night'
-            }
-          };
-        }
-      });
-
-      const spotForecasts = await Promise.all(spotForecastsPromises);
-
-      setForecasts(spotForecasts);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Failed to fetch aurora data:', error);
-      setIsLoading(false);
-    }
-  }, [spots]);
-
+  // Sync selectedSpotId with hook's selectedSpot
   useEffect(() => {
-    fetchAuroraData();
-    const interval = setInterval(fetchAuroraData, 30 * 60 * 1000); // Refresh every 30 min
-    return () => clearInterval(interval);
-  }, [fetchAuroraData]);
+    setSelectedSpotId(selectedSpot.id);
+  }, [selectedSpot.id]);
+
+  // Map spotForecasts to the format expected by the map component
+  const forecasts = spotForecasts.map(sf => ({
+    spot: sf.spot,
+    currentProbability: sf.currentProbability,
+    kp: currentKp,
+    weather: {
+      cloudCoverage: sf.weather.cloudCoverage,
+      temperature: sf.weather.temperature,
+      windSpeed: sf.weather.windSpeed,
+      symbolCode: sf.weather.symbolCode
+    },
+    hourlyForecast: sf.hourlyForecast
+  }));
 
   // Animation loop
   useEffect(() => {
@@ -317,19 +195,20 @@ export function AuroraLiveMap() {
                       }}
                     >
                       <div className="py-1">
-                        {spots.map((spot) => (
+                        {spotForecasts.map((sf) => (
                           <button
-                            key={spot.id}
+                            key={sf.spot.id}
                             onClick={() => {
-                              setSelectedSpotId(spot.id);
+                              setSelectedSpotId(sf.spot.id);
+                              selectSpot(sf.spot);
                               setShowLocationDropdown(false);
                             }}
                             className={cn(
                               "w-full px-3 py-2 text-left text-[13px] hover:bg-white/10 transition-colors",
-                              selectedSpotId === spot.id ? "text-primary font-medium" : "text-white/80"
+                              selectedSpotId === sf.spot.id ? "text-primary font-medium" : "text-white/80"
                             )}
                           >
-                            {spot.name}
+                            {sf.spot.name}
                           </button>
                         ))}
                       </div>
@@ -391,7 +270,7 @@ export function AuroraLiveMap() {
         <div className="h-full w-full">
           {forecasts.length > 0 && (
             <AuroraMapFullscreen
-              forecasts={forecasts}
+              forecasts={forecasts as any}
               selectedSpotId={selectedSpotId}
               onSelectSpot={setSelectedSpotId}
               kpIndex={currentKp}
