@@ -220,6 +220,17 @@ export default function AuroraMapFullscreen({
     // Add zoom controls
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
+    // #region agent log
+    const onMapError = (e: any) => {
+      const msg = e?.error?.message || e?.error?.toString?.() || 'unknown_mapbox_error';
+      const status = e?.error?.status;
+      const url = e?.error?.url;
+      console.error('[debug-live] mapbox error event', { msg, status, url });
+      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:214',message:'mapbox error',data:{msg,status,url},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H6'})}).catch(()=>{});
+    };
+    map.on('error', onMapError);
+    // #endregion
+
     map.on('load', () => {
       console.log('🗺️ Mapbox map loaded');
 
@@ -284,6 +295,9 @@ export default function AuroraMapFullscreen({
 
     return () => {
       if (mapRef.current) {
+        // #region agent log
+        mapRef.current.off('error', onMapError);
+        // #endregion
         mapRef.current.remove();
         mapRef.current = null;
       }
