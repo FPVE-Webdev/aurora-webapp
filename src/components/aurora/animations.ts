@@ -46,7 +46,11 @@ export function deriveOverlayState(
     (hourData?.canSeeAurora === false ? 0 : forecast.currentProbability ?? 0) ??
     0;
 
-  const kpIndex = hourData?.kp ?? (hourData as any)?.kpIndex ?? forecast.kp ?? 0;
+  const kpIndex =
+    (hourData as any)?.kp ??
+    (hourData as any)?.kpIndex ??
+    forecast.kp ??
+    0;
 
   const cloudCoverage =
     hourData?.weather?.cloudCoverage ??
