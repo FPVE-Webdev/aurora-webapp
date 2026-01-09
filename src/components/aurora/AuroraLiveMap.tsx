@@ -46,6 +46,21 @@ export function AuroraLiveMap() {
     setSelectedSpotId(selectedSpot.id);
   }, [selectedSpot.id]);
 
+  useEffect(() => {
+    // #region agent log
+    const first = spotForecasts?.[0];
+    const firstHour = first?.hourlyForecast?.[0] as any;
+    const hourlyKeys = firstHour ? Object.keys(firstHour) : [];
+    console.log('[debug-live] AuroraLiveMap state', {
+      spotCount: spotForecasts?.length ?? 0,
+      selectedSpotId: selectedSpot?.id,
+      hasFirst: !!first,
+      firstHourlyKeys: hourlyKeys.slice(0, 20),
+    });
+    fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:54',message:'live map state snapshot',data:{spotCount:spotForecasts?.length??0,selectedSpotId:selectedSpot?.id,firstHourlyKeys:hourlyKeys.slice(0,20)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
+  }, [spotForecasts, selectedSpot?.id]);
+
   // Map spotForecasts to the format expected by the map component
   const forecasts = spotForecasts
     .filter(Boolean)

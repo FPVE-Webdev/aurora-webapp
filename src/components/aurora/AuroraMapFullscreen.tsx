@@ -125,6 +125,19 @@ export default function AuroraMapFullscreen({
     forecasts.find((f) => f.spot.id === selectedSpotId) || forecasts[0];
   const overlayState = deriveOverlayState(activeForecast as any, animationHour);
 
+  useEffect(() => {
+    // #region agent log
+    const tokenPresent = !!process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    console.log('[debug-live] AuroraMapFullscreen mount', {
+      tokenPresent,
+      forecastCount: forecasts?.length ?? 0,
+      selectedSpotId,
+      animationHour,
+    });
+    fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:126',message:'map fullscreen mount',data:{tokenPresent,forecastCount:forecasts?.length??0,selectedSpotId,animationHour},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
+  }, [animationHour, forecasts?.length, selectedSpotId]);
+
   // Fetch aurora oval data
   const fetchAuroraData = useCallback(async () => {
     try {
@@ -370,16 +383,41 @@ export default function AuroraMapFullscreen({
         const hourData = forecast.hourlyForecast[hourIndex];
 
         if (hourData) {
+          // #region agent log
+          const hd: any = hourData as any;
+          const hasWeatherObj = !!hd?.weather;
+          const hdKeys = hd ? Object.keys(hd) : [];
+          console.log('[debug-live] hourly shape', {
+            spotId: forecast.spot.id,
+            hourIndex,
+            hasWeatherObj,
+            hdKeys: hdKeys.slice(0, 20),
+          });
+          fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:381',message:'hourly shape',data:{spotId:forecast.spot.id,hourIndex,hasWeatherObj,hdKeys:hdKeys.slice(0,20)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
+          // #endregion
+
           displayProbability = (hourData.canSeeAurora !== false)
             ? hourData.probability
             : 0;
-          displayKp = hourData.kp;
-          displayWeather = {
-            cloudCoverage: hourData.weather.cloudCoverage,
-            temperature: hourData.weather.temperature,
-            windSpeed: hourData.weather.windSpeed,
-            symbolCode: hourData.weather.conditions
-          };
+          // NOTE: The following access is the suspected crash point when hourly data is flat (no hourData.weather)
+          try {
+            displayKp = (hourData as any).kp;
+            displayWeather = {
+              cloudCoverage: (hourData as any).weather.cloudCoverage,
+              temperature: (hourData as any).weather.temperature,
+              windSpeed: (hourData as any).weather.windSpeed,
+              symbolCode: (hourData as any).weather.conditions
+            };
+          } catch (err) {
+            // #region agent log
+            console.error('[debug-live] crash reading hourData.weather', {
+              spotId: forecast.spot.id,
+              hourIndex,
+            }, err);
+            fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:399',message:'crash reading hourData.weather',data:{spotId:forecast.spot.id,hourIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
+            // #endregion
+            throw err;
+          }
         }
       }
 
