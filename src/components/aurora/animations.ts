@@ -53,7 +53,7 @@ export function deriveOverlayState(
     0;
 
   const cloudCoverage =
-    hourData?.weather?.cloudCoverage ??
+    (hourData as any)?.weather?.cloudCoverage ??
     hourData?.cloudCoverage ??
     forecast.weather?.cloudCoverage ??
     50;
