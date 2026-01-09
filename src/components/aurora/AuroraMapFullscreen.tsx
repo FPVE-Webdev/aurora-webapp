@@ -399,25 +399,43 @@ export default function AuroraMapFullscreen({
           displayProbability = (hourData.canSeeAurora !== false)
             ? hourData.probability
             : 0;
-          // NOTE: The following access is the suspected crash point when hourly data is flat (no hourData.weather)
-          try {
-            displayKp = (hourData as any).kp;
-            displayWeather = {
-              cloudCoverage: (hourData as any).weather.cloudCoverage,
-              temperature: (hourData as any).weather.temperature,
-              windSpeed: (hourData as any).weather.windSpeed,
-              symbolCode: (hourData as any).weather.conditions
-            };
-          } catch (err) {
-            // #region agent log
-            console.error('[debug-live] crash reading hourData.weather', {
-              spotId: forecast.spot.id,
-              hourIndex,
-            }, err);
-            fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:399',message:'crash reading hourData.weather',data:{spotId:forecast.spot.id,hourIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
-            // #endregion
-            throw err;
-          }
+
+          // Hourly data shape differs between sources (sometimes flat, sometimes nested under `weather`).
+          // Prefer nested if present; otherwise fall back to flat fields; finally fall back to base forecast.
+          const hd: any = hourData as any;
+          displayKp = hd.kp ?? hd.kpIndex ?? displayKp;
+
+          const cloudCoverage =
+            hd.weather?.cloudCoverage ??
+            hd.cloudCoverage ??
+            forecast.weather?.cloudCoverage ??
+            50;
+
+          const temperature =
+            hd.weather?.temperature ??
+            hd.temperature ??
+            forecast.weather?.temperature ??
+            0;
+
+          const windSpeed =
+            hd.weather?.windSpeed ??
+            hd.windSpeed ??
+            forecast.weather?.windSpeed ??
+            0;
+
+          const symbolCode =
+            hd.weather?.conditions ??
+            hd.weather?.symbolCode ??
+            hd.symbolCode ??
+            forecast.weather?.symbolCode ??
+            'cloudy';
+
+          displayWeather = {
+            cloudCoverage,
+            temperature,
+            windSpeed,
+            symbolCode,
+          };
         }
       }
 
