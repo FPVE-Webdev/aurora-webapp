@@ -7,7 +7,7 @@
 'use client';
 
 import { Zap, Cloud, Thermometer, Clock } from 'lucide-react';
-import { getActivityLevel } from '@/lib/auroraCalculations';
+import { getActivityLevel } from '@/lib/calculations/probabilityCalculator';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '@/components/ui/Tooltip';
 

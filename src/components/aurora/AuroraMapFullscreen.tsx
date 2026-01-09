@@ -70,6 +70,16 @@ function getMarkerColor(probability: number): string {
   return '#64748b'; // Gray - Poor
 }
 
+function getWeatherEmoji(symbolCode: string): string {
+  const code = symbolCode.toLowerCase();
+  if (code.includes('clearsky') || code.includes('fair')) return '🌅';
+  if (code.includes('partlycloudy')) return '⛅';
+  if (code.includes('cloudy')) return '☁️';
+  if (code.includes('snow')) return '🌨️';
+  if (code.includes('rain')) return '🌧️';
+  return '☁️';
+}
+
 function calculateProbabilityFromOvalPosition(
   latitude: number,
   longitude: number,
@@ -98,6 +108,13 @@ export default function AuroraMapFullscreen({
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [auroraData, setAuroraData] = useState<AuroraPoint[]>([]);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [hoveredMarker, setHoveredMarker] = useState<{
+    name: string;
+    temp: number;
+    emoji: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Determine if user has unrestricted map access (Enterprise only)
   const hasUnrestrictedAccess = subscriptionTier === 'enterprise';
@@ -378,35 +395,35 @@ export default function AuroraMapFullscreen({
         font-family: system-ui, sans-serif;
         cursor: pointer;
         transition: transform 0.2s;
+        transform-origin: center center;
       `;
       el.textContent = `${displayProbability}%`;
-      el.addEventListener('mouseenter', () => {
+
+      // Hover: show tooltip
+      el.addEventListener('mouseenter', (e) => {
         el.style.transform = 'scale(1.15)';
+        const rect = el.getBoundingClientRect();
+        setHoveredMarker({
+          name: forecast.spot.name,
+          temp: displayWeather.temperature,
+          emoji: getWeatherEmoji(displayWeather.symbolCode),
+          x: rect.left + rect.width / 2,
+          y: rect.top
+        });
       });
+
       el.addEventListener('mouseleave', () => {
         el.style.transform = 'scale(1)';
+        setHoveredMarker(null);
       });
+
+      // Click: select location
       el.addEventListener('click', () => {
         onSelectSpot(forecast.spot.id);
       });
 
-      // Create popup
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <div style="text-align: center; padding: 6px; min-width: 130px; font-family: system-ui;">
-          <p style="font-weight: bold; margin: 0 0 6px 0; font-size: 15px; color: #1a202c;">${forecast.spot.name}</p>
-          <p style="font-size: 22px; font-weight: bold; margin: 0 0 6px 0; color: ${color};">${displayProbability}%</p>
-          <p style="font-size: 12px; color: #666; margin: 0 0 8px 0;">
-            ☁️ ${Math.round(displayWeather.cloudCoverage)}% • ${Math.round(displayWeather.temperature)}°C
-          </p>
-          <a href="/forecast?spotId=${forecast.spot.id}" style="display: inline-block; margin-top: 4px; padding: 6px 14px; background: ${color}; color: white; text-decoration: none; border-radius: 10px; font-size: 12px; font-weight: 600;">
-            Se 12t prognose →
-          </a>
-        </div>
-      `);
-
       const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([forecast.spot.longitude, forecast.spot.latitude])
-        .setPopup(popup)
         .addTo(map);
 
       markersRef.current.push(marker);
@@ -489,6 +506,22 @@ export default function AuroraMapFullscreen({
         <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-sm rounded-lg px-2 py-1 text-xs z-[1000] flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-green-500/70" />
           <span className="text-white/90">NOAA OVATION</span>
+        </div>
+      )}
+
+      {/* Hover tooltip */}
+      {hoveredMarker && (
+        <div
+          className="fixed z-[2000] pointer-events-none animate-in fade-in duration-150"
+          style={{
+            left: hoveredMarker.x,
+            top: hoveredMarker.y - 45,
+            transform: 'translateX(-50%)'
+          }}
+        >
+          <div className="bg-black/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm text-white whitespace-nowrap shadow-xl border border-white/10">
+            {hoveredMarker.emoji} {hoveredMarker.name} · {Math.round(hoveredMarker.temp)}°C
+          </div>
         </div>
       )}
     </div>

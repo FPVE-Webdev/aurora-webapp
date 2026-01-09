@@ -217,3 +217,114 @@ export function isPolarNight(
 
   return false;
 }
+
+// Twilight info for aurora visibility calculations
+export interface TwilightInfo {
+  sunAltitude: number;
+  phase: 'day' | 'civil' | 'nautical' | 'astronomical' | 'night';
+  canSeeAurora: boolean;
+  visibilityFactor: number; // 0-1 multiplier for probability
+}
+
+/**
+ * Calculate sun position and twilight phase for a given location and time
+ */
+export function calculateTwilightPhase(
+  latitude: number,
+  longitude: number = 19.0, // Default to Tromsø longitude
+  date: Date = new Date()
+): TwilightInfo {
+  const sunPosition = SunCalc.getPosition(date, latitude, longitude);
+  const sunAltitude = sunPosition.altitude * (180 / Math.PI);
+
+  let phase: 'day' | 'civil' | 'nautical' | 'astronomical' | 'night';
+  let canSeeAuroraResult = false;
+  let visibilityFactor = 0;
+
+  if (sunAltitude > 0) {
+    phase = 'day';
+    visibilityFactor = 0;
+  } else if (sunAltitude > -6) {
+    phase = 'civil';
+    visibilityFactor = 0;
+  } else if (sunAltitude > -12) {
+    phase = 'nautical';
+    visibilityFactor = 0.3;
+  } else if (sunAltitude > -18) {
+    phase = 'astronomical';
+    visibilityFactor = 0.85;
+    canSeeAuroraResult = true;
+  } else {
+    phase = 'night';
+    visibilityFactor = 1.0;
+    canSeeAuroraResult = true;
+  }
+
+  return { sunAltitude, phase, canSeeAurora: canSeeAuroraResult, visibilityFactor };
+}
+
+/**
+ * Calculate dark hours based on latitude and time of year
+ */
+export function getDarkHours(latitude: number): { start: number; end: number } {
+  const now = new Date();
+  const month = now.getMonth(); // 0-11
+
+  // Polar night regions (above 78°N like Svalbard)
+  if (latitude >= 78) {
+    if (month >= 10 || month <= 1) {
+      return { start: 0, end: 24 }; // Always dark
+    }
+    return { start: 18, end: 8 };
+  }
+
+  // Arctic regions (66-78°N like Tromsø)
+  if (latitude >= 66) {
+    if (month === 11 || month === 0) {
+      return { start: 0, end: 24 }; // Mørketid
+    }
+    if (month >= 9 || month <= 2) {
+      return { start: 15, end: 10 };
+    }
+    return { start: 21, end: 4 };
+  }
+
+  // Sub-arctic (60-66°N)
+  if (latitude >= 60) {
+    if (month >= 10 || month <= 1) {
+      return { start: 16, end: 8 };
+    }
+    return { start: 21, end: 4 };
+  }
+
+  // Default for lower latitudes
+  return { start: 21, end: 3 };
+}
+
+/**
+ * Check if current hour is within dark hours
+ */
+export function isWithinDarkHours(hour: number, darkHours: { start: number; end: number }): boolean {
+  // 24-hour darkness
+  if (darkHours.start === 0 && darkHours.end === 24) {
+    return true;
+  }
+
+  // Dark hours span midnight
+  if (darkHours.start > darkHours.end) {
+    return hour >= darkHours.start || hour <= darkHours.end;
+  }
+
+  // Dark hours don't span midnight
+  return hour >= darkHours.start && hour <= darkHours.end;
+}
+
+/**
+ * Check if conditions warrant "Go Now" recommendation
+ */
+export function shouldShowGoNow(probability: number, latitude: number): boolean {
+  const currentHour = new Date().getHours();
+  const darkHours = getDarkHours(latitude);
+  const isDarkTime = isWithinDarkHours(currentHour, darkHours);
+  return probability >= 60 && isDarkTime;
+}

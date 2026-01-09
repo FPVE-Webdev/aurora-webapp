@@ -15,7 +15,7 @@ import { ExtendedMetrics } from '@/components/aurora/ExtendedMetrics';
 import { Loader2, MapIcon } from 'lucide-react';
 import Link from 'next/link';
 import { getRandomFunfacts } from '@/lib/funfactEngine';
-import { shouldShowGoNow } from '@/lib/auroraCalculations';
+import { shouldShowGoNow } from '@/lib/calculations/sunCalculations';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import IntroOverlay from '@/components/intro/IntroOverlay';

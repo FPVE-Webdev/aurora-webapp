@@ -134,9 +134,6 @@ export function calculateSimpleProbability(kpIndex: number): number {
   return 60 + ((kpIndex - 7) * 15);
 }
 
-/**
- * Beskrivelse av sannsynlighet
- */
 export function getProbabilityDescription(probability: number): string {
   if (probability >= 80) return 'Utmerket';
   if (probability >= 60) return 'Gode forhold';
@@ -144,3 +141,15 @@ export function getProbabilityDescription(probability: number): string {
   if (probability >= 20) return 'Dårlige';
   return 'Svak sjanse';
 }
+
+/**
+ * Get activity level description based on KP index
+ */
+export function getActivityLevel(kp: number): { emoji: string; description: string } {
+  if (kp >= 7) return { emoji: '🔴', description: 'Ekstrem aktivitet' };
+  if (kp >= 6) return { emoji: '🟠', description: 'Høy aktivitet' };
+  if (kp >= 5) return { emoji: '🟡', description: 'Moderat aktivitet' };
+  if (kp >= 3) return { emoji: '🟢', description: 'Lav aktivitet' };
+  return { emoji: '⚪', description: 'Svært lav aktivitet' };
+}
+

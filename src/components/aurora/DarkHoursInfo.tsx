@@ -8,7 +8,7 @@
 'use client';
 
 import { Moon, Clock } from 'lucide-react';
-import { getDarkHours, calculateTwilightPhase } from '@/lib/auroraCalculations';
+import { getDarkHours, calculateTwilightPhase } from '@/lib/calculations/sunCalculations';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 
