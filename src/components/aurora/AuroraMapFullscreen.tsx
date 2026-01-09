@@ -384,9 +384,9 @@ export default function AuroraMapFullscreen({
 
         if (hourData) {
           // #region agent log
-          const hd: any = hourData as any;
-          const hasWeatherObj = !!hd?.weather;
-          const hdKeys = hd ? Object.keys(hd) : [];
+          const hdLog: any = hourData as any;
+          const hasWeatherObj = !!hdLog?.weather;
+          const hdKeys = hdLog ? Object.keys(hdLog) : [];
           console.log('[debug-live] hourly shape', {
             spotId: forecast.spot.id,
             hourIndex,
