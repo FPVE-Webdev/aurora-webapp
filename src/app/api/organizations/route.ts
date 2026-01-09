@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create owner user (placeholder - will be created via auth)
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: createUserError } = await supabase
       .from('users')
       .insert({
         organization_id: organization.id,
@@ -186,8 +186,8 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (userError) {
-      console.error('[API] Error creating user:', userError);
+    if (createUserError) {
+      console.error('[API] Error creating user:', createUserError);
     }
 
     // Generate test API key
