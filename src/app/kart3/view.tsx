@@ -232,10 +232,10 @@ export default function Kart3View() {
                       </Link>
                     )}
                     <Link
-                      href="/home"
+                      href="/live"
                       className="text-xs text-white/60 hover:text-white underline underline-offset-4"
                     >
-                      {t('seeFullMap')}
+                      {t('seeLiveMap')}
                     </Link>
                     <button
                       onClick={handleShare}
