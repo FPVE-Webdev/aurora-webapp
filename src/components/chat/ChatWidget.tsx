@@ -269,7 +269,7 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end pointer-events-none">
       {/* Chat Window */}
       <div 
         className={cn(
@@ -380,9 +380,10 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
 
       {/* Aura FAB Toggle */}
       <div className="flex items-center gap-3 pointer-events-auto">
+        {/* Label hidden on mobile to reduce clutter */}
         <div
           className={cn(
-            "px-3 py-2 rounded-xl bg-black/60 border border-white/10 shadow-lg text-white/90 text-sm font-medium backdrop-blur-md hidden sm:block transition-all duration-200",
+            "px-3 py-2 rounded-xl bg-black/60 border border-white/10 shadow-lg text-white/90 text-sm font-medium backdrop-blur-md hidden md:block transition-all duration-200",
             isOpen && "opacity-0 translate-y-1 pointer-events-none"
           )}
         >
@@ -410,7 +411,7 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
           <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-2 rounded-xl bg-black/75 border border-white/10 text-sm text-white/90 shadow-lg opacity-0 translate-x-2 transition-all duration-200 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0">
             Snakk med Aura
           </div>
-          <div className="relative w-72 h-72 flex items-center justify-center">
+          <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
             <img
               src="/Aurahalo.png"
               alt="Aura"

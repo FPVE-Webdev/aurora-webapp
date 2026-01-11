@@ -5,17 +5,17 @@ import { useAuroraData } from '@/hooks/useAuroraData';
 import { clamp01 } from '@/lib/utils/mathUtils';
 import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
 import { AuroraStatusCard } from '@/components/aurora/AuroraStatusCard';
-import { QuickStats } from '@/components/aurora/QuickStats';
+// QuickStats removed - data now consolidated in AuroraStatusCard
 import { HourlyForecast } from '@/components/aurora/HourlyForecast';
 import { DarkHoursInfo } from '@/components/aurora/DarkHoursInfo';
 import { FunfactPanel } from '@/components/aurora/FunfactPanel';
-import { GoNowAlert } from '@/components/home/GoNowAlert';
+// GoNowAlert removed - MasterStatusCard now handles GO state
 import { PremiumCTA } from '@/components/shared/PremiumCTA';
 import { ExtendedMetrics } from '@/components/aurora/ExtendedMetrics';
 import { Loader2, MapIcon } from 'lucide-react';
 import Link from 'next/link';
 import { getRandomFunfacts } from '@/lib/funfactEngine';
-import { shouldShowGoNow } from '@/lib/calculations/sunCalculations';
+// shouldShowGoNow removed - MasterStatusCard handles GO state
 import { usePremium } from '@/contexts/PremiumContext';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import IntroOverlay from '@/components/intro/IntroOverlay';
@@ -92,9 +92,6 @@ export default function HomePage() {
       setIsSharing(false);
     }
   };
-
-  // Check if we should show "Go Now" alert
-  const showGoNow = currentForecast && shouldShowGoNow(currentForecast.currentProbability, selectedSpot.latitude);
 
   if (isLoading && spotForecasts.length === 0) {
     return (
@@ -207,37 +204,10 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Go Now Alert */}
-          {showGoNow && currentForecast && (
-            <div className="max-w-4xl mx-auto mb-8">
-              <GoNowAlert 
-                probability={currentForecast.currentProbability} 
-                locationName={selectedSpot.name} 
-              />
-            </div>
-          )}
-
-          {/* Aurora Status Card */}
+          {/* Aurora Status Card - Primary data display (removed GoNowAlert and QuickStats to reduce duplication) */}
           <div className="max-w-4xl mx-auto mb-8">
             {currentForecast && (
               <AuroraStatusCard data={currentForecast} />
-            )}
-          </div>
-
-          {/* Quick Stats */}
-          <div className="max-w-4xl mx-auto mb-8">
-            {currentForecast && (
-              <QuickStats
-                kpIndex={currentKp}
-                cloudCoverage={currentForecast.weather.cloudCoverage}
-                temperature={currentForecast.weather.temperature}
-                bestViewingTime={currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0
-                  ? currentForecast.hourlyForecast.reduce((best, forecast) =>
-                      forecast.probability > best.probability ? forecast : best
-                    ).hour
-                  : null
-                }
-              />
             )}
           </div>
 
