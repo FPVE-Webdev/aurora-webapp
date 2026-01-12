@@ -10,6 +10,7 @@ import type { NextRequest } from 'next/server';
 import { checkRateLimit, getRateLimitInfo } from './lib/rateLimiter';
 import { logAuthEvent, logRateLimitEvent } from './lib/edgeLogger';
 import { createClient } from '@supabase/supabase-js';
+import { jwtVerify } from 'jose';
 
 type VerifiedKey = {
   organization_id: string | null;
@@ -26,6 +27,12 @@ const supabase =
   supabaseUrl && supabaseServiceKey
     ? createClient(supabaseUrl, supabaseServiceKey)
     : null;
+
+// Admin authentication
+const ADMIN_JWT_SECRET = new TextEncoder().encode(
+  process.env.ADMIN_JWT_SECRET || 'fallback-secret-change-in-production'
+);
+const ADMIN_COOKIE_NAME = 'admin_session';
 
 // Fallback static keys only used if Supabase is not configured to avoid downtime
 const FALLBACK_API_KEYS = new Set([
@@ -70,9 +77,48 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Admin routes are now public - no authentication required
+  // Protect /admin routes with JWT session validation
   if (pathname.startsWith('/admin')) {
-    return NextResponse.next();
+    const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+
+    // No token - allow access (layout will show login screen)
+    if (!token) {
+      return NextResponse.next();
+    }
+
+    // Verify token
+    try {
+      await jwtVerify(token, ADMIN_JWT_SECRET);
+      // Token is valid, allow access
+      return NextResponse.next();
+    } catch (error) {
+      // Token invalid or expired - clear cookie and continue
+      const response = NextResponse.next();
+      response.cookies.delete(ADMIN_COOKIE_NAME);
+      return response;
+    }
+  }
+
+  // Protect /api/admin/* routes (except /api/admin/auth - login endpoint)
+  if (pathname.startsWith('/api/admin') && !pathname.startsWith('/api/admin/auth')) {
+    const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Admin authentication required' },
+        { status: 401 }
+      );
+    }
+
+    try {
+      await jwtVerify(token, ADMIN_JWT_SECRET);
+      return NextResponse.next();
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Invalid or expired session' },
+        { status: 401 }
+      );
+    }
   }
 
   // Only protect /api/aurora/* routes
@@ -226,6 +272,7 @@ export const config = {
   matcher: [
     '/',
     '/admin/:path*',
+    '/api/admin/:path*',
     '/api/aurora/:path*',
   ],
 };

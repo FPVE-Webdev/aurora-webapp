@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Key, BarChart3, Settings, Lock } from 'lucide-react';
+import { Building2, Key, BarChart3, Settings, Lock, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { ReactNode, useState, useEffect } from 'react';
 
@@ -15,13 +15,25 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if already authenticated in session
-    const auth = sessionStorage.getItem('admin_authenticated');
-    if (auth === 'true') {
-      setIsAuthenticated(true);
-    }
-    setIsLoading(false);
+    // Check authentication status by making a simple API call
+    checkAuthStatus();
   }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      // Try to fetch a protected endpoint to verify session
+      const response = await fetch('/api/admin/settings');
+      if (response.ok) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+    } catch (err) {
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,15 +46,30 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         body: JSON.stringify({ password: passwordInput }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        sessionStorage.setItem('admin_authenticated', 'true');
         setIsAuthenticated(true);
         setPasswordInput('');
+        // Reload page to reflect authenticated state
+        window.location.reload();
+      } else if (response.status === 429) {
+        setError(data.message || 'Too many attempts. Please try again later.');
       } else {
-        setError('Incorrect password');
+        setError(data.error || 'Incorrect password');
       }
     } catch (err) {
       setError('Authentication failed');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+      setIsAuthenticated(false);
+      window.location.reload();
+    } catch (err) {
+      console.error('Logout failed:', err);
     }
   };
 
@@ -153,6 +180,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </nav>
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
               <Link
                 href="/"
                 className="text-white/70 hover:text-white transition-colors text-sm"
