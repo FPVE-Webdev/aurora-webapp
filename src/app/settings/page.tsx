@@ -5,6 +5,7 @@ import { useTemperature } from '@/contexts/TemperatureContext';
 import { ArrowLeft, Languages, Thermometer, Info } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { AlertSettings } from '@/components/retention/AlertSettings';
 
 export default function SettingsPage() {
   const { language, setLanguage, t } = useLanguage();
@@ -122,6 +123,9 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+
+          {/* Smart Alert Settings */}
+          <AlertSettings />
 
           {/* App Info */}
           <div className="card-aurora bg-primary/10 rounded-lg border border-primary/20 p-6">

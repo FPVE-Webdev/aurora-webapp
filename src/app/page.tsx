@@ -23,7 +23,6 @@ import Kart3VideoOverlay from '@/app/kart3/components/Kart3VideoOverlay';
 import { shareStoryImage } from '@/lib/shareStory';
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
 import { SightingsWidget } from '@/components/retention/SightingsWidget';
-import { AlertSettings } from '@/components/retention/AlertSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HomePage() {
@@ -236,10 +235,9 @@ export default function HomePage() {
             <FunfactPanel funfacts={getRandomFunfacts(3, 'en')} />
           </div>
 
-          {/* Retention Features - Sightings & Alerts */}
-          <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-6 mb-8">
+          {/* Retention Features - Sightings */}
+          <div className="max-w-4xl mx-auto mb-8">
             <SightingsWidget />
-            <AlertSettings />
           </div>
 
           {/* Premium CTA (only for free users) */}
