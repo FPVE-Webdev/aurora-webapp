@@ -11,6 +11,8 @@ import { useAuroraDataContext } from '@/contexts/AuroraDataContext';
 import { Tooltip } from '@/components/ui/Tooltip';
 import Kart3VideoOverlay from './components/Kart3VideoOverlay';
 import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
+import { FunfactPanel } from '@/components/aurora/FunfactPanel';
+import { getRandomFunfacts } from '@/lib/funfactEngine';
 
 type Kart3WeatherData = {
   windSpeed: number;
@@ -174,6 +176,12 @@ export default function WelcomeView() {
                 Show me more!
               </Link>
             </div>
+
+            {/* Fun Facts Bulletin */}
+            <div className="mt-4 mb-4">
+              <FunfactPanel funfacts={getRandomFunfacts(3, 'no')} />
+            </div>
+
             <div className="mt-3 text-[11px] text-white/55">
               Visual representation of live conditions. Not a prediction.
             </div>

@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuroraData } from '@/hooks/useAuroraData';
 import { clamp01 } from '@/lib/utils/mathUtils';
-import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
 import { AuroraStatusCard } from '@/components/aurora/AuroraStatusCard';
 // QuickStats removed - data now consolidated in AuroraStatusCard
 import { HourlyForecast } from '@/components/aurora/HourlyForecast';
@@ -189,19 +188,6 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Main Probability Gauge */}
-          <div className="flex justify-center mb-8">
-            {currentForecast && (
-              <ProbabilityGauge
-                probability={currentForecast.currentProbability}
-                size="lg"
-                canView={currentForecast.canView}
-                nextViewableTime={currentForecast.nextViewableTime}
-                bestTimeTonight={currentForecast.bestTimeTonight}
-              />
-            )}
           </div>
 
           {/* Aurora Status Card - Primary data display (removed GoNowAlert and QuickStats to reduce duplication) */}
