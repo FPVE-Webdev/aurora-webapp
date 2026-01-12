@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { clamp01 } from '@/lib/utils/mathUtils';
 import { shareStoryImage } from '@/lib/shareStory';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuroraData } from '@/hooks/useAuroraData';
+import { useAuroraDataContext } from '@/contexts/AuroraDataContext';
 import { Tooltip } from '@/components/ui/Tooltip';
 import Kart3VideoOverlay from './components/Kart3VideoOverlay';
 
@@ -16,15 +16,6 @@ type Kart3WeatherData = {
   windDirection: number;
   weatherType: number;
   precipitation: number;
-};
-
-type NowResponse = {
-  kp: number;
-  probability: number;
-  weather?: {
-    cloudCoverage?: number;
-    windSpeed?: number;
-  };
 };
 
 type BestSpotRegion = {
@@ -51,22 +42,14 @@ function classifyWeatherType(cloudCoverage: number): number {
 export default function Kart3View() {
   const { t } = useLanguage();
 
-  // Use unified aurora data hook
-  const {
-    currentKp,
-    spotForecasts,
-    selectedSpot,
-    selectSpot
-  } = useAuroraData();
-
-  // Get Tromsø forecast
-  const tromsoForecast = spotForecasts.find(f => f.spot.id === 'troms') || spotForecasts[0];
-  const auroraProbability = tromsoForecast?.currentProbability || 0;
-  const cloudCoverage = tromsoForecast?.weather.cloudCoverage || 0;
+  // Use unified aurora data context
+  const { currentKp, selectedSpotForecast } = useAuroraDataContext();
+  const auroraProbability = selectedSpotForecast?.currentProbability || 0;
+  const cloudCoverage = selectedSpotForecast?.weather.cloudCoverage || 0;
   const kpIndex = currentKp;
 
   const [weatherData, setWeatherData] = useState<Kart3WeatherData>({
-    windSpeed: tromsoForecast?.weather.windSpeed || 6,
+    windSpeed: selectedSpotForecast?.weather.windSpeed || 6,
     windDirection: 270,
     weatherType: 2,
     precipitation: 0,
@@ -144,16 +127,16 @@ export default function Kart3View() {
     }
   };
 
-  // Update weather data when tromsoForecast changes
+  // Update weather data when selected spot changes
   useEffect(() => {
-    if (tromsoForecast) {
+    if (selectedSpotForecast) {
       setWeatherData((prev) => ({
         ...prev,
-        windSpeed: tromsoForecast.weather.windSpeed || prev.windSpeed,
-        weatherType: classifyWeatherType(tromsoForecast.weather.cloudCoverage),
+        windSpeed: selectedSpotForecast.weather.windSpeed || prev.windSpeed,
+        weatherType: classifyWeatherType(selectedSpotForecast.weather.cloudCoverage),
       }));
     }
-  }, [tromsoForecast]);
+  }, [selectedSpotForecast]);
 
   return (
     <div className="relative w-full h-[100svh] overflow-hidden bg-black" style={backgroundStyle}>

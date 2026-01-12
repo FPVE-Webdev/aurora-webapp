@@ -118,7 +118,19 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
           expanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
         )}>
           <div className="px-5 pb-4 pt-2 border-t border-white/10">
-            <div className="grid grid-cols-4 gap-3 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div>
+                <div className="text-sm text-white/60">Solar Activity</div>
+                <div className="text-2xl font-bold">KP {result.factors.kpIndex.toFixed(1)}</div>
+              </div>
+
+              <div className="mt-2 sm:mt-0">
+                <div className="text-sm text-white/60">Viewing Chance</div>
+                <div className="text-4xl font-bold">{result.factors.probability}%</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-center">
               <div>
                 <p className="text-white/50 text-[10px] uppercase tracking-wide">Mørkt</p>
                 <p className="text-white font-semibold">
@@ -129,18 +141,6 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
                 <p className="text-white/50 text-[10px] uppercase tracking-wide">Skyer</p>
                 <p className="text-white font-semibold">
                   {result.factors.cloudCoverage}%
-                </p>
-              </div>
-              <div>
-                <p className="text-white/50 text-[10px] uppercase tracking-wide">Sjanse</p>
-                <p className="text-white font-semibold">
-                  {result.factors.probability}%
-                </p>
-              </div>
-              <div>
-                <p className="text-white/50 text-[10px] uppercase tracking-wide">KP</p>
-                <p className="text-white font-semibold">
-                  {result.factors.kpIndex.toFixed(1)}
                 </p>
               </div>
             </div>

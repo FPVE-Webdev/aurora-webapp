@@ -17,12 +17,14 @@ import { TromsøAuroraForecast, ExtendedMetrics } from '@/types/tromsoAI';
 
 interface AuroraState {
   currentKp: number;
+  globalProbability: number;
   bzGsm: number | undefined;
   solarSpeed: number | undefined;
   spotForecasts: SpotForecast[];
   selectedSpot: ObservationSpot;
   isLoading: boolean;
   lastUpdate: Date;
+  dataTimestamp: Date;
   error: string | null;
   predictiveHint: string | null;
   extendedMetrics: ExtendedMetrics | null;
@@ -122,12 +124,14 @@ function getLanguage(): 'no' | 'en' {
 export function useAuroraData() {
   const [state, setState] = useState<AuroraState>({
     currentKp: 3,
+    globalProbability: 0,
     bzGsm: undefined,
     solarSpeed: undefined,
     spotForecasts: [],
     selectedSpot: getInitialSpot(),
     isLoading: true,
     lastUpdate: new Date(),
+    dataTimestamp: new Date(),
     error: null,
     predictiveHint: null,
     extendedMetrics: null
@@ -154,6 +158,7 @@ export function useAuroraData() {
 
       // Convert to KP index for compatibility
       const kpIndex = scoreToKpIndex(forecast.score);
+      const dataTimestamp = new Date(forecast.updated);
 
       // Fetch weather data and hourly forecasts for all spots in parallel
       const spotForecastsPromises = OBSERVATION_SPOTS.map(async (spot) => {
@@ -200,11 +205,13 @@ export function useAuroraData() {
       setState(prev => ({
         ...prev,
         currentKp: kpIndex,
+        globalProbability: forecast.score,
         bzGsm: undefined, // Not provided by new API
         solarSpeed: undefined, // Not provided by new API
         spotForecasts,
         isLoading: false,
         lastUpdate: new Date(),
+        dataTimestamp,
         error: null,
         predictiveHint,
         extendedMetrics: forecast.extended_metrics || null
@@ -231,9 +238,12 @@ export function useAuroraData() {
         setState(prev => ({
           ...prev,
           currentKp: kpIndex,
+          globalProbability: cached.score,
           spotForecasts,
           isLoading: false,
-          error: null
+          error: null,
+          dataTimestamp: new Date(cached.updated),
+          lastUpdate: new Date()
         }));
       } else {
         setState(prev => ({

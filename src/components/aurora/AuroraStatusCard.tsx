@@ -97,16 +97,21 @@ export function AuroraStatusCard({ data }: AuroraStatusCardProps) {
           </p>
         </div>
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/10">
-          <div className="flex flex-col items-center">
-            <Zap className="w-5 h-5 text-white/60 mb-1" />
-            <span className="text-xs text-white/60">{t('kpIndex')}</span>
-            <span className="text-xl font-display font-semibold text-white">
-              {kpIndex.toFixed(1)}
-            </span>
+        {/* KP + probability headline */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/10">
+          <div>
+            <div className="text-sm text-white/60">Solar Activity</div>
+            <div className="text-2xl font-bold">KP {kpIndex.toFixed(1)}</div>
           </div>
 
+          <div className="mt-2 sm:mt-0">
+            <div className="text-sm text-white/60">Viewing Chance</div>
+            <div className="text-4xl font-bold">{displayProbability}%</div>
+          </div>
+        </div>
+
+        {/* Weather stats */}
+        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
           <div className="flex flex-col items-center">
             <Cloud className="w-5 h-5 text-white/60 mb-1" />
             <span className="text-xs text-white/60">{t('cloudCover')}</span>

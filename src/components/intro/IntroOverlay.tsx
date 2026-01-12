@@ -106,15 +106,16 @@ export default function IntroOverlay({ onClose }: Props) {
                 <p className="text-white/60">Sjekker forholdene for nordlys...</p>
               </div>
               
-              <div className="grid grid-cols-2 gap-8 w-full py-4 border-t border-white/10 border-b">
-                 <div className="flex flex-col">
-                    <span className="text-sm text-white/50">KP-Indeks</span>
-                    <span className="text-2xl font-bold text-primary">{kpIndex.toFixed(1)}</span>
-                 </div>
-                 <div className="flex flex-col">
-                    <span className="text-sm text-white/50">Sjanse</span>
-                    <span className="text-2xl font-bold text-primary">{Math.round(auroraProbability)}%</span>
-                 </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full py-4 border-t border-white/10 border-b">
+                <div>
+                  <div className="text-sm text-white/60">Solar Activity</div>
+                  <div className="text-2xl font-bold">KP {kpIndex.toFixed(1)}</div>
+                </div>
+
+                <div className="mt-2 sm:mt-0">
+                  <div className="text-sm text-white/60">Viewing Chance</div>
+                  <div className="text-4xl font-bold">{Math.round(auroraProbability)}%</div>
+                </div>
               </div>
 
               <button
