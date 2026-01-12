@@ -19,7 +19,7 @@ export function useAppSettings() {
   useEffect(() => {
     async function fetchSettings() {
       try {
-        const response = await fetch('/api/admin/settings');
+        const response = await fetch('/api/settings');
         if (response.ok) {
           // Check if response has content before trying to parse JSON
           const contentType = response.headers.get('content-type');
