@@ -30,20 +30,28 @@ export default function OrganizationsPage() {
         setIsLoading(true);
         setError(null);
 
-        const res = await fetch('/api/organizations');
+        const res = await fetch('/api/organizations').catch(() => null);
 
-        if (res.status === 503) {
+        if (!res) {
+          setError('Failed to connect to API');
+          setOrganizations([]);
+        } else if (res.status === 503) {
           setError('Supabase database not configured. B2B features are disabled.');
           setOrganizations([]);
+        } else if (res.status === 401) {
+          setError('Authentication required. Please configure API authentication.');
+          setOrganizations([]);
         } else if (!res.ok) {
-          throw new Error('Failed to fetch organizations');
+          setError('Failed to fetch organizations');
+          setOrganizations([]);
         } else {
-          const data = await res.json();
+          const data = await res.json().catch(() => null);
           setOrganizations(Array.isArray(data) ? data : []);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load organizations');
-        console.error('Organizations fetch error:', err);
+        setError('Failed to load organizations');
+        // Suppress console error - already handled in UI
+        setOrganizations([]);
       } finally {
         setIsLoading(false);
       }

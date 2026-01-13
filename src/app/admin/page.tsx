@@ -22,38 +22,45 @@ export default function AdminDashboard() {
         setIsLoading(true);
         setError(null);
 
-        // Fetch organizations
-        const orgsRes = await fetch('/api/organizations');
-        const orgsData = await orgsRes.json();
+        // Fetch organizations (gracefully handle auth errors)
+        const orgsRes = await fetch('/api/organizations').catch(() => null);
+        const orgsData = orgsRes && orgsRes.ok ? await orgsRes.json().catch(() => null) : null;
 
-        // Fetch API keys
-        const keysRes = await fetch('/api/api-keys');
-        const keysData = await keysRes.json();
+        // Fetch API keys (gracefully handle auth errors)
+        const keysRes = await fetch('/api/api-keys').catch(() => null);
+        const keysData = keysRes && keysRes.ok ? await keysRes.json().catch(() => null) : null;
 
-        // Fetch analytics
-        const analyticsRes = await fetch('/api/analytics');
-        const analyticsData = await analyticsRes.json();
+        // Fetch analytics (gracefully handle auth errors)
+        const analyticsRes = await fetch('/api/analytics').catch(() => null);
+        const analyticsData = analyticsRes && analyticsRes.ok ? await analyticsRes.json().catch(() => null) : null;
 
-        // Check if Supabase is configured
-        if (orgsRes.status === 503 || keysRes.status === 503 || analyticsRes.status === 503) {
+        // Check if APIs returned errors (503 = not configured, 401 = not authenticated)
+        const isNotConfigured =
+          orgsRes?.status === 503 ||
+          keysRes?.status === 503 ||
+          analyticsRes?.status === 503;
+
+        const isNotAuthenticated =
+          orgsRes?.status === 401 ||
+          keysRes?.status === 401 ||
+          analyticsRes?.status === 401;
+
+        if (isNotConfigured) {
           setError('Supabase database not configured. B2B features are disabled.');
-          setStats({
-            totalOrganizations: 0,
-            totalApiKeys: 0,
-            totalRequests: 0,
-            activeUsers: 0,
-          });
-        } else {
-          setStats({
-            totalOrganizations: Array.isArray(orgsData) ? orgsData.length : 0,
-            totalApiKeys: Array.isArray(keysData) ? keysData.length : 0,
-            totalRequests: analyticsData?.totalRequests || 0,
-            activeUsers: analyticsData?.activeUsers || 0,
-          });
+        } else if (isNotAuthenticated) {
+          setError('Authentication required. B2B API endpoints require bearer token.');
         }
+
+        // Set stats (default to 0 if data unavailable)
+        setStats({
+          totalOrganizations: Array.isArray(orgsData) ? orgsData.length : 0,
+          totalApiKeys: Array.isArray(keysData) ? keysData.length : 0,
+          totalRequests: analyticsData?.totalRequests || 0,
+          activeUsers: analyticsData?.activeUsers || 0,
+        });
       } catch (err) {
         setError('Failed to load dashboard statistics');
-        console.error('Dashboard stats error:', err);
+        // Suppress console error - already handled in UI
       } finally {
         setIsLoading(false);
       }
