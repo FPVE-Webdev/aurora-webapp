@@ -254,11 +254,6 @@ export default function SettingsPage() {
                   {hoursRemaining}h remaining · {subscriptionTier}
                 </p>
               )}
-              {isPremium && settings.devMode && (
-                <p className="text-purple-400/70 text-xs mt-2">
-                  ⚡ Premium auto-enabled in Dev Mode
-                </p>
-              )}
             </div>
             <label className="relative inline-flex items-center cursor-pointer ml-4">
               <input

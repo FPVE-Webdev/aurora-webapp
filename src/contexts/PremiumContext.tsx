@@ -45,8 +45,9 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
 
   // Derived state
   const isExpired = expiresAt ? Date.now() > expiresAt : false;
-  // Enable premium in devMode for testing
-  const isPremium = settings.devMode || (subscriptionTier !== 'free' && !isExpired);
+  // Premium is active if subscription tier is not free and not expired
+  // DevMode no longer auto-enables premium - use manual toggle in admin settings
+  const isPremium = subscriptionTier !== 'free' && !isExpired;
 
   const hoursRemaining = expiresAt && !isExpired
     ? Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60))
