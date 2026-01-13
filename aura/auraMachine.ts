@@ -37,6 +37,11 @@ function determineNextState(
   event: AuraEvent,
   context: AuraContext
 ): AuraState | null {
+  // CONTEXT_CHANGED is a no-op event (stays in current state)
+  if (event === AuraEvent.CONTEXT_CHANGED) {
+    return state;
+  }
+
   switch (state) {
     // ============================================
     // HIDDEN - Entry point

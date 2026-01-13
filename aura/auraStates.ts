@@ -63,6 +63,9 @@ export enum AuraEvent {
   RESET = 'RESET',
   SLEEP = 'SLEEP',
   WAKE = 'WAKE',
+
+  // Context events
+  CONTEXT_CHANGED = 'CONTEXT_CHANGED',
 }
 
 /**
