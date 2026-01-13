@@ -70,7 +70,6 @@ export function AuroraLiveMap() {
 
   useEffect(() => {
     if (debugLive) {
-      // #region agent log
       const first = spotForecasts?.[0];
       const firstHour = first?.hourlyForecast?.[0] as any;
       const hourlyKeys = firstHour ? Object.keys(firstHour) : [];
@@ -80,8 +79,6 @@ export function AuroraLiveMap() {
         hasFirst: !!first,
         firstHourlyKeys: hourlyKeys.slice(0, 20),
       });
-      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:54',message:'live map state snapshot',data:{spotCount:spotForecasts?.length??0,selectedSpotId:selectedSpot?.id,firstHourlyKeys:hourlyKeys.slice(0,20)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
     }
   }, [spotForecasts, selectedSpot?.id]);
 
@@ -150,10 +147,7 @@ export function AuroraLiveMap() {
 
     if (isPlaying) {
       if (debugLive) {
-        // #region agent log
         console.log('[debug-live] toggleAnimation', { next: false, prev: true, animationProgress });
-        fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:111',message:'toggleAnimation stop',data:{animationProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7'})}).catch(()=>{});
-        // #endregion
       }
       setIsPlaying(false);
       if (animationFrameRef.current) {
@@ -162,10 +156,7 @@ export function AuroraLiveMap() {
       }
     } else {
       if (debugLive) {
-        // #region agent log
         console.log('[debug-live] toggleAnimation', { next: true, prev: false, animationProgress });
-        fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraLiveMap.tsx:121',message:'toggleAnimation start',data:{animationProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7'})}).catch(()=>{});
-        // #endregion
       }
       setIsPlaying(true);
       setAnimationProgress(0);
