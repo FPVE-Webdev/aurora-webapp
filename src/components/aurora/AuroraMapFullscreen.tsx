@@ -10,6 +10,7 @@ import { deriveOverlayState } from '@/components/aurora/animations';
 import { getTierConfig, filterSpotsByTier, hasFeature } from '@/lib/features/liveTierConfig';
 import { LockedBadge } from '@/components/live/TierGate';
 import { toast } from 'sonner';
+import { trackZoomLimit, trackLockedFeatureClick } from '@/lib/analytics/tierEvents';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -255,6 +256,10 @@ export default function AuroraMapFullscreen({
 
       if (isAtLimit && !zoomLimitToastShown && mapRestrictions.bounds) {
         zoomLimitToastShown = true;
+
+        // Track zoom limit event
+        trackZoomLimit(subscriptionTier, currentZoom);
+
         toast.info('Zoom-grense nådd', {
           description: 'Oppgrader til Premium for full kartvisning',
           duration: 3000,
@@ -687,7 +692,13 @@ export default function AuroraMapFullscreen({
       {/* Overlay + animation toggles under top info bar */}
       <div className="absolute top-16 left-0 right-0 z-[1000] px-4 flex items-center justify-between pointer-events-none">
         <button
-          onClick={() => canUseWeatherLayers && setShowAnimation(!showAnimation)}
+          onClick={() => {
+            if (!canUseWeatherLayers) {
+              trackLockedFeatureClick(subscriptionTier, 'animation_toggle', 'toolbar');
+              return;
+            }
+            setShowAnimation(!showAnimation);
+          }}
           disabled={!canUseWeatherLayers}
           className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
             !canUseWeatherLayers
@@ -702,7 +713,13 @@ export default function AuroraMapFullscreen({
         </button>
 
         <button
-          onClick={() => canUseWeatherLayers && setShowOverlay(!showOverlay)}
+          onClick={() => {
+            if (!canUseWeatherLayers) {
+              trackLockedFeatureClick(subscriptionTier, 'overlay_toggle', 'toolbar');
+              return;
+            }
+            setShowOverlay(!showOverlay);
+          }}
           disabled={!canUseWeatherLayers}
           className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
             !canUseWeatherLayers

@@ -4,6 +4,7 @@
  */
 
 import { SubscriptionTier } from '@/contexts/PremiumContext';
+import { trackUpgradeNavigation } from '@/lib/analytics/tierEvents';
 
 export interface UpgradeContext {
   from: SubscriptionTier;
@@ -17,6 +18,9 @@ export interface UpgradeContext {
  * TODO: Create dedicated /upgrade page with pricing plans
  */
 export function navigateToUpgrade(context: UpgradeContext): void {
+  // Track upgrade navigation event
+  trackUpgradeNavigation(context.from, context.feature, context.source);
+
   const params = new URLSearchParams({
     from: context.from,
     feature: context.feature,

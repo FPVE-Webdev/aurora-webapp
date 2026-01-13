@@ -9,6 +9,8 @@ import { Lock, Sparkles } from 'lucide-react';
 import type { SubscriptionTier } from '@/contexts/PremiumContext';
 import type { LiveFeatures } from '@/lib/features/liveTierConfig';
 import { getUpgradeMessage } from '@/lib/features/liveTierConfig';
+import { trackTierGateView, trackTierGateDismiss, trackTierGateUpgrade } from '@/lib/analytics/tierEvents';
+import { useEffect } from 'react';
 
 export interface TierGateProps {
   readonly currentTier: SubscriptionTier;
@@ -34,6 +36,18 @@ export function TierGate({
 }: TierGateProps) {
   const upgradeInfo = getUpgradeMessage(currentTier, feature);
   const isLocked = upgradeInfo.message !== '';
+
+  // Track when tier gate is displayed
+  useEffect(() => {
+    if (isLocked) {
+      trackTierGateView(currentTier, feature);
+    }
+  }, [isLocked, currentTier, feature]);
+
+  const handleUpgradeClick = () => {
+    trackTierGateUpgrade(currentTier, feature);
+    onUpgrade?.();
+  };
 
   if (!isLocked) {
     return <>{children}</>;
@@ -67,7 +81,7 @@ export function TierGate({
           {/* CTA Button */}
           {onUpgrade && upgradeInfo.price && (
             <button
-              onClick={onUpgrade}
+              onClick={handleUpgradeClick}
               className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg py-3 px-4 transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-lg"
             >
               <Sparkles className="w-4 h-4" />
@@ -78,7 +92,7 @@ export function TierGate({
           {/* Enterprise CTA */}
           {onUpgrade && !upgradeInfo.price && (
             <button
-              onClick={onUpgrade}
+              onClick={handleUpgradeClick}
               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold rounded-lg py-3 px-4 transition-all transform hover:scale-105 active:scale-95 shadow-lg"
             >
               Kontakt oss for Enterprise
