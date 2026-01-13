@@ -108,7 +108,7 @@ export async function callStubAI(
     [UserIntent.AURORA_VISIBILITY]: 'Aurora visibility is moderate tonight in Tromsø.',
     [UserIntent.BEST_VIEWING_SPOTS]: 'Best spots are Telegrafbukta and Prestvannet.',
     [UserIntent.TONIGHT_FORECAST]: 'KP index 4 expected, good viewing conditions.',
-    [UserIntent.WHAT_IS_AURORA]: 'Aurora is light from solar particles hitting Earth\'s atmosphere.',
+    [UserIntent.WHAT_IS_AURORA]: "Aurora is light from solar particles hitting Earth's atmosphere.",
   };
 
   return {

@@ -20,7 +20,7 @@ export function getResponseMessage(context: AuraContext): string {
   }
 
   if (path === '/welcome') {
-    return 'I've highlighted the best viewing spots near you.';
+    return "I've highlighted the best viewing spots near you.";
   }
 
   if (path.startsWith('/kart')) {
@@ -36,7 +36,7 @@ export function getResponseMessage(context: AuraContext): string {
   }
 
   // Default message
-  return 'I've shown you the key locations on the map.';
+  return "I've shown you the key locations on the map.";
 }
 
 /**
