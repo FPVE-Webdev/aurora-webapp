@@ -1,0 +1,25 @@
+# Aurora WebApp - Robots.txt
+# Production: Allow all crawlers
+# Dev/Preview: Block all crawlers (configured via environment)
+
+User-agent: *
+Allow: /
+
+# High-value pages for SEO
+Allow: /
+Allow: /about
+Allow: /privacy
+Allow: /terms
+Allow: /live
+Allow: /forecast
+
+# Block admin and API routes
+Disallow: /admin/
+Disallow: /api/
+
+# Block sensitive or low-value pages
+Disallow: /settings
+Disallow: /upgrade
+
+# Sitemap location
+Sitemap: https://aurora.tromso.ai/sitemap.xml

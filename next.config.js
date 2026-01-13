@@ -6,6 +6,11 @@ const path = require('path');
 const nextConfig = {
   reactStrictMode: true,
 
+  // Only fail build on ESLint errors, not warnings
+  eslint: {
+    ignoreDuringBuilds: false, // Still run ESLint
+  },
+
   env: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`

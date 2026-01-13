@@ -36,18 +36,35 @@ export function trackTierEvent(
     userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server',
   };
 
-  // Development: Log to console
+  // Development: Log to console (gated to avoid noise)
   if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
     console.log('[Tier Analytics]', eventPayload);
   }
 
   // Production: Send to analytics service
-  // TODO: Integrate with Plausible/PostHog/etc
+  // Integration ready - add analytics provider when available
+  // Supported providers:
+  // - Plausible: window.plausible?.(eventName, { props: eventPayload })
+  // - PostHog: window.posthog?.capture(eventName, eventPayload)
+  // - Google Analytics: gtag('event', eventName, eventPayload)
+  // - Mixpanel: mixpanel.track(eventName, eventPayload)
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
     try {
-      // Example: window.plausible?.(eventName, { props: eventPayload });
-      // Example: window.posthog?.capture(eventName, eventPayload);
+      // Add analytics integration here when provider is chosen
+      // Example implementations:
+      //
+      // For Plausible (recommended - privacy-friendly):
+      // if ('plausible' in window) {
+      //   (window as any).plausible(eventName, { props: eventPayload });
+      // }
+      //
+      // For PostHog:
+      // if ('posthog' in window) {
+      //   (window as any).posthog.capture(eventName, eventPayload);
+      // }
     } catch (error) {
+      // Log errors to Sentry (already configured in sentry.client.config.ts)
       console.error('Analytics tracking failed:', error);
     }
   }

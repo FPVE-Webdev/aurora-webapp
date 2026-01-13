@@ -14,8 +14,7 @@ export interface UpgradeContext {
 
 /**
  * Navigate to upgrade page with context
- * For now, redirects to settings page
- * TODO: Create dedicated /upgrade page with pricing plans
+ * Redirects to dedicated /upgrade page with pricing plans
  */
 export function navigateToUpgrade(context: UpgradeContext): void {
   // Track upgrade navigation event
@@ -27,9 +26,8 @@ export function navigateToUpgrade(context: UpgradeContext): void {
     source: context.source,
   });
 
-  // Temporary: redirect to settings
-  // Future: redirect to /upgrade?params
-  window.location.href = `/settings?${params.toString()}`;
+  // Redirect to /upgrade page with context parameters
+  window.location.href = `/upgrade?${params.toString()}`;
 }
 
 /**

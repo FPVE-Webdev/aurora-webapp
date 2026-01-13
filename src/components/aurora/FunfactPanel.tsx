@@ -22,20 +22,8 @@ export function FunfactPanel({ funfacts }: FunfactPanelProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  if (!funfacts || funfacts.length === 0) {
-    return null;
-  }
-
-  // Auto-rotation effect
-  useEffect(() => {
-    const timer = setInterval(() => {
-      handleNext(true); // true = auto-navigation
-    }, 8000);
-
-    return () => clearInterval(timer);
-  }, [currentIndex, funfacts.length]);
-
   const handleNext = (isAuto = false) => {
+    if (!funfacts || funfacts.length === 0) return;
     if (!isAuto) setIsTransitioning(true);
     setCurrentIndex((prev) => (prev + 1) % funfacts.length);
     if (!isAuto) {
@@ -44,10 +32,26 @@ export function FunfactPanel({ funfacts }: FunfactPanelProps) {
   };
 
   const handlePrev = () => {
+    if (!funfacts || funfacts.length === 0) return;
     setIsTransitioning(true);
     setCurrentIndex((prev) => (prev - 1 + funfacts.length) % funfacts.length);
     setTimeout(() => setIsTransitioning(false), 300);
   };
+
+  // Auto-rotation effect - must be called before early return
+  useEffect(() => {
+    if (!funfacts || funfacts.length === 0) return;
+
+    const timer = setInterval(() => {
+      handleNext(true); // true = auto-navigation
+    }, 8000);
+
+    return () => clearInterval(timer);
+  }, [currentIndex, funfacts]);
+
+  if (!funfacts || funfacts.length === 0) {
+    return null;
+  }
 
   return (
     <div

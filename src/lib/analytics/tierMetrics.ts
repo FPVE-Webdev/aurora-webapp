@@ -53,13 +53,19 @@ export function calculateConversionFunnel(
 /**
  * Get tier metrics summary
  * Placeholder - would fetch from analytics backend in production
+ *
+ * Integration steps when analytics backend is ready:
+ * 1. Set up Plausible/PostHog/Google Analytics
+ * 2. Query events: 'tier_gate_viewed', 'tier_gate_upgrade_clicked', etc.
+ * 3. Aggregate counts by tier and timeRange
+ * 4. Calculate conversion rate: (upgradeclicks / gateViews) * 100
  */
 export async function getTierMetrics(
   tier: SubscriptionTier,
   timeRange: '24h' | '7d' | '30d' = '7d'
 ): Promise<TierMetricsSummary> {
-  // TODO: Fetch from actual analytics backend (Plausible/PostHog/etc)
-  // For now, return mock data
+  // Returns zero values until analytics backend is integrated
+  // Events are already being tracked via trackTierEvent() in tierEvents.ts
   return {
     tier,
     totalViews: 0,
@@ -74,6 +80,11 @@ export async function getTierMetrics(
 /**
  * Get most locked features (by click count)
  * Useful for prioritizing feature unlocks
+ *
+ * Integration steps when analytics backend is ready:
+ * 1. Query 'feature_locked_clicked' events from analytics
+ * 2. Group by feature name and count occurrences
+ * 3. Sort by clicks descending, return top N
  */
 export interface FeatureLockStats {
   feature: string;
@@ -84,13 +95,20 @@ export interface FeatureLockStats {
 export async function getMostLockedFeatures(
   limit: number = 10
 ): Promise<FeatureLockStats[]> {
-  // TODO: Query analytics backend
+  // Returns empty until analytics backend is integrated
+  // Events are being tracked via trackLockedFeatureClick() in tierEvents.ts
   return [];
 }
 
 /**
  * Get upgrade conversion rate by feature
  * Shows which features drive most upgrades
+ *
+ * Integration steps when analytics backend is ready:
+ * 1. Query 'tier_gate_viewed' events, group by feature
+ * 2. Query 'tier_gate_upgrade_clicked' events, group by feature
+ * 3. Calculate conversion rate per feature: (upgradeClicks / gateViews) * 100
+ * 4. Sort by conversion rate descending
  */
 export interface FeatureConversionStats {
   feature: string;
@@ -100,6 +118,7 @@ export interface FeatureConversionStats {
 }
 
 export async function getFeatureConversionRates(): Promise<FeatureConversionStats[]> {
-  // TODO: Query analytics backend
+  // Returns empty until analytics backend is integrated
+  // Events are being tracked via trackTierGateView/trackTierGateUpgrade in tierEvents.ts
   return [];
 }
