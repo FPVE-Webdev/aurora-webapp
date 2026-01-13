@@ -12,7 +12,7 @@ import { useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { AuraView } from './AuraView';
 import { useAuraMachine } from './useAuraMachine';
-import { AuraEvent } from './auraStates';
+import { AuraState, AuraEvent } from './auraStates';
 import { createStubMapController } from './mapController';
 import { UserIntent } from './aiService';
 
@@ -23,6 +23,7 @@ export function AuraRoot() {
   const mapController = useMemo(() => createStubMapController(), []);
 
   const { state, sendEvent } = useAuraMachine({
+    initialState: AuraState.IDLE_DOCKED, // Start visible instead of HIDDEN
     plan: 'free', // Default to free plan
     page: {
       path: pathname || '/',
@@ -57,7 +58,7 @@ export function AuraRoot() {
       style={{
         position: 'fixed',
         bottom: '20px',
-        right: '20px',
+        left: '20px',
         zIndex: 1000,
       }}
     >
