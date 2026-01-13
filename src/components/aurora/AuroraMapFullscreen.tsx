@@ -9,6 +9,7 @@ import AuroraOverlay from '@/components/aurora/AuroraOverlay';
 import { deriveOverlayState } from '@/components/aurora/animations';
 import { getTierConfig, filterSpotsByTier, hasFeature } from '@/lib/features/liveTierConfig';
 import { LockedBadge } from '@/components/live/TierGate';
+import { toast } from 'sonner';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -243,6 +244,25 @@ export default function AuroraMapFullscreen({
     };
     map.on('error', onMapError);
     // #endregion
+
+    // Zoom limit reached toast for free tier
+    let zoomLimitToastShown = false;
+    map.on('zoom', () => {
+      const currentZoom = map.getZoom();
+      const isAtLimit =
+        (currentZoom <= mapRestrictions.minZoom + 0.1) ||
+        (currentZoom >= mapRestrictions.maxZoom - 0.1);
+
+      if (isAtLimit && !zoomLimitToastShown && mapRestrictions.bounds) {
+        zoomLimitToastShown = true;
+        toast.info('Zoom-grense nådd', {
+          description: 'Oppgrader til Premium for full kartvisning',
+          duration: 3000,
+        });
+        // Reset after 5 seconds to allow showing again
+        setTimeout(() => { zoomLimitToastShown = false; }, 5000);
+      }
+    });
 
     map.on('load', () => {
       console.log('🗺️ Mapbox map loaded');

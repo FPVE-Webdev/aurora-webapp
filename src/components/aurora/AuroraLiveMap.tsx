@@ -9,6 +9,7 @@ import { usePremium } from '@/contexts/PremiumContext';
 import { useAuroraData } from '@/hooks/useAuroraData';
 import { TierGate } from '@/components/live/TierGate';
 import { hasFeature } from '@/lib/features/liveTierConfig';
+import { navigateToUpgrade } from '@/lib/utils/upgradeHandler';
 
 const debugLive =
   process.env.NODE_ENV === 'development' ||
@@ -359,8 +360,11 @@ export function AuroraLiveMap() {
             featureTitle="Tidslinje-animasjon"
             featureDescription="Se nordlysprognoser frem i tid med interaktiv tidslinje (0-12 timer)"
             onUpgrade={() => {
-              // TODO: Navigate to upgrade page
-              console.log('Navigate to upgrade page');
+              navigateToUpgrade({
+                from: subscriptionTier,
+                feature: 'animation',
+                source: 'tier-gate',
+              });
             }}
           >
             <div

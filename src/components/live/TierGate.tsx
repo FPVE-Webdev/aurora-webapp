@@ -96,11 +96,11 @@ export function TierGate({
 }
 
 /**
- * Inline locked indicator for toolbar buttons
+ * Inline locked indicator for toolbar buttons with subtle pulse animation
  */
 export function LockedBadge() {
   return (
-    <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+    <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center animate-pulse">
       <Lock className="w-2.5 h-2.5 text-white" />
     </span>
   );
