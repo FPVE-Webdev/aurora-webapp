@@ -152,8 +152,17 @@ export function AuraView({ config, mapController, userIntent }: AuraViewProps) {
           style={{
             width: '60px',
             height: '60px',
-            background: '#ddd',
+            background: '#fff',
+            border: '2px solid #4ade80',
+            borderRadius: '50%',
             cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '12px',
+            fontWeight: 600,
+            color: '#000',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
           }}
         >
           Aura
