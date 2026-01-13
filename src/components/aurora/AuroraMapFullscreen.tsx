@@ -7,6 +7,8 @@ import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalcul
 import { SubscriptionTier } from '@/contexts/PremiumContext';
 import AuroraOverlay from '@/components/aurora/AuroraOverlay';
 import { deriveOverlayState } from '@/components/aurora/animations';
+import { getTierConfig, filterSpotsByTier, hasFeature } from '@/lib/features/liveTierConfig';
+import { LockedBadge } from '@/components/live/TierGate';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -63,11 +65,8 @@ interface Props {
   subscriptionTier: SubscriptionTier;
 }
 
-// Tromsø area bounds for Free/Pro users
-const TROMSO_BOUNDS: [[number, number], [number, number]] = [
-  [18.6, 69.5],  // Southwest [lng, lat]
-  [19.2, 69.8]   // Northeast [lng, lat]
-];
+// Free tier preset spot IDs (city center only)
+const FREE_SPOT_IDS = ['tromso', 'telegrafbukta', 'prestvannet'];
 
 function getMarkerColor(probability: number): string {
   if (probability >= 70) return '#34f5c5'; // Primary cyan - Excellent
@@ -124,10 +123,16 @@ export default function AuroraMapFullscreen({
     y: number;
   } | null>(null);
 
-  // Determine if user has unrestricted map access (Enterprise only)
-  const hasUnrestrictedAccess = subscriptionTier === 'enterprise';
+  // Get tier configuration
+  const tierConfig = getTierConfig(subscriptionTier);
+  const mapRestrictions = tierConfig.map;
+  const canUseWeatherLayers = hasFeature(subscriptionTier, 'weatherLayers');
+
+  // Filter forecasts by tier (Free users only see 3 city spots)
+  const allowedForecasts = filterSpotsByTier(forecasts, subscriptionTier, FREE_SPOT_IDS);
+
   const activeForecast =
-    forecasts.find((f) => f.spot.id === selectedSpotId) || forecasts[0];
+    allowedForecasts.find((f) => f.spot.id === selectedSpotId) || allowedForecasts[0];
   const overlayState = deriveOverlayState(activeForecast as any, animationHour);
 
   useEffect(() => {
@@ -201,25 +206,18 @@ export default function AuroraMapFullscreen({
       mapRef.current = null;
     }
 
-    // Create map with restrictions for Free/Pro users
+    // Create map with tier-based restrictions
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: 'mapbox://styles/mapbox/dark-v11',
       center: [18.9, 69.65], // Tromsø center
-      zoom: hasUnrestrictedAccess ? 6 : 8.5,
+      zoom: mapRestrictions.initialZoom,
       pitch: 65, // 3D angle view
       bearing: -20, // Slight rotation for dramatic effect
       attributionControl: false,
-      ...(hasUnrestrictedAccess ? {
-        // Enterprise: Full map access
-        minZoom: 5,
-        maxZoom: 14,
-      } : {
-        // Free/Pro: Restricted to Tromsø
-        maxBounds: TROMSO_BOUNDS,
-        minZoom: 7,
-        maxZoom: 12,
-      })
+      minZoom: mapRestrictions.minZoom,
+      maxZoom: mapRestrictions.maxZoom,
+      ...(mapRestrictions.bounds ? { maxBounds: mapRestrictions.bounds } : {})
     });
 
     // Match manual canvas offset from design preview
@@ -317,7 +315,7 @@ export default function AuroraMapFullscreen({
         mapRef.current = null;
       }
     };
-  }, [hasUnrestrictedAccess]);
+  }, [mapRestrictions.minZoom, mapRestrictions.maxZoom, mapRestrictions.initialZoom, mapRestrictions.bounds]);
 
   // Render aurora oval polygon
   useEffect(() => {
@@ -392,19 +390,21 @@ export default function AuroraMapFullscreen({
     }
   }, [auroraData, showOverlay]);
 
-  // Add forecast markers
+  // Add forecast markers (filtered by tier)
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || forecasts.length === 0) return;
+    if (!map || allowedForecasts.length === 0) return;
 
     if (debugLive) {
       // #region agent log
       console.log('[debug-live] markers effect', {
-        forecastCount: forecasts.length,
+        forecastCount: allowedForecasts.length,
+        totalForecasts: forecasts.length,
+        tier: subscriptionTier,
         animationHour,
         hourIndex: Math.floor(animationHour),
       });
-      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:370',message:'markers effect run',data:{forecastCount:forecasts.length,animationHour,hourIndex:Math.floor(animationHour)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:370',message:'markers effect run',data:{forecastCount:allowedForecasts.length,totalForecasts:forecasts.length,tier:subscriptionTier,animationHour,hourIndex:Math.floor(animationHour)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8'})}).catch(()=>{});
       // #endregion
     }
 
@@ -422,7 +422,7 @@ export default function AuroraMapFullscreen({
       windSpeed: number;
     }> = {};
 
-    forecasts.forEach((forecast) => {
+    allowedForecasts.forEach((forecast) => {
       try {
         let displayProbability = forecast.currentProbability;
         let displayKp = (forecast as any).kp;
@@ -597,7 +597,7 @@ export default function AuroraMapFullscreen({
         }
       }
     });
-  }, [forecasts, onSelectSpot, animationHour]);
+  }, [allowedForecasts, forecasts.length, subscriptionTier, onSelectSpot, animationHour, kpIndex]);
 
   // Add aurora oval halo badges
   useEffect(() => {
@@ -667,33 +667,41 @@ export default function AuroraMapFullscreen({
       {/* Overlay + animation toggles under top info bar */}
       <div className="absolute top-16 left-0 right-0 z-[1000] px-4 flex items-center justify-between pointer-events-none">
         <button
-          onClick={() => setShowAnimation(!showAnimation)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
-            showAnimation
+          onClick={() => canUseWeatherLayers && setShowAnimation(!showAnimation)}
+          disabled={!canUseWeatherLayers}
+          className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
+            !canUseWeatherLayers
+              ? 'bg-black/50 text-white/40 cursor-not-allowed'
+              : showAnimation
               ? 'bg-gradient-to-br from-emerald-400 to-cyan-600 text-white'
               : 'bg-black/50 text-white/70 hover:bg-black/70'
           }`}
         >
           {showAnimation ? '✨ Animasjon på' : '✨ Animasjon av'}
+          {!canUseWeatherLayers && <LockedBadge />}
         </button>
 
         <button
-          onClick={() => setShowOverlay(!showOverlay)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
-            showOverlay
+          onClick={() => canUseWeatherLayers && setShowOverlay(!showOverlay)}
+          disabled={!canUseWeatherLayers}
+          className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
+            !canUseWeatherLayers
+              ? 'bg-black/50 text-white/40 cursor-not-allowed'
+              : showOverlay
               ? 'bg-gradient-to-br from-green-400 to-green-600 text-white'
               : 'bg-black/50 text-white/70 hover:bg-black/70'
           }`}
         >
           {showOverlay ? '🌌 Nordlysbelte på' : '🌌 Nordlysbelte av'}
+          {!canUseWeatherLayers && <LockedBadge />}
         </button>
       </div>
 
       {/* Map info badge */}
       <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-xs z-[1000]">
         <span className="text-white/90">
-          KP {kpIndex.toFixed(1)} • {forecasts.length} lokasjoner
-          {!hasUnrestrictedAccess && ' • Tromsø-området'}
+          KP {kpIndex.toFixed(1)} • {allowedForecasts.length} lokasjoner
+          {mapRestrictions.bounds && ' • Tromsø-området'}
         </span>
       </div>
 

@@ -7,6 +7,8 @@ import { Cloud, Thermometer, Wind, ChevronDown, Play, Pause, Loader2, ExternalLi
 import { cn } from '@/lib/utils';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useAuroraData } from '@/hooks/useAuroraData';
+import { TierGate } from '@/components/live/TierGate';
+import { hasFeature } from '@/lib/features/liveTierConfig';
 
 const debugLive =
   process.env.NODE_ENV === 'development' ||
@@ -139,7 +141,12 @@ export function AuroraLiveMap() {
   const selectedForecast =
     forecasts.find((f) => f.spot.id === selectedSpotId) || forecasts[0];
 
+  const canUseAnimation = hasFeature(subscriptionTier, 'animation');
+
   const toggleAnimation = () => {
+    // Locked features are blocked by TierGate overlay, but add safeguard
+    if (!canUseAnimation) return;
+
     if (isPlaying) {
       if (debugLive) {
         // #region agent log
@@ -346,48 +353,61 @@ export function AuroraLiveMap() {
             bottom: '1.5rem'
           }}
         >
-          <div
-            className="rounded-2xl backdrop-blur-xl max-w-md mx-auto p-3"
-            style={{
-              background: level === 'excellent'
-                ? 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(3,10,24,0.9) 100%)'
-                : level === 'good'
-                ? 'linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(3,10,24,0.9) 100%)'
-                : level === 'moderate'
-                ? 'linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(3,10,24,0.9) 100%)'
-                : 'linear-gradient(135deg, rgba(52,245,197,0.08) 0%, rgba(3,10,24,0.85) 100%)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              border: '1px solid rgba(255,255,255,0.08)'
+          <TierGate
+            currentTier={subscriptionTier}
+            feature="animation"
+            featureTitle="Tidslinje-animasjon"
+            featureDescription="Se nordlysprognoser frem i tid med interaktiv tidslinje (0-12 timer)"
+            onUpgrade={() => {
+              // TODO: Navigate to upgrade page
+              console.log('Navigate to upgrade page');
             }}
           >
-            {/* Animation controls */}
-            <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={toggleAnimation}
-                className={cn(
-                  'w-10 h-10 rounded-full flex items-center justify-center transition-all',
-                  isPlaying
-                    ? 'bg-primary/30 ring-2 ring-primary/50'
-                    : 'bg-white/10 hover:bg-white/20'
-                )}
-              >
-                {isPlaying ? (
-                  <Pause className="w-5 h-5 text-white" />
-                ) : (
-                  <Play className="w-5 h-5 text-white ml-0.5" />
-                )}
-              </button>
+            <div
+              className="rounded-2xl backdrop-blur-xl max-w-md mx-auto p-3"
+              style={{
+                background: level === 'excellent'
+                  ? 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(3,10,24,0.9) 100%)'
+                  : level === 'good'
+                  ? 'linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(3,10,24,0.9) 100%)'
+                  : level === 'moderate'
+                  ? 'linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(3,10,24,0.9) 100%)'
+                  : 'linear-gradient(135deg, rgba(52,245,197,0.08) 0%, rgba(3,10,24,0.85) 100%)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                border: '1px solid rgba(255,255,255,0.08)'
+              }}
+            >
+              {/* Animation controls */}
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={toggleAnimation}
+                  disabled={!canUseAnimation}
+                  className={cn(
+                    'w-10 h-10 rounded-full flex items-center justify-center transition-all',
+                    !canUseAnimation && 'opacity-50 cursor-not-allowed',
+                    isPlaying
+                      ? 'bg-primary/30 ring-2 ring-primary/50'
+                      : 'bg-white/10 hover:bg-white/20'
+                  )}
+                >
+                  {isPlaying ? (
+                    <Pause className="w-5 h-5 text-white" />
+                  ) : (
+                    <Play className="w-5 h-5 text-white ml-0.5" />
+                  )}
+                </button>
 
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white">
-                  {getAnimationTimeLabel()}
-                </div>
-                <div className="text-xs text-white/60">
-                  KP {currentKp.toFixed(1)}
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white">
+                    {getAnimationTimeLabel()}
+                  </div>
+                  <div className="text-xs text-white/60">
+                    KP {currentKp.toFixed(1)}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </TierGate>
         </div>
       </div>
     </div>

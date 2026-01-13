@@ -202,8 +202,9 @@ export function getRefreshInterval(tier: SubscriptionTier): number {
 
 /**
  * Filter observation spots by tier
+ * Supports both direct { id: string } and nested { spot: { id: string } }
  */
-export function filterSpotsByTier<T extends { id: string }>(
+export function filterSpotsByTier<T extends { id: string } | { spot: { id: string } }>(
   spots: T[],
   tier: SubscriptionTier,
   freeSpotIds: string[] = ['tromso', 'telegrafbukta', 'prestvannet']
@@ -212,7 +213,10 @@ export function filterSpotsByTier<T extends { id: string }>(
 
   if (tier === 'free') {
     // Only show preset free spots
-    return spots.filter(spot => freeSpotIds.includes(spot.id));
+    return spots.filter(spot => {
+      const id = 'id' in spot ? spot.id : spot.spot.id;
+      return freeSpotIds.includes(id);
+    });
   }
 
   // Premium/Enterprise: show all spots up to maxSpots limit
