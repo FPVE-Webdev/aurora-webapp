@@ -14,7 +14,7 @@ import { AuroraDataProvider } from '@/contexts/AuroraDataContext';
 import { Navigation } from '@/components/shared/Navigation';
 import Footer from '@/components/shared/Footer';
 import { ChatWidget } from '@/components/chat/ChatWidget';
-import { AuraRoot } from '../../../aura/AuraRoot';
+import { AuraRoot } from '../../aura/AuraRoot';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 
