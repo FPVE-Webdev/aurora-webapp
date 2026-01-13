@@ -164,7 +164,9 @@ export default function AuroraMapFullscreen({
   const fetchAuroraData = useCallback(async () => {
     try {
       const url = '/api/aurora/oval?resolution=medium';
-      console.log('📡 Fetching aurora oval from:', url);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📡 Fetching aurora oval from:', url);
+      }
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -180,7 +182,9 @@ export default function AuroraMapFullscreen({
       }
 
       const data = await response.json();
-      console.log('✅ Aurora oval data loaded:', data);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Aurora oval data loaded:', data);
+      }
 
       if (data && data.features && data.features.length > 0) {
         const feature = data.features[0];
@@ -280,7 +284,9 @@ export default function AuroraMapFullscreen({
     });
 
     map.on('load', () => {
-      console.log('🗺️ Mapbox map loaded');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🗺️ Mapbox map loaded');
+      }
 
       // Add 3D terrain
       map.addSource('mapbox-dem', {
@@ -336,7 +342,9 @@ export default function AuroraMapFullscreen({
         }
       });
 
-      console.log('✅ 3D terrain and snow styling applied');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ 3D terrain and snow styling applied');
+      }
     });
 
     mapRef.current = map;
@@ -362,11 +370,15 @@ export default function AuroraMapFullscreen({
       .sort((a, b) => a.lon - b.lon);
 
     if (beltPoints.length < 5) {
-      console.log('⚠️ Not enough aurora oval points:', beltPoints.length);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ Not enough aurora oval points:', beltPoints.length);
+      }
       return;
     }
 
-    console.log(`✅ Rendering aurora oval with ${beltPoints.length} points`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Rendering aurora oval with ${beltPoints.length} points`);
+    }
 
     // Create GeoJSON for aurora oval
     const ovalGeoJSON: GeoJSON.Feature<GeoJSON.Polygon> = {

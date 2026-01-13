@@ -227,7 +227,11 @@ function calculateProbability(features: Features): {
 /**
  * Calculate confidence based on data availability
  */
-function calculateConfidence(context: any): number {
+function calculateConfidence(context: {
+  kp3hAvg?: number;
+  kpTrend?: number;
+  bzNegativeDuration?: number;
+}): number {
   let confidence = 100;
 
   // Reduce confidence if missing context
