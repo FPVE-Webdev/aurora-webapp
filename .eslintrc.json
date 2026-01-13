@@ -4,24 +4,36 @@
     "next/typescript"
   ],
   "rules": {
-    // TypeScript - all warnings (not errors) to allow build to succeed
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-unused-vars": "off",
+    // TypeScript - gradual improvement
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
 
     // React
     "react/no-unescaped-entities": "off",
-    "react-hooks/exhaustive-deps": "off",
+    "react-hooks/exhaustive-deps": "warn",
 
-    // General code quality - off to allow build
-    "no-console": "off",
-    "prefer-const": "off",
+    // General code quality
+    "no-console": [
+      "warn",
+      {
+        "allow": ["warn", "error"]
+      }
+    ],
+    "prefer-const": "warn",
     "no-var": "warn",
 
     // Next.js specific
     "@next/next/no-html-link-for-pages": "off",
-    "@next/next/no-img-element": "off",
+    "@next/next/no-img-element": "warn",
 
     // Import rules
-    "import/no-anonymous-default-export": "off"
+    "import/no-anonymous-default-export": "warn"
   }
 }

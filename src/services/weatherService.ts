@@ -69,10 +69,12 @@ class WeatherService {
 
       const current = data.properties.timeseries[0];
 
-      console.log('✓ Weather fetched for', lat.toFixed(4), lon.toFixed(4), ':', {
-        temperature: current.data.instant.details.air_temperature,
-        cloudCoverage: current.data.instant.details.cloud_area_fraction
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✓ Weather fetched for', lat.toFixed(4), lon.toFixed(4), ':', {
+          temperature: current.data.instant.details.air_temperature,
+          cloudCoverage: current.data.instant.details.cloud_area_fraction
+        });
+      }
 
       const symbolCode = current.data.next_1_hours?.summary?.symbol_code ||
                          current.data.next_6_hours?.summary?.symbol_code ||
@@ -117,7 +119,9 @@ class WeatherService {
         throw new Error('No forecast data available');
       }
 
-      console.log('✓ Hourly forecast fetched:', data.properties.timeseries.length, 'hours');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✓ Hourly forecast fetched:', data.properties.timeseries.length, 'hours');
+      }
 
       return data.properties.timeseries.slice(0, hours).map(item => ({
         time: item.time,

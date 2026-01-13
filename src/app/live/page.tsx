@@ -5,7 +5,9 @@ import { AuroraLiveMap } from '@/components/aurora/AuroraLiveMap';
 
 export default function LivePage() {
   useEffect(() => {
-    console.log('[debug-live] live/page mount');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[debug-live] live/page mount');
+    }
 
     const onError = (event: ErrorEvent) => {
       console.error('[debug-live] window.error', {
