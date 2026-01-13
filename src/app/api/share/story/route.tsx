@@ -18,18 +18,36 @@ async function fetchJson<T>(url: string) {
 
 async function resolveContext(request: Request) {
   const base = new URL(request.url);
-  const now = await fetchJson<any>(new URL('/api/aurora/now?lang=en', base).toString());
-  const weather = await fetchJson<any>(new URL(`/api/weather/${DEFAULT_LAT}/${DEFAULT_LON}`, base).toString());
 
-  const kp = typeof now?.kp === 'number' ? now.kp : scoreToKpIndex(now?.score || 50);
-  const cloudCoverage = typeof weather?.cloudCoverage === 'number' ? weather.cloudCoverage : 50;
-  const temperature = typeof weather?.temperature === 'number' ? weather.temperature : -5;
-  const probability = calculateAuroraProbability({
+  // Default fallback values
+  let kp = 3;
+  let cloudCoverage = 50;
+  let temperature = -5;
+  let probability = 45;
+
+  try {
+    const now = await fetchJson<any>(new URL('/api/aurora/now?lang=en', base).toString());
+    kp = typeof now?.kp === 'number' ? now.kp : scoreToKpIndex(now?.score || 50);
+  } catch (error) {
+    console.error('[share/story] Failed to fetch aurora data, using default KP=3:', error);
+  }
+
+  try {
+    const weather = await fetchJson<any>(new URL(`/api/weather/${DEFAULT_LAT}/${DEFAULT_LON}`, base).toString());
+    cloudCoverage = typeof weather?.cloudCoverage === 'number' ? weather.cloudCoverage : 50;
+    temperature = typeof weather?.temperature === 'number' ? weather.temperature : -5;
+  } catch (error) {
+    console.error('[share/story] Failed to fetch weather data, using defaults:', error);
+  }
+
+  // Calculate probability with available data
+  probability = calculateAuroraProbability({
     kpIndex: kp,
     cloudCoverage,
     temperature,
     latitude: DEFAULT_LAT,
   }).probability;
+
   const sunElevation = calculateSunElevation(DEFAULT_LAT, DEFAULT_LON, new Date());
 
   const master = calculateMasterStatus({

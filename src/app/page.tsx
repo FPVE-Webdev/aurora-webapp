@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuroraData } from '@/hooks/useAuroraData';
 import { clamp01 } from '@/lib/utils/mathUtils';
 import { AuroraStatusCard } from '@/components/aurora/AuroraStatusCard';
+import { useWelcome } from '@/contexts/WelcomeContext';
 // QuickStats removed - data now consolidated in AuroraStatusCard
 import { HourlyForecast } from '@/components/aurora/HourlyForecast';
 import { DarkHoursInfo } from '@/components/aurora/DarkHoursInfo';
@@ -27,6 +29,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HomePage() {
   const { t } = useLanguage();
+  const router = useRouter();
+  const { hasSeenWelcome } = useWelcome();
   const {
     currentKp,
     spotForecasts,
@@ -39,7 +43,14 @@ export default function HomePage() {
   } = useAuroraData();
   const { isPremium } = usePremium();
   const { status: masterStatus } = useMasterStatus();
-  
+
+  // Redirect first-time users to welcome page
+  useEffect(() => {
+    if (!hasSeenWelcome) {
+      router.push('/welcome');
+    }
+  }, [hasSeenWelcome, router]);
+
   // Enforce Lite Mode: Lock to Tromsø
   useEffect(() => {
     if (!isPremium && selectedSpot.id !== 'troms') {

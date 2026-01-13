@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,6 +9,7 @@ import { clamp01 } from '@/lib/utils/mathUtils';
 import { shareStoryImage } from '@/lib/shareStory';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuroraDataContext } from '@/contexts/AuroraDataContext';
+import { useWelcome } from '@/contexts/WelcomeContext';
 import { Tooltip } from '@/components/ui/Tooltip';
 import Kart3VideoOverlay from './components/Kart3VideoOverlay';
 import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
@@ -44,6 +46,8 @@ function classifyWeatherType(cloudCoverage: number): number {
 
 export default function WelcomeView() {
   const { t } = useLanguage();
+  const router = useRouter();
+  const { setHasSeenWelcome } = useWelcome();
 
   // Use unified aurora data context
   const { currentKp, selectedSpotForecast } = useAuroraDataContext();
@@ -169,12 +173,15 @@ export default function WelcomeView() {
 
             {/* Show me more button */}
             <div className="flex justify-center mb-4">
-              <Link
-                href="/home"
+              <button
+                onClick={() => {
+                  setHasSeenWelcome(true);
+                  router.push('/home');
+                }}
                 className="inline-flex items-center justify-center rounded-xl bg-white text-black px-6 py-3 text-base font-semibold hover:bg-white/90 transition-colors"
               >
                 Show me more!
-              </Link>
+              </button>
             </div>
 
             {/* Fun Facts Bulletin */}

@@ -11,6 +11,7 @@ import { DataModeProvider } from '@/contexts/DataModeContext';
 import { RetentionProvider } from '@/contexts/RetentionContext';
 import { MasterStatusProvider } from '@/contexts/MasterStatusContext';
 import { AuroraDataProvider } from '@/contexts/AuroraDataContext';
+import { WelcomeProvider } from '@/contexts/WelcomeContext';
 import { Navigation } from '@/components/shared/Navigation';
 import Footer from '@/components/shared/Footer';
 import { ChatWidget } from '@/components/chat/ChatWidget';
@@ -65,20 +66,22 @@ export default function ClientLayout({
                     <PremiumProvider>
                       <RetentionProvider>
                         <MasterStatusProvider>
-                          <LayoutContent>{children}</LayoutContent>
-                          <ChatWidget />
-                          <AuraRoot />
-                          <Toaster
-                            position="top-right"
-                            theme="dark"
-                            toastOptions={{
-                              style: {
-                                background: 'rgb(15, 17, 24)',
-                                border: '1px solid rgba(255, 255, 3, 0.1)',
-                                color: 'white',
-                              },
-                            }}
-                          />
+                          <WelcomeProvider>
+                            <LayoutContent>{children}</LayoutContent>
+                            <ChatWidget />
+                            <AuraRoot />
+                            <Toaster
+                              position="top-right"
+                              theme="dark"
+                              toastOptions={{
+                                style: {
+                                  background: 'rgb(15, 17, 24)',
+                                  border: '1px solid rgba(255, 255, 3, 0.1)',
+                                  color: 'white',
+                                },
+                              }}
+                            />
+                          </WelcomeProvider>
                         </MasterStatusProvider>
                       </RetentionProvider>
                     </PremiumProvider>
