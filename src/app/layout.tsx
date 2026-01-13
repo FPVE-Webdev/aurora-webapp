@@ -11,6 +11,10 @@ export const metadata: Metadata = {
     template: '%s | Nordlys Tromsø',
   },
   description: 'Real-time aurora borealis forecast and activity monitoring for Tromsø, Norway',
+  icons: {
+    icon: '/Aurahalo.png',
+    apple: '/Aurahalo.png',
+  },
   openGraph: {
     type: 'website',
     locale: 'no_NO',

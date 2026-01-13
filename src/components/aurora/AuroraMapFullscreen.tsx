@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
@@ -103,6 +103,13 @@ function calculateProbabilityFromOvalPosition(
   return canView ? probability : 0;
 }
 
+// Disable Mapbox telemetry globally to prevent ERR_NAME_NOT_RESOLVED errors
+if (typeof window !== 'undefined' && typeof mapboxgl !== 'undefined') {
+  mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+  // Disable telemetry collection
+  (mapboxgl as any).setRTLTextPlugin = () => {};
+}
+
 export default function AuroraMapFullscreen({
   forecasts,
   selectedSpotId,
@@ -131,23 +138,26 @@ export default function AuroraMapFullscreen({
   const canUseWeatherLayers = hasFeature(subscriptionTier, 'weatherLayers');
 
   // Filter forecasts by tier (Free users only see 3 city spots)
-  const allowedForecasts = filterSpotsByTier(forecasts, subscriptionTier, FREE_SPOT_IDS);
+  // Memoize to prevent re-render loop
+  const allowedForecasts = useMemo(
+    () => filterSpotsByTier(forecasts, subscriptionTier, FREE_SPOT_IDS),
+    [forecasts, subscriptionTier]
+  );
 
   const activeForecast =
     allowedForecasts.find((f) => f.spot.id === selectedSpotId) || allowedForecasts[0];
   const overlayState = deriveOverlayState(activeForecast as any, animationHour);
 
   useEffect(() => {
-    // #region agent log
-    const tokenPresent = !!process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    console.log('[debug-live] AuroraMapFullscreen mount', {
-      tokenPresent,
-      forecastCount: forecasts?.length ?? 0,
-      selectedSpotId,
-      animationHour,
-    });
-    fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:126',message:'map fullscreen mount',data:{tokenPresent,forecastCount:forecasts?.length??0,selectedSpotId,animationHour},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
+    if (process.env.NODE_ENV === 'development') {
+      const tokenPresent = !!process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+      console.log('[debug-live] AuroraMapFullscreen mount', {
+        tokenPresent,
+        forecastCount: forecasts?.length ?? 0,
+        selectedSpotId,
+        animationHour,
+      });
+    }
   }, [animationHour, forecasts?.length, selectedSpotId]);
 
   // Fetch aurora oval data
@@ -219,6 +229,7 @@ export default function AuroraMapFullscreen({
       attributionControl: false,
       minZoom: mapRestrictions.minZoom,
       maxZoom: mapRestrictions.maxZoom,
+      trackResize: false, // Disable telemetry
       ...(mapRestrictions.bounds ? { maxBounds: mapRestrictions.bounds } : {})
     });
 
@@ -235,16 +246,15 @@ export default function AuroraMapFullscreen({
       ctrlTopRight.style.right = '16px';
     }
 
-    // #region agent log
     const onMapError = (e: any) => {
-      const msg = e?.error?.message || e?.error?.toString?.() || 'unknown_mapbox_error';
-      const status = e?.error?.status;
-      const url = e?.error?.url;
-      console.error('[debug-live] mapbox error event', { msg, status, url });
-      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:214',message:'mapbox error',data:{msg,status,url},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H6'})}).catch(()=>{});
+      if (process.env.NODE_ENV === 'development') {
+        const msg = e?.error?.message || e?.error?.toString?.() || 'unknown_mapbox_error';
+        const status = e?.error?.status;
+        const url = e?.error?.url;
+        console.error('[debug-live] mapbox error event', { msg, status, url });
+      }
     };
     map.on('error', onMapError);
-    // #endregion
 
     // Zoom limit reached toast for free tier
     let zoomLimitToastShown = false;
@@ -420,8 +430,7 @@ export default function AuroraMapFullscreen({
     const map = mapRef.current;
     if (!map || allowedForecasts.length === 0) return;
 
-    if (debugLive) {
-      // #region agent log
+    if (debugLive && process.env.NODE_ENV === 'development') {
       console.log('[debug-live] markers effect', {
         forecastCount: allowedForecasts.length,
         totalForecasts: forecasts.length,
@@ -429,8 +438,6 @@ export default function AuroraMapFullscreen({
         animationHour,
         hourIndex: Math.floor(animationHour),
       });
-      fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:370',message:'markers effect run',data:{forecastCount:allowedForecasts.length,totalForecasts:forecasts.length,tier:subscriptionTier,animationHour,hourIndex:Math.floor(animationHour)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8'})}).catch(()=>{});
-      // #endregion
     }
 
     // Clear existing markers
@@ -458,8 +465,7 @@ export default function AuroraMapFullscreen({
           const hourData = forecast.hourlyForecast[hourIndex];
 
           if (hourData) {
-            if (debugLive) {
-              // #region agent log
+            if (debugLive && process.env.NODE_ENV === 'development') {
               const hdLog: any = hourData as any;
               const hasWeatherObj = !!hdLog?.weather;
               const hdKeys = hdLog ? Object.keys(hdLog) : [];
@@ -469,8 +475,6 @@ export default function AuroraMapFullscreen({
                 hasWeatherObj,
                 hdKeys: hdKeys.slice(0, 20),
               });
-              fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:402',message:'hourly shape',data:{spotId:forecast.spot.id,hourIndex,hasWeatherObj,hdKeys:hdKeys.slice(0,20)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
-              // #endregion
             }
 
             displayProbability = (hourData.canSeeAurora !== false)
@@ -614,15 +618,12 @@ export default function AuroraMapFullscreen({
 
         markersRef.current.push(marker);
       } catch (err) {
-        if (debugLive) {
-          // #region agent log
+        if (debugLive && process.env.NODE_ENV === 'development') {
           console.error('[debug-live] marker build failed', { spotId: forecast?.spot?.id }, err);
-          fetch('http://127.0.0.1:7243/ingest/42efd832-76ad-40c5-b002-3c507686850a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/components/aurora/AuroraMapFullscreen.tsx:510',message:'marker build failed',data:{spotId:forecast?.spot?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H9'})}).catch(()=>{});
-          // #endregion
         }
       }
     });
-  }, [allowedForecasts, forecasts.length, subscriptionTier, onSelectSpot, animationHour, kpIndex]);
+  }, [allowedForecasts, subscriptionTier, onSelectSpot, animationHour, kpIndex]);
 
   // Add aurora oval halo badges
   useEffect(() => {
