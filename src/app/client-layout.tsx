@@ -14,6 +14,7 @@ import { AuroraDataProvider } from '@/contexts/AuroraDataContext';
 import { Navigation } from '@/components/shared/Navigation';
 import Footer from '@/components/shared/Footer';
 import { ChatWidget } from '@/components/chat/ChatWidget';
+import { AuraRoot } from '@/../../aura/AuraRoot';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 
@@ -66,13 +67,14 @@ export default function ClientLayout({
                         <MasterStatusProvider>
                           <LayoutContent>{children}</LayoutContent>
                           <ChatWidget />
+                          <AuraRoot />
                           <Toaster
                             position="top-right"
                             theme="dark"
                             toastOptions={{
                               style: {
                                 background: 'rgb(15, 17, 24)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                border: '1px solid rgba(255, 255, 3, 0.1)',
                                 color: 'white',
                               },
                             }}
