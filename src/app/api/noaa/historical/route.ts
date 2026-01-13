@@ -14,6 +14,48 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
   : null;
 
+interface NOAAHistoricalRecord {
+  timestamp: string;
+  kp_index: number | null;
+  solar_wind_speed: number | null;
+  solar_wind_density: number | null;
+  solar_wind_temperature: number | null;
+  bz_component: number | null;
+  bt_total: number | null;
+  by_component: number | null;
+  aurora_probability: number | null;
+  observation_quality: string | null;
+  data_source: string | null;
+}
+
+interface NOAAStatistics {
+  kp?: {
+    avg: number;
+    min: number;
+    max: number;
+    median: number;
+    count: number;
+  };
+  solarWind?: {
+    avgSpeed: number;
+    minSpeed: number;
+    maxSpeed: number;
+    count: number;
+  };
+  magneticField?: {
+    avgBz: number;
+    minBz: number;
+    maxBz: number;
+    negativeBzPercentage: number;
+  };
+  auroraProbability?: {
+    avg: number;
+    min: number;
+    max: number;
+    highProbabilityPercentage: number;
+  };
+}
+
 export async function GET(request: Request) {
   if (!supabase) {
     return NextResponse.json(
@@ -82,12 +124,12 @@ export async function GET(request: Request) {
 /**
  * Calculate statistics for the dataset
  */
-function calculateStatistics(data: any[], metric: string) {
+function calculateStatistics(data: NOAAHistoricalRecord[], metric: string): NOAAStatistics | null {
   if (data.length === 0) {
     return null;
   }
 
-  const stats: any = {};
+  const stats: NOAAStatistics = {};
 
   // Kp statistics
   const kpValues = data

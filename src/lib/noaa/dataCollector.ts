@@ -33,6 +33,10 @@ interface NOAAData {
   byComponent?: number;
 }
 
+// NOAA API array entry types (7-day JSON format)
+type NOAAPlasmaEntry = [string, number | null, number | null, number | null];
+type NOAAMagneticEntry = [string, number | null, number | null, number | null];
+
 /**
  * Fetch latest Kp index from NOAA
  */
@@ -84,9 +88,9 @@ async function fetchSolarWind(): Promise<{
     }
 
     // Find latest valid entry
-    const data = response.data.slice(1); // Skip header
+    const data = response.data.slice(1) as NOAAPlasmaEntry[]; // Skip header
     const validEntries = data.filter(
-      (entry: any) => entry[2] !== null && entry[2] !== undefined
+      (entry: NOAAPlasmaEntry) => entry[2] !== null && entry[2] !== undefined
     );
 
     if (validEntries.length === 0) {
@@ -95,9 +99,9 @@ async function fetchSolarWind(): Promise<{
 
     const latest = validEntries[validEntries.length - 1];
     return {
-      speed: parseFloat(latest[2]),
-      density: parseFloat(latest[1]),
-      temperature: parseInt(latest[3]),
+      speed: latest[2] as number,
+      density: latest[1] as number,
+      temperature: latest[3] as number,
       timestamp: new Date(latest[0]),
     };
   } catch (error) {
@@ -128,9 +132,9 @@ async function fetchMagneticField(): Promise<{
       throw new Error('Invalid magnetic field data format');
     }
 
-    const data = response.data.slice(1); // Skip header
+    const data = response.data.slice(1) as NOAAMagneticEntry[]; // Skip header
     const validEntries = data.filter(
-      (entry: any) => entry[2] !== null && entry[2] !== undefined
+      (entry: NOAAMagneticEntry) => entry[2] !== null && entry[2] !== undefined
     );
 
     if (validEntries.length === 0) {
@@ -139,9 +143,9 @@ async function fetchMagneticField(): Promise<{
 
     const latest = validEntries[validEntries.length - 1];
     return {
-      bz: parseFloat(latest[2]), // Bz component
-      bt: parseFloat(latest[3]), // Bt total
-      by: parseFloat(latest[1]), // By component
+      bz: latest[2] as number, // Bz component
+      bt: latest[3] as number, // Bt total
+      by: latest[1] as number, // By component
       timestamp: new Date(latest[0]),
     };
   } catch (error) {

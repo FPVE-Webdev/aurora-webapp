@@ -10,11 +10,15 @@ export async function shareStoryImage(params: ShareParams = {}) {
   if (params.location) qs.set('location', params.location);
   if (params.spot) qs.set('spot', params.spot);
 
-  console.log('[shareStory] Fetching image with params:', params);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[shareStory] Fetching image with params:', params);
+  }
 
   const res = await fetch(`/api/share/story?${qs.toString()}`, { cache: 'no-store' });
 
-  console.log('[shareStory] Response status:', res.status, 'Content-Type:', res.headers.get('content-type'));
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[shareStory] Response status:', res.status, 'Content-Type:', res.headers.get('content-type'));
+  }
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -23,7 +27,10 @@ export async function shareStoryImage(params: ShareParams = {}) {
   }
 
   const blob = await res.blob();
-  console.log('[shareStory] Blob received - size:', blob.size, 'type:', blob.type);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[shareStory] Blob received - size:', blob.size, 'type:', blob.type);
+  }
 
   if (blob.size === 0) {
     console.error('[shareStory] Empty blob received from server');
@@ -39,6 +46,8 @@ export async function shareStoryImage(params: ShareParams = {}) {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 
-  console.log('[shareStory] Download triggered successfully');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[shareStory] Download triggered successfully');
+  }
 }
 
