@@ -103,7 +103,7 @@ export async function GET(request: Request) {
   if (location === 'tromso') {
     try {
       // Generate NOAA-based forecast for Tromsø
-      const noaaForecast = await generateTromsoForecast();
+      const noaaForecast = await generateTromsoForecast(hours);
 
       // Convert to hourly API format
       fallbackData = {
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
       console.warn('⚠️ NOAA-based forecast failed, using simple forecast:', error);
 
       // Fallback to simple forecast
-      const simpleForecast = generateSimpleForecast();
+      const simpleForecast = generateSimpleForecast(hours);
       fallbackData = {
         status: 'success',
         location,

@@ -106,16 +106,18 @@ function calculateAuroraProbability(
 }
 
 /**
- * Generate 12-hour forecast for Tromsø using NOAA data
+ * Generate hourly forecast for Tromsø using NOAA data
+ * @param hours - Number of hours to forecast (default: 12, max: 72)
  */
-export async function generateTromsoForecast(): Promise<HourlyForecast[]> {
+export async function generateTromsoForecast(hours: number = 12): Promise<HourlyForecast[]> {
   // Fetch NOAA conditions
   const noaaConditions = await fetchNOAAConditions();
 
   const forecasts: HourlyForecast[] = [];
   const baseDate = new Date();
+  const maxHours = Math.min(Math.max(1, hours), 72); // Clamp between 1 and 72
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < maxHours; i++) {
     const forecastTime = new Date(baseDate);
     forecastTime.setHours(forecastTime.getHours() + i);
 
@@ -157,13 +159,15 @@ export async function generateTromsoForecast(): Promise<HourlyForecast[]> {
 
 /**
  * Get simplified forecast (fallback without NOAA)
+ * @param hours - Number of hours to forecast (default: 12, max: 72)
  */
-export function generateSimpleForecast(): HourlyForecast[] {
+export function generateSimpleForecast(hours: number = 12): HourlyForecast[] {
   const forecasts: HourlyForecast[] = [];
   const baseDate = new Date();
   const baseKp = 3 + Math.random() * 2; // 3-5 range
+  const maxHours = Math.min(Math.max(1, hours), 72); // Clamp between 1 and 72
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < maxHours; i++) {
     const forecastTime = new Date(baseDate);
     forecastTime.setHours(forecastTime.getHours() + i);
 
