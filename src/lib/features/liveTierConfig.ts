@@ -12,6 +12,7 @@ export interface MapRestrictions {
   readonly bounds: [[number, number], [number, number]] | null; // null = unrestricted
   readonly maxSpots: number; // Max observation spots shown
   readonly allowCustomPin: boolean;
+  readonly maxForecastHours: number; // Max hours in hourly forecast
 }
 
 export interface LiveFeatures {
@@ -54,6 +55,7 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
       bounds: TROMSO_CITY_BOUNDS,
       maxSpots: 3, // Only preset city spots
       allowCustomPin: false,
+      maxForecastHours: 6, // Limited to 6-hour forecast
     },
     features: {
       animation: false, // LOCKED
@@ -79,6 +81,7 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
       bounds: TROMSO_REGION_BOUNDS,
       maxSpots: 24, // All Tromsø region spots
       allowCustomPin: true,
+      maxForecastHours: 48, // Full 48-hour forecast
     },
     features: {
       animation: true, // ✓ UNLOCKED
@@ -104,6 +107,7 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
       bounds: TROMSO_REGION_BOUNDS,
       maxSpots: 24,
       allowCustomPin: true,
+      maxForecastHours: 48, // Full 48-hour forecast
     },
     features: {
       animation: true,
@@ -129,6 +133,7 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
       bounds: null, // Unrestricted - full Nordic access
       maxSpots: 100, // All Norway spots
       allowCustomPin: true,
+      maxForecastHours: 72, // Extended 72-hour forecast
     },
     features: {
       animation: true,

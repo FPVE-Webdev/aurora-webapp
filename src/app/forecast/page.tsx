@@ -17,6 +17,7 @@ import { getAllRegionalForecasts } from '@/lib/calculations/regionalForecast';
 import { ViewMode } from '@/types/regions';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getTierConfig } from '@/lib/features/liveTierConfig';
 
 export default function ForecastPage() {
   const { t } = useLanguage();
@@ -37,7 +38,7 @@ export default function ForecastPage() {
   const spotIdParam = searchParams.get('spotId') || searchParams.get('location');
 
   // Check if user has premium access
-  const { isPremium } = usePremium();
+  const { isPremium, subscriptionTier } = usePremium();
 
   // Calculate regional forecasts
   const regionalForecasts = useMemo(() => {
@@ -172,7 +173,10 @@ export default function ForecastPage() {
               </p>
             ) : (
               <p className="text-white/60 mt-2">
-                {t('hourForecastForSpot').replace('{spot}', currentForecast?.spot.name || '')}
+                {(() => {
+                  const maxHours = getTierConfig(subscriptionTier).map.maxForecastHours;
+                  return `${maxHours}-timers prognose for ${currentForecast?.spot.name || ''}`;
+                })()}
               </p>
             )}
             <div className="text-sm text-white/50 mt-1">
@@ -293,6 +297,7 @@ export default function ForecastPage() {
                 <HourlyForecast
                   forecasts={currentForecast.hourlyForecast}
                   locationName={currentForecast.spot.name}
+                  subscriptionTier={subscriptionTier}
                 />
               ) : (
                 <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-8 text-center">

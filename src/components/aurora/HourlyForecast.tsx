@@ -13,26 +13,35 @@ import { getProbabilityLevel, AURORA_EMOJI_MAP } from '@/lib/constants/auroraSta
 import { cn } from '@/lib/utils';
 import { Cloud, Thermometer, MapPin } from 'lucide-react';
 import { BestTimeWindow } from './BestTimeWindow';
+import type { SubscriptionTier } from '@/contexts/PremiumContext';
+import { getTierConfig } from '@/lib/features/liveTierConfig';
 
 interface HourlyForecastProps {
   forecasts: HourlyForecastType[];
   locationName?: string;
+  subscriptionTier?: SubscriptionTier;
 }
 
-function HourlyForecastComponent({ forecasts, locationName }: HourlyForecastProps) {
-  const hours = forecasts.length;
+function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = 'free' }: HourlyForecastProps) {
+  // Get max hours based on subscription tier
+  const tierConfig = getTierConfig(subscriptionTier);
+  const maxHours = tierConfig.map.maxForecastHours;
+
+  // Limit forecasts based on tier
+  const limitedForecasts = forecasts.slice(0, maxHours);
+  const hours = limitedForecasts.length;
   const forecastLabel = hours <= 6 ? '6-timers prognose' : `${hours}-timers prognose`;
 
-  // Find the best time (highest probability)
-  const bestTimeIndex = forecasts.reduce((bestIdx, forecast, idx, arr) =>
+  // Find the best time (highest probability) within limited forecasts
+  const bestTimeIndex = limitedForecasts.reduce((bestIdx, forecast, idx, arr) =>
     forecast.probability > arr[bestIdx].probability ? idx : bestIdx
   , 0);
 
-  const bestForecast = forecasts[bestTimeIndex];
+  const bestForecast = limitedForecasts[bestTimeIndex];
 
   // Calculate best viewing window (3-hour window around best time)
   const bestStartIndex = Math.max(0, bestTimeIndex - 1);
-  const bestEndIndex = Math.min(forecasts.length - 1, bestTimeIndex + 1);
+  const bestEndIndex = Math.min(limitedForecasts.length - 1, bestTimeIndex + 1);
 
   return (
     <div className="card-aurora relative overflow-hidden bg-arctic-800/50 rounded-lg border border-white/5 p-4 sm:p-6 space-y-4">
@@ -51,15 +60,15 @@ function HourlyForecastComponent({ forecasts, locationName }: HourlyForecastProp
       {/* Best Time Window Badge */}
       {bestForecast && bestForecast.probability >= 30 && (
         <BestTimeWindow
-          startHour={forecasts[bestStartIndex]?.hour || bestForecast.hour}
-          endHour={forecasts[bestEndIndex]?.hour || bestForecast.hour}
+          startHour={limitedForecasts[bestStartIndex]?.hour || bestForecast.hour}
+          endHour={limitedForecasts[bestEndIndex]?.hour || bestForecast.hour}
           probability={bestForecast.probability}
         />
       )}
 
       {/* Desktop: 4 cards visible, Mobile: 2 cards visible */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:hidden">
-        {forecasts.slice(0, 12).map((forecast, index) => {
+        {limitedForecasts.slice(0, 12).map((forecast, index) => {
           const level = getProbabilityLevel(forecast.probability);
           const isBestTime = index === bestTimeIndex;
 
@@ -134,7 +143,7 @@ function HourlyForecastComponent({ forecasts, locationName }: HourlyForecastProp
 
       {/* Horizontal scroll for larger screens */}
       <div className="hidden sm:flex gap-3 overflow-x-auto pb-2 scrollbar-hide relative">
-        {forecasts.map((forecast, index) => {
+        {limitedForecasts.map((forecast, index) => {
           const level = getProbabilityLevel(forecast.probability);
           const isBestTime = index === bestTimeIndex;
 
