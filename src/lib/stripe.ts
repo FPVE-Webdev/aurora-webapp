@@ -14,11 +14,11 @@ export const STRIPE_PRODUCTS = {
     duration_hours: 24,
     tier: 'premium_24h' as const,
   },
-  PREMIUM_96H: {
-    name: 'Nordlys Tromsø - 96-timers tilgang',
+  PREMIUM_7D: {
+    name: 'Nordlys Tromsø - 7-dagers tilgang',
     price: 14900, // 149 NOK in øre
-    duration_hours: 96,
-    tier: 'premium_7d' as const, // Reusing existing tier name
+    duration_hours: 168, // 7 days = 7 × 24 = 168 hours
+    tier: 'premium_7d' as const,
   },
 } as const;
 

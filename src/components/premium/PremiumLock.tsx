@@ -145,7 +145,7 @@ export function PremiumLock({
 
             <button
               className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/30 hover:from-primary/20 hover:to-purple-500/20 transition-colors disabled:opacity-50"
-              onClick={() => handlePurchase('PREMIUM_96H')}
+              onClick={() => handlePurchase('PREMIUM_7D')}
               disabled={isLoading}
             >
               <div className="text-left">
