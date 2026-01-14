@@ -21,6 +21,14 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  // Local state for premium toggle to prevent flickering
+  const [premiumToggleState, setPremiumToggleState] = useState(isPremium);
+
+  // Sync local toggle state with context when it changes
+  useEffect(() => {
+    setPremiumToggleState(isPremium);
+  }, [isPremium]);
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -66,6 +74,13 @@ export default function SettingsPage() {
 
   const updateSetting = (key: keyof AppSettings, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handlePremiumToggle = (checked: boolean) => {
+    // Update local state immediately for smooth UI
+    setPremiumToggleState(checked);
+    // Then update context (which may take a moment)
+    setIsPremium(checked);
   };
 
   if (isLoading) {
@@ -240,7 +255,7 @@ export default function SettingsPage() {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-white font-medium">Premium Access</h3>
-                {isPremium && (
+                {premiumToggleState && (
                   <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/10 text-yellow-500">
                     ACTIVE
                   </span>
@@ -249,7 +264,7 @@ export default function SettingsPage() {
               <p className="text-white/60 text-sm">
                 Enable premium features for testing (24 observation spots, detailed forecasts)
               </p>
-              {isPremium && subscriptionTier !== 'free' && hoursRemaining && (
+              {premiumToggleState && subscriptionTier !== 'free' && hoursRemaining && (
                 <p className="text-white/50 text-xs mt-2">
                   {hoursRemaining}h remaining · {subscriptionTier}
                 </p>
@@ -258,8 +273,8 @@ export default function SettingsPage() {
             <label className="relative inline-flex items-center cursor-pointer ml-4">
               <input
                 type="checkbox"
-                checked={isPremium}
-                onChange={(e) => setIsPremium(e.target.checked)}
+                checked={premiumToggleState}
+                onChange={(e) => handlePremiumToggle(e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-14 h-8 bg-arctic-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-500/20 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-yellow-500"></div>
