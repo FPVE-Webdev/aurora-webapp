@@ -207,7 +207,7 @@ export function getRefreshInterval(tier: SubscriptionTier): number {
 export function filterSpotsByTier<T extends { id: string } | { spot: { id: string } }>(
   spots: T[],
   tier: SubscriptionTier,
-  freeSpotIds: string[] = ['tromso', 'telegrafbukta', 'prestvannet']
+  freeSpotIds: string[] = ['tromso', 'sommaroy', 'grotfjord']
 ): T[] {
   const config = getTierConfig(tier);
 
