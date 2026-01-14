@@ -62,9 +62,28 @@ export function AuroraLiveMap() {
     body.style.backgroundImage = 'none';
     body.style.backgroundColor = 'rgb(5,7,13)';
 
+    // Hide Mapbox attribution to prevent overlap with floating controls
+    const hideMapboxAttribution = () => {
+      const mapboxBottomLeft = document.querySelector('.mapboxgl-ctrl-bottom-left') as HTMLElement;
+      const mapboxBottomRight = document.querySelector('.mapboxgl-ctrl-bottom-right') as HTMLElement;
+      if (mapboxBottomLeft) mapboxBottomLeft.style.display = 'none';
+      if (mapboxBottomRight) mapboxBottomRight.style.display = 'none';
+    };
+
+    // Initial hide
+    hideMapboxAttribution();
+
+    // Set up interval to hide attribution if it appears later
+    const interval = setInterval(hideMapboxAttribution, 500);
+
     return () => {
       body.style.backgroundImage = prevImage;
       body.style.backgroundColor = prevColor;
+      clearInterval(interval);
+      const mapboxBottomLeft = document.querySelector('.mapboxgl-ctrl-bottom-left') as HTMLElement;
+      const mapboxBottomRight = document.querySelector('.mapboxgl-ctrl-bottom-right') as HTMLElement;
+      if (mapboxBottomLeft) mapboxBottomLeft.style.display = '';
+      if (mapboxBottomRight) mapboxBottomRight.style.display = '';
     };
   }, []);
 
@@ -345,7 +364,7 @@ export function AuroraLiveMap() {
           className="absolute left-4 right-4 z-[1000] animate-in fade-in slide-in-from-bottom-4 duration-200"
           style={{
             pointerEvents: 'auto',
-            bottom: '1.5rem'
+            bottom: '5rem'
           }}
         >
           <TierGate
