@@ -22,7 +22,7 @@ export function AuraRoot() {
   // Create stable map controller instance
   const mapController = useMemo(() => createStubMapController(), []);
 
-  const { state, sendEvent } = useAuraMachine({
+  const { state, context, sendEvent } = useAuraMachine({
     initialState: AuraState.IDLE_DOCKED, // Start visible instead of HIDDEN
     plan: 'free', // Default to free plan
     page: {
@@ -63,7 +63,9 @@ export function AuraRoot() {
       }}
     >
       <AuraView
-        config={{ plan: 'free' }}
+        state={state}
+        context={context}
+        sendEvent={sendEvent}
         mapController={mapController}
         userIntent={UserIntent.AURORA_VISIBILITY}
       />

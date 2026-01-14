@@ -10,13 +10,15 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { AuraState, AuraEvent } from './auraStates';
-import { useAuraMachine, UseAuraMachineConfig } from './useAuraMachine';
+import type { AuraContext } from './auraContext';
 import { MapController } from './mapController';
 import { getResponseMessage, getDefaultResponseMessage } from './responseMessages';
 import { callStubAI, UserIntent } from './aiService';
 
 export interface AuraViewProps {
-  readonly config?: UseAuraMachineConfig;
+  readonly state: AuraState;
+  readonly context: AuraContext;
+  readonly sendEvent: (event: AuraEvent, contextUpdate?: Partial<AuraContext>) => void;
   readonly mapController?: MapController;
   readonly userIntent?: UserIntent;
 }
@@ -25,9 +27,7 @@ export interface AuraViewProps {
  * AuraView Component
  * Validates state machine transitions through UI interactions
  */
-export function AuraView({ config, mapController, userIntent }: AuraViewProps) {
-  const { state, context, sendEvent } = useAuraMachine(config);
-
+export function AuraView({ state, context, sendEvent, mapController, userIntent }: AuraViewProps) {
   // Track response message after guidance
   const [responseMessage, setResponseMessage] = useState<string>(getDefaultResponseMessage());
   const previousState = useRef<AuraState>(state);
