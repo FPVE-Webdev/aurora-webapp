@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useAuroraData } from '@/hooks/useAuroraData';
 import { TierGate } from '@/components/live/TierGate';
-import { hasFeature } from '@/lib/features/liveTierConfig';
+import { hasFeature, filterSpotsByTier } from '@/lib/features/liveTierConfig';
 import { navigateToUpgrade } from '@/lib/utils/upgradeHandler';
 
 const debugLive =
@@ -141,6 +141,9 @@ export function AuroraLiveMap() {
 
   const canUseAnimation = hasFeature(subscriptionTier, 'animation');
 
+  // Filter spots based on tier (free users only see Tromsø area)
+  const allowedSpots = filterSpotsByTier(spotForecasts, subscriptionTier);
+
   const toggleAnimation = () => {
     // Locked features are blocked by TierGate overlay, but add safeguard
     if (!canUseAnimation) return;
@@ -252,7 +255,7 @@ export function AuroraLiveMap() {
                       }}
                     >
                       <div className="py-1">
-                        {spotForecasts.map((sf) => (
+                        {allowedSpots.map((sf) => (
                           <button
                             key={sf.spot.id}
                             onClick={() => {
