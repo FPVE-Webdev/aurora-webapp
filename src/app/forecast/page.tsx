@@ -41,9 +41,12 @@ export default function ForecastPage() {
 
   // Calculate regional forecasts
   const regionalForecasts = useMemo(() => {
-    const regions = REGION_ORDER.map(id => REGIONS[id]);
+    // Free users only see Troms region, premium users see all regions
+    const regions = isPremium
+      ? REGION_ORDER.map(id => REGIONS[id])
+      : [REGIONS['troms']]; // Only Troms for free users
     return getAllRegionalForecasts(regions, spotForecasts);
-  }, [spotForecasts]);
+  }, [spotForecasts, isPremium]);
 
   // Handle URL parameter for spot selection
   useEffect(() => {

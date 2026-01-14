@@ -7,12 +7,14 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ObservationSpot } from '@/types/aurora';
-import { OBSERVATION_SPOTS, FREE_OBSERVATION_SPOTS } from '@/lib/constants';
+import { OBSERVATION_SPOTS } from '@/lib/constants';
 import { MapPin, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { auroraShadows } from '@/lib/auroraTheme';
+import { usePremium } from '@/contexts/PremiumContext';
+import { filterSpotsByTier } from '@/lib/utils/spotFiltering';
 
 interface SpotSelectorProps {
   selectedSpot: ObservationSpot;
@@ -28,21 +30,33 @@ const REGIONS = [
 ];
 
 // Get spots for a specific region
-const getSpotsByRegion = (regionId: string): ObservationSpot[] => {
-  return OBSERVATION_SPOTS.filter(s => s.region === regionId);
+const getSpotsByRegion = (regionId: string, spots: ObservationSpot[]): ObservationSpot[] => {
+  return spots.filter(s => s.region === regionId);
 };
 
 export function SpotSelector({ selectedSpot, onSelectSpot }: SpotSelectorProps) {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const { subscriptionTier } = usePremium();
 
-  // Get current region's spots
-  const regionSpots = selectedRegion ? getSpotsByRegion(selectedRegion) : [];
+  // Filter all spots based on user's subscription tier
+  const availableSpots = useMemo(() => {
+    return filterSpotsByTier(OBSERVATION_SPOTS, subscriptionTier);
+  }, [subscriptionTier]);
+
+  // Get unique regions from available spots
+  const visibleRegions = useMemo(() => {
+    const regionIds = new Set(availableSpots.map(s => s.region));
+    return REGIONS.filter(r => regionIds.has(r.id as any));
+  }, [availableSpots]);
+
+  // Get current region's spots (filtered by tier)
+  const regionSpots = selectedRegion ? getSpotsByRegion(selectedRegion, availableSpots) : [];
 
   // Get region name
   const currentRegionName = REGIONS.find(r => r.id === selectedRegion)?.name || '';
 
   const handleRegionSelect = (regionId: string) => {
-    const spots = getSpotsByRegion(regionId);
+    const spots = getSpotsByRegion(regionId, availableSpots);
 
     // If only one spot in region, select it directly
     if (spots.length === 1) {
@@ -84,11 +98,11 @@ export function SpotSelector({ selectedSpot, onSelectSpot }: SpotSelectorProps) 
 
       <div className="flex flex-wrap gap-2">
         {!selectedRegion ? (
-          // Step 1: Show regions
+          // Step 1: Show regions (filtered by tier)
           <>
-            {REGIONS.map((region, index) => {
+            {visibleRegions.map((region, index) => {
               const isCurrentRegion = selectedSpot.region === region.id || selectedSpot.id === region.id;
-              const spotCount = getSpotsByRegion(region.id).length;
+              const spotCount = getSpotsByRegion(region.id, availableSpots).length;
 
               return (
                 <div

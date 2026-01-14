@@ -1,9 +1,12 @@
+export type SpotTier = 'free' | 'pro' | 'enterprise';
+
 export interface ObservationSpot {
   id: string;
   name: string;
   latitude: number;
   longitude: number;
   region: 'troms' | 'finnmark' | 'nordland' | 'nordic' | 'custom';
+  tier: SpotTier; // Required tier to access this spot
 }
 
 export interface AuroraData {

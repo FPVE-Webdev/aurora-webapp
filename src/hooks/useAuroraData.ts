@@ -89,9 +89,9 @@ function cacheForecast(forecast: TromsøAuroraForecast): void {
   }
 }
 
-// Get default spot (free tier only for web)
+// Get default spot (Tromsø for all tiers)
 const getDefaultSpot = (): ObservationSpot => {
-  return FREE_OBSERVATION_SPOTS.find(s => s.id === 'troms') || FREE_OBSERVATION_SPOTS[0];
+  return FREE_OBSERVATION_SPOTS.find(s => s.id === 'tromso') || FREE_OBSERVATION_SPOTS[0];
 };
 
 const getInitialSpot = (): ObservationSpot => {

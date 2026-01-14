@@ -53,18 +53,15 @@ export default function HomePage() {
 
   // Enforce Lite Mode: Lock to Tromsø
   useEffect(() => {
-    if (!isPremium && selectedSpot.id !== 'troms') {
-      const tromsoArg = { id: 'troms', name: 'Tromsø', latitude: 69.6492, longitude: 18.9553, region: 'troms' }; 
-      // Note: Ideal would be importing FREE_OBSERVATION_SPOTS or finding 'troms' from list, but hardcoding safe default avoids dependency cycles or extra lookups here for now.
-      // Actually, let's just assume selectSpot handles the ID update, passed object needs to match shape.
-      // Better: find it in spotForecasts or just construct minimal object if useAuroraData handles ID selection.
-      // Simplest safe approach:
-      selectSpot({ 
-           id: 'troms', 
-           name: 'Tromsø', 
-           latitude: 69.6492, 
-           longitude: 18.9553, 
-           region: 'troms',
+    if (!isPremium && selectedSpot.id !== 'tromso') {
+      // Free users should only see Tromsø
+      selectSpot({
+           id: 'tromso',
+           name: 'Tromsø',
+           latitude: 69.6492,
+           longitude: 18.9553,
+           region: 'troms' as const,
+           tier: 'free' as const,
       });
     }
   }, [isPremium, selectedSpot, selectSpot]);
