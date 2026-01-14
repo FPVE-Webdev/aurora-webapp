@@ -64,19 +64,29 @@ export function mapTromsøForecastToSpotForecast(
       const hourDate = new Date(apiHour.time);
       const timeOfDay = hourDate.getHours();
 
+      // Check if aurora can be seen at this time (daylight check)
+      const { canView: hourCanView } = calculateAuroraProbability({
+        kpIndex: apiHour.kp ?? kpIndex,
+        cloudCoverage: apiHour.weather?.cloudCoverage ?? apiHour.cloudCoverage ?? 50,
+        temperature: apiHour.weather?.temperature ?? apiHour.temperature ?? 0,
+        latitude: spot.latitude,
+        longitude: spot.longitude,
+        date: hourDate
+      });
+
       return {
         time: apiHour.time,
         hour: typeof apiHour.hour === 'number'
           ? `${apiHour.hour.toString().padStart(2, '0')}:00`
           : apiHour.hour,
-        probability: Math.round(apiHour.probability),
+        probability: hourCanView ? Math.round(apiHour.probability) : 0, // Set to 0 during daylight
         cloudCoverage: Math.round(apiHour.weather?.cloudCoverage ?? apiHour.cloudCoverage ?? 50),
         temperature: Math.round(apiHour.weather?.temperature ?? apiHour.temperature ?? 0),
         kpIndex: apiHour.kp ?? kpIndex,
         symbolCode: apiHour.weather?.symbolCode ??
                    ((apiHour.weather?.cloudCoverage ?? 50) > 50 ? 'cloudy' : 'clearsky_night'),
         twilightPhase: (timeOfDay >= 21 || timeOfDay <= 6) ? 'night' : 'day',
-        canSeeAurora: apiHour.probability > 0 // If probability is 0, can't see aurora
+        canSeeAurora: hourCanView // Use calculated daylight check
       };
     });
   } else {
