@@ -64,9 +64,11 @@ export default function ForecastPage() {
 
   // Handle region selection
   const handleSelectRegion = (regionId: string) => {
-    if (!isPremium) {
-      // Show premium gate
+    // Free users can only access Troms region
+    if (!isPremium && regionId !== 'troms') {
+      // Show premium gate for other regions
       setSelectedRegionId(regionId);
+      setViewMode('premium-gate');
       return;
     }
 
@@ -186,7 +188,7 @@ export default function ForecastPage() {
             regionalForecasts={regionalForecasts}
             onSelectRegion={handleSelectRegion}
           />
-        ) : !isPremium ? (
+        ) : viewMode === 'premium-gate' ? (
           // Premium Gate
           <div className="card-aurora bg-arctic-800/50 rounded-2xl border border-white/5 p-12 text-center max-w-2xl mx-auto">
             <div className="mb-6">

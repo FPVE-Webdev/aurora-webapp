@@ -36,4 +36,4 @@ export interface RegionalForecast {
   kpIndex: number;
 }
 
-export type ViewMode = 'regional' | 'spots';
+export type ViewMode = 'regional' | 'spots' | 'premium-gate';
