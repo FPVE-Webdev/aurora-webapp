@@ -706,22 +706,10 @@ export default function AuroraMapFullscreen({
   // Smooth weather tile animation with crossfade between frames
   useEffect(() => {
     const map = mapRef.current;
-
-    console.log('🌧️ Weather useEffect triggered:', {
-      hasMap: !!map,
-      showWeatherLayers,
-      canUseWeatherLayers,
-      animationHour,
-      showAnimation
-    });
-
     if (!map || !showWeatherLayers || !canUseWeatherLayers) return;
 
     const owmApiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
-    if (!owmApiKey) {
-      console.error('❌ Missing OpenWeatherMap API key');
-      return;
-    }
+    if (!owmApiKey) return;
 
     // Helper to safely remove layers
     const removeLayerIfExists = (layerId: string) => {
@@ -868,10 +856,7 @@ export default function AuroraMapFullscreen({
       layout: { 'visibility': 'visible' }
     }, 'weather-clouds-next');
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🌧️ Weather layers updated: ${showAnimation ? `animating (progress: ${((animationHour - Math.floor(animationHour)) * 100).toFixed(0)}%)` : 'static'}, timestamps: ${currentTimestamp}/${nextTimestamp}`);
-    }
-  }, [animationHour, showAnimation, showWeatherLayers, canUseWeatherLayers]);
+  }, [Math.floor(animationHour), showAnimation, showWeatherLayers, canUseWeatherLayers]);
 
   return (
     <div className="relative w-full h-full">
