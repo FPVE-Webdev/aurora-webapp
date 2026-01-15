@@ -404,7 +404,7 @@ export function AuroraLiveMap() {
                       {selectedForecast.spot.name}
                     </div>
                     <div className="text-xs text-white/60">
-                      {selectedForecast.probability}% sannsynlighet
+                      {selectedForecast.currentProbability}% sannsynlighet
                     </div>
                   </div>
                 </div>
