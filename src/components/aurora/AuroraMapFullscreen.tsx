@@ -566,9 +566,16 @@ export default function AuroraMapFullscreen({
               });
             }
 
-            displayProbability = (hourData.canSeeAurora !== false)
-              ? hourData.probability
-              : 0;
+            // Calculate probability using System A for consistency across /live and /forecast
+            const calculatedProb = calculateAuroraProbability({
+              kpIndex: hourData.kp ?? displayKp ?? 0,
+              cloudCoverage: hourData.weather?.cloudCoverage ?? 50,
+              temperature: hourData.weather?.temperature ?? 0,
+              latitude: forecast.spot.latitude,
+              longitude: forecast.spot.longitude,
+              date: new Date(hourData.time)
+            });
+            displayProbability = calculatedProb.probability;
 
             // Hourly data shape differs between sources (sometimes flat, sometimes nested under `weather`).
             // Prefer nested if present; otherwise fall back to flat fields; finally fall back to base forecast.

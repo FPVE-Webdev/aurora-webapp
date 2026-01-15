@@ -64,8 +64,8 @@ export function mapTromsøForecastToSpotForecast(
       const hourDate = new Date(apiHour.time);
       const timeOfDay = hourDate.getHours();
 
-      // Check if aurora can be seen at this time (daylight check)
-      const { canView: hourCanView } = calculateAuroraProbability({
+      // Calculate probability using System A for consistency across all pages
+      const calculatedProb = calculateAuroraProbability({
         kpIndex: apiHour.kp ?? kpIndex,
         cloudCoverage: apiHour.weather?.cloudCoverage ?? apiHour.cloudCoverage ?? 50,
         temperature: apiHour.weather?.temperature ?? apiHour.temperature ?? 0,
@@ -79,14 +79,14 @@ export function mapTromsøForecastToSpotForecast(
         hour: typeof apiHour.hour === 'number'
           ? `${apiHour.hour.toString().padStart(2, '0')}:00`
           : apiHour.hour,
-        probability: hourCanView ? Math.round(apiHour.probability) : 0, // Set to 0 during daylight
+        probability: calculatedProb.probability, // Use System A calculation
         cloudCoverage: Math.round(apiHour.weather?.cloudCoverage ?? apiHour.cloudCoverage ?? 50),
         temperature: Math.round(apiHour.weather?.temperature ?? apiHour.temperature ?? 0),
         kpIndex: apiHour.kp ?? kpIndex,
         symbolCode: apiHour.weather?.symbolCode ??
                    ((apiHour.weather?.cloudCoverage ?? 50) > 50 ? 'cloudy' : 'clearsky_night'),
         twilightPhase: (timeOfDay >= 21 || timeOfDay <= 6) ? 'night' : 'day',
-        canSeeAurora: hourCanView // Use calculated daylight check
+        canSeeAurora: calculatedProb.canView // Use System A daylight check
       };
     });
   } else {
@@ -126,7 +126,7 @@ export function mapTromsøForecastToSpotForecast(
       return {
         time: hour.toISOString(),
         hour: hour.toTimeString().slice(0, 5),
-        probability: hourCanView ? Math.round(hourProbability) : 0, // Return 0 during daylight
+        probability: hourProbability, // System A already returns 0 during daylight
         cloudCoverage: Math.round(hourCloudCoverage),
         temperature: Math.round(hourTemperature),
         kpIndex: hourKpIndex,
