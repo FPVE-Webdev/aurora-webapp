@@ -163,29 +163,22 @@ export function useAuroraData() {
       // Fetch weather data and hourly forecasts for all spots in parallel
       const spotForecastsPromises = OBSERVATION_SPOTS.map(async (spot) => {
         try {
-          // Fetch real weather for this spot
-          const weatherRes = await fetch(`/api/weather/${spot.latitude}/${spot.longitude}`);
-
-          let weatherData: { cloudCoverage: number; temperature: number; windSpeed?: number } | undefined;
-          if (weatherRes.ok) {
-            const weatherText = await weatherRes.text();
-            if (weatherText && weatherText.trim()) {
-              weatherData = JSON.parse(weatherText) as { cloudCoverage: number; temperature: number; windSpeed?: number };
-            }
-          }
-
-          // Fetch hourly forecast for this spot
+          // Fetch hourly forecast for this spot (includes weather for all hours)
           const hourlyRes = await fetch(`/api/aurora/hourly?hours=48&location=${spot.id}`);
           let hourlyData = null;
+          let currentWeather = undefined;
+
           if (hourlyRes.ok) {
             const hourlyJson = await hourlyRes.json();
             hourlyData = hourlyJson.hourly_forecast;
+            // Extract current weather from hour 0 as single source of truth
+            currentWeather = hourlyData?.[0]?.weather;
           }
 
-          // Map forecast with real weather data and hourly forecast
-          return mapTromsøForecastToSpotForecast(forecast!, spot, weatherData, hourlyData);
+          // Map forecast using hour 0 weather for current probability
+          return mapTromsøForecastToSpotForecast(forecast!, spot, currentWeather, hourlyData);
         } catch (error) {
-          console.warn(`Failed to fetch weather for ${spot.name}, using fallback`);
+          console.warn(`Failed to fetch hourly forecast for ${spot.name}, using fallback`);
           return mapTromsøForecastToSpotForecast(forecast!, spot);
         }
       });

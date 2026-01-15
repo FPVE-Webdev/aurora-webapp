@@ -39,12 +39,13 @@ export function mapTromsøForecastToSpotForecast(
   // Prioritize KP from API if available, otherwise derive from score
   const kpIndex = forecast.kp ?? scoreToKpIndex(forecast.score);
 
-  // Use provided weather data or generate realistic fallbacks based on spot location
-  // Use spot ID hash for deterministic but varied fallbacks
-  const spotHash = spot.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const cloudCoverage = weatherData?.cloudCoverage ?? (10 + (spotHash % 60)); // 10-70%
-  const temperature = weatherData?.temperature ?? (-15 + (spotHash % 25)); // -15 to +10
-  const windSpeed = weatherData?.windSpeed ?? Math.round(2 + (spotHash % 12)); // 2-14 m/s
+  // Extract current weather from hour 0 if hourly data available (single source of truth)
+  const hour0Weather = hourlyApiData?.[0]?.weather;
+
+  // Use hour 0 weather as priority, then weatherData, then stable defaults (NO hash-based variation)
+  const cloudCoverage = hour0Weather?.cloudCoverage ?? weatherData?.cloudCoverage ?? 50;
+  const temperature = hour0Weather?.temperature ?? weatherData?.temperature ?? 0;
+  const windSpeed = hour0Weather?.windSpeed ?? weatherData?.windSpeed ?? 5;
 
   // Calculate probability based on spot's latitude and REAL weather (with daylight check)
   const { probability, canView, nextViewableTime, bestTimeTonight } = calculateAuroraProbability({
@@ -144,7 +145,7 @@ export function mapTromsøForecastToSpotForecast(
       cloudCoverage: Math.round(cloudCoverage),
       temperature: Math.round(temperature),
       windSpeed: Math.round(windSpeed),
-      precipitation: cloudCoverage > 70 ? Math.round((spotHash % 5)) : 0,
+      precipitation: cloudCoverage > 70 ? 2 : 0, // Simple rule: heavy clouds = light precipitation
       symbolCode: cloudCoverage > 50 ? 'cloudy' : 'clearsky_night',
       timestamp: forecast.updated
     },
