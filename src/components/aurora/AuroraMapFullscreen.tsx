@@ -619,6 +619,7 @@ export default function AuroraMapFullscreen({
         };
 
         const color = getMarkerColor(displayProbability);
+        const isSelected = forecast.spot.id === selectedSpotId;
 
         // Create custom marker element
         const el = document.createElement('div');
@@ -631,18 +632,21 @@ export default function AuroraMapFullscreen({
         font-weight: 700;
         font-size: 13px;
         box-shadow: 0 2px 12px rgba(0,0,0,0.5);
-        border: 2px solid white;
+        border: ${isSelected ? '3px solid #FFD700' : '2px solid white'};
         white-space: nowrap;
         font-family: system-ui, sans-serif;
         cursor: pointer;
-        transition: transform 0.2s;
+        transition: transform 0.2s, border-color 0.3s;
         transform-origin: center center;
+        ${isSelected ? 'transform: scale(1.2);' : ''}
       `;
-        el.textContent = `${displayProbability}%`;
+        el.innerHTML = isSelected
+          ? `<div style="display: flex; align-items: center; gap: 4px;"><span style="font-size: 14px;">📍</span><span>${displayProbability}%</span></div>`
+          : `${displayProbability}%`;
 
         // Hover: show tooltip
         el.addEventListener('mouseenter', (e) => {
-          el.style.transform = 'scale(1.15)';
+          el.style.transform = isSelected ? 'scale(1.3)' : 'scale(1.15)';
           const rect = el.getBoundingClientRect();
           setHoveredMarker({
             name: forecast.spot.name,
@@ -654,7 +658,7 @@ export default function AuroraMapFullscreen({
         });
 
         el.addEventListener('mouseleave', () => {
-          el.style.transform = 'scale(1)';
+          el.style.transform = isSelected ? 'scale(1.2)' : 'scale(1)';
           setHoveredMarker(null);
         });
 
@@ -712,7 +716,7 @@ export default function AuroraMapFullscreen({
         }
       }
     });
-  }, [allowedForecasts, subscriptionTier, onSelectSpot, animationHour, kpIndex]);
+  }, [allowedForecasts, subscriptionTier, onSelectSpot, animationHour, kpIndex, selectedSpotId]);
 
   // Add aurora oval halo badges
   useEffect(() => {
