@@ -394,13 +394,27 @@ export function AuroraLiveMap() {
                 border: '1px solid rgba(255,255,255,0.08)'
               }}
             >
-              {/* Animation controls */}
-              <div className="flex items-center justify-center gap-3">
+              {/* Animation controls with location info */}
+              <div className="flex items-center justify-between gap-4 px-2">
+                {/* Left: Location info */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-2xl flex-shrink-0">{getWeatherIcon()}</span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-white truncate">
+                      {selectedForecast.spot.name}
+                    </div>
+                    <div className="text-xs text-white/60">
+                      {selectedForecast.probability}% sannsynlighet
+                    </div>
+                  </div>
+                </div>
+
+                {/* Center: Play button */}
                 <button
                   onClick={toggleAnimation}
                   disabled={!canUseAnimation}
                   className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center transition-all',
+                    'w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0',
                     !canUseAnimation && 'opacity-50 cursor-not-allowed',
                     isPlaying
                       ? 'bg-primary/30 ring-2 ring-primary/50'
@@ -414,7 +428,8 @@ export function AuroraLiveMap() {
                   )}
                 </button>
 
-                <div className="text-center">
+                {/* Right: Time + KP */}
+                <div className="text-right">
                   <div className="text-2xl font-bold text-white">
                     {getAnimationTimeLabel()}
                   </div>
