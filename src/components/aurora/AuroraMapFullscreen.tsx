@@ -769,72 +769,29 @@ export default function AuroraMapFullscreen({
     }
   }, [auroraData, showOverlay, kpIndex]);
 
-  // Weather layer crossfade animation (3-hour batch interpolation)
+  // Weather layer - always show current weather (batch 0) regardless of animation
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !canUseWeatherLayers) return;
 
-    // Hvis animasjon er av, vis kun batch 0 (nåværende vær)
-    if (!showAnimation) {
-      const batches = [0, 3, 6, 9, 12];
-      batches.forEach((batch) => {
-        const baseCloudOpacity = 0.65;
-        const basePrecipOpacity = 0.75;
-
-        const targetCloudOpacity = batch === 0 ? baseCloudOpacity : 0;
-        const targetPrecipOpacity = batch === 0 ? basePrecipOpacity : 0;
-
-        if (map.getLayer(`weather-clouds-${batch}`)) {
-          map.setPaintProperty(`weather-clouds-${batch}`, 'raster-opacity', targetCloudOpacity);
-        }
-        if (map.getLayer(`weather-precipitation-${batch}`)) {
-          map.setPaintProperty(`weather-precipitation-${batch}`, 'raster-opacity', targetPrecipOpacity);
-        }
-      });
-      return;
-    }
-
-    const batchSize = 3; // Timer mellom hver batch (0, 3, 6, 9, 12)
-    const currentBatchIndex = Math.floor(animationHour / batchSize);
-    const currentBatch = currentBatchIndex * batchSize; // 0, 3, 6, 9, eller 12
-    const nextBatch = Math.min(currentBatch + batchSize, 12);
-
-    // Calculate crossfade progress within current batch
-    const progress = (animationHour % batchSize) / batchSize; // 0.0 til 1.0
-    const currentOpacity = 1.0 - progress; // Fades out: 1.0 → 0.0
-    const nextOpacity = progress; // Fades in: 0.0 → 1.0
-
-    // Base opacity values
-    const baseCloudOpacity = 0.65;
-    const basePrecipOpacity = 0.75;
-
-    // Update all batch layers
+    // Weather layers are INDEPENDENT of aurora animation
+    // Always show batch 0 (current weather) at full opacity
     const batches = [0, 3, 6, 9, 12];
     batches.forEach((batch) => {
-      let targetCloudOpacity = 0;
-      let targetPrecipOpacity = 0;
+      const baseCloudOpacity = 0.65;
+      const basePrecipOpacity = 0.75;
 
-      if (batch === currentBatch) {
-        targetCloudOpacity = baseCloudOpacity * currentOpacity;
-        targetPrecipOpacity = basePrecipOpacity * currentOpacity;
-      } else if (batch === nextBatch) {
-        targetCloudOpacity = baseCloudOpacity * nextOpacity;
-        targetPrecipOpacity = basePrecipOpacity * nextOpacity;
-      }
-      // Alle andre batches forblir på 0 opacity
+      const targetCloudOpacity = batch === 0 ? baseCloudOpacity : 0;
+      const targetPrecipOpacity = batch === 0 ? basePrecipOpacity : 0;
 
-      // Apply opacity to layers
-      const cloudLayer = map.getLayer(`weather-clouds-${batch}`);
-      const precipLayer = map.getLayer(`weather-precipitation-${batch}`);
-
-      if (cloudLayer) {
+      if (map.getLayer(`weather-clouds-${batch}`)) {
         map.setPaintProperty(`weather-clouds-${batch}`, 'raster-opacity', targetCloudOpacity);
       }
-      if (precipLayer) {
+      if (map.getLayer(`weather-precipitation-${batch}`)) {
         map.setPaintProperty(`weather-precipitation-${batch}`, 'raster-opacity', targetPrecipOpacity);
       }
     });
-  }, [animationHour, canUseWeatherLayers, showAnimation]);
+  }, [canUseWeatherLayers]);
 
   return (
     <div className="relative w-full h-full">
