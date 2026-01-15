@@ -350,75 +350,15 @@ export default function AuroraMapFullscreen({
         console.log('✅ 3D terrain and snow styling applied');
       }
 
-      // OpenWeatherMap tile sources (3D-compatible)
-      const owmApiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
-      if (owmApiKey) {
-        // Add cloud layer source
-        map.addSource('owm-clouds', {
-          type: 'raster',
-          tiles: [
-            `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${owmApiKey}`
-          ],
-          tileSize: 256,
-          maxzoom: 18,
-          scheme: 'xyz'
-        });
+      // Weather layers are now created dynamically by useEffect with smooth animation
+      // (see "Smooth weather tile animation" effect below)
 
-        // Add precipitation layer source
-        map.addSource('owm-precipitation', {
-          type: 'raster',
-          tiles: [
-            `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmApiKey}`
-          ],
-          tileSize: 256,
-          maxzoom: 18,
-          scheme: 'xyz'
-        });
-
-        // Conditional layer insertion: Check if aurora oval exists
-        const beforeLayer = map.getLayer('aurora-oval-fill') ? 'aurora-oval-fill' : undefined;
-
-        // Add layers (initially hidden, below aurora oval)
-        // NOTE: Raster layers automatically adapt to pitch/bearing perspective
-        map.addLayer({
-          id: 'weather-clouds',
-          type: 'raster',
-          source: 'owm-clouds',
-          paint: {
-            'raster-opacity': 0,
-            'raster-opacity-transition': { duration: 300 },
-            'raster-resampling': 'linear' // Smooth interpolation for 3D view
-          },
-          layout: {
-            'visibility': 'visible' // Explicit visibility (controlled via opacity)
-          }
-        }, beforeLayer);
-
-        map.addLayer({
-          id: 'weather-precipitation',
-          type: 'raster',
-          source: 'owm-precipitation',
-          paint: {
-            'raster-opacity': 0,
-            'raster-opacity-transition': { duration: 300 },
-            'raster-resampling': 'linear'
-          },
-          layout: {
-            'visibility': 'visible'
-          }
-        }, 'weather-clouds'); // Stack on top of clouds
-
-        // Handle weather tile errors gracefully
-        map.on('error', (e: any) => {
-          if (e?.sourceId?.startsWith('owm-')) {
-            console.error('Weather tile load failed:', e);
-          }
-        });
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log('✅ OpenWeatherMap weather layers added (3D-compatible)');
+      // Handle weather tile errors gracefully
+      map.on('error', (e: any) => {
+        if (e?.sourceId?.startsWith('owm-')) {
+          console.error('Weather tile load failed:', e);
         }
-      }
+      });
     });
 
     mapRef.current = map;
@@ -763,31 +703,7 @@ export default function AuroraMapFullscreen({
     }
   }, [auroraData, showOverlay, kpIndex]);
 
-  // Toggle weather layer visibility based on state
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    // Calculate target opacity based on user settings and tier access
-    const cloudsVisible = showWeatherLayers && canUseWeatherLayers &&
-      (weatherLayerType === 'clouds' || weatherLayerType === 'both');
-    const precipVisible = showWeatherLayers && canUseWeatherLayers &&
-      (weatherLayerType === 'precipitation' || weatherLayerType === 'both');
-
-    const cloudsOpacity = cloudsVisible ? 0.4 : 0;
-    const precipOpacity = precipVisible ? 0.6 : 0;
-
-    // Update layer opacity with smooth transitions
-    if (map.getLayer('weather-clouds')) {
-      map.setPaintProperty('weather-clouds', 'raster-opacity', cloudsOpacity);
-    }
-
-    if (map.getLayer('weather-precipitation')) {
-      map.setPaintProperty('weather-precipitation', 'raster-opacity', precipOpacity);
-    }
-  }, [showWeatherLayers, weatherLayerType, canUseWeatherLayers]);
-
-  // Sync weather tiles with animation timeline
+  // Smooth weather tile animation with crossfade between frames
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !showWeatherLayers || !canUseWeatherLayers) return;
@@ -795,86 +711,169 @@ export default function AuroraMapFullscreen({
     const owmApiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
     if (!owmApiKey) return;
 
-    // Calculate timestamp based on animation state
-    // When animation is active: use animationHour offset (0-12 hours from now)
-    // When animation is off: use nearest hour for caching efficiency
+    // Calculate current and next timestamps for smooth interpolation
     const now = Date.now();
-    const hourOffset = showAnimation ? Math.floor(animationHour) : 0;
-
-    // Round to nearest hour for better caching
     const roundedNow = Math.floor(now / (3600 * 1000)) * 3600 * 1000;
-    const timestamp = Math.floor(roundedNow / 1000) + (hourOffset * 3600);
 
-    const cloudTileUrl = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${owmApiKey}&date=${timestamp}`;
-    const precipTileUrl = `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmApiKey}&date=${timestamp}`;
-
-    // Remove existing layers and sources
-    if (map.getLayer('weather-precipitation')) {
-      map.removeLayer('weather-precipitation');
-    }
-    if (map.getLayer('weather-clouds')) {
-      map.removeLayer('weather-clouds');
-    }
-    if (map.getSource('owm-precipitation')) {
-      map.removeSource('owm-precipitation');
-    }
-    if (map.getSource('owm-clouds')) {
-      map.removeSource('owm-clouds');
+    if (!showAnimation) {
+      // Static mode: just show current weather
+      const timestamp = Math.floor(roundedNow / 1000);
+      updateWeatherLayers(map, owmApiKey, timestamp, timestamp, 1.0, 0.0);
+      return;
     }
 
-    // Re-create sources with new timestamp URLs
-    map.addSource('owm-clouds', {
-      type: 'raster',
-      tiles: [cloudTileUrl],
-      tileSize: 256,
-      maxzoom: 18,
-      scheme: 'xyz'
-    });
+    // Animation mode: smooth interpolation between current and next hour
+    const currentHour = Math.floor(animationHour);
+    const nextHour = currentHour + 1;
+    const progress = animationHour - currentHour; // 0.0 to 1.0 within the hour
 
-    map.addSource('owm-precipitation', {
-      type: 'raster',
-      tiles: [precipTileUrl],
-      tileSize: 256,
-      maxzoom: 18,
-      scheme: 'xyz'
-    });
+    const currentTimestamp = Math.floor(roundedNow / 1000) + (currentHour * 3600);
+    const nextTimestamp = Math.floor(roundedNow / 1000) + (nextHour * 3600);
 
-    // Get layer position (before aurora oval if it exists)
+    // Crossfade: current layer fades out as next layer fades in
+    const currentOpacity = 1.0 - progress; // 1.0 → 0.0
+    const nextOpacity = progress; // 0.0 → 1.0
+
+    updateWeatherLayers(map, owmApiKey, currentTimestamp, nextTimestamp, currentOpacity, nextOpacity);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🌧️ Smooth weather: hour ${currentHour}→${nextHour}, progress: ${progress.toFixed(2)}, opacities: ${currentOpacity.toFixed(2)}/${nextOpacity.toFixed(2)}`);
+    }
+  }, [animationHour, showAnimation, showWeatherLayers, canUseWeatherLayers]);
+
+  // Helper function to update dual-layer weather system
+  function updateWeatherLayers(
+    map: mapboxgl.Map,
+    apiKey: string,
+    currentTimestamp: number,
+    nextTimestamp: number,
+    currentOpacity: number,
+    nextOpacity: number
+  ) {
     const beforeLayer = map.getLayer('aurora-oval-fill') ? 'aurora-oval-fill' : undefined;
 
-    // Re-create layers
-    map.addLayer({
-      id: 'weather-clouds',
+    // LAYER SET 1: Current frame
+    const currentCloudUrl = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}&date=${currentTimestamp}`;
+    const currentPrecipUrl = `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}&date=${currentTimestamp}`;
+
+    // LAYER SET 2: Next frame (for crossfade)
+    const nextCloudUrl = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}&date=${nextTimestamp}`;
+    const nextPrecipUrl = `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}&date=${nextTimestamp}`;
+
+    // Remove and recreate current frame layers
+    removeLayerIfExists(map, 'weather-clouds-current');
+    removeLayerIfExists(map, 'weather-precipitation-current');
+    removeSourceIfExists(map, 'owm-clouds-current');
+    removeSourceIfExists(map, 'owm-precipitation-current');
+
+    // Remove and recreate next frame layers
+    removeLayerIfExists(map, 'weather-clouds-next');
+    removeLayerIfExists(map, 'weather-precipitation-next');
+    removeSourceIfExists(map, 'owm-clouds-next');
+    removeSourceIfExists(map, 'owm-precipitation-next');
+
+    // Add current frame sources
+    map.addSource('owm-clouds-current', {
       type: 'raster',
-      source: 'owm-clouds',
+      tiles: [currentCloudUrl],
+      tileSize: 256,
+      maxzoom: 18,
+      scheme: 'xyz'
+    });
+
+    map.addSource('owm-precipitation-current', {
+      type: 'raster',
+      tiles: [currentPrecipUrl],
+      tileSize: 256,
+      maxzoom: 18,
+      scheme: 'xyz'
+    });
+
+    // Add next frame sources
+    map.addSource('owm-clouds-next', {
+      type: 'raster',
+      tiles: [nextCloudUrl],
+      tileSize: 256,
+      maxzoom: 18,
+      scheme: 'xyz'
+    });
+
+    map.addSource('owm-precipitation-next', {
+      type: 'raster',
+      tiles: [nextPrecipUrl],
+      tileSize: 256,
+      maxzoom: 18,
+      scheme: 'xyz'
+    });
+
+    // Calculate visible opacity (accounting for toggle state)
+    // Higher opacity for better visibility over land areas
+    const baseCloudOpacity = showWeatherLayers && canUseWeatherLayers ? 0.65 : 0;
+    const basePrecipOpacity = showWeatherLayers && canUseWeatherLayers ? 0.75 : 0;
+
+    // Add current frame layers (bottom)
+    map.addLayer({
+      id: 'weather-clouds-current',
+      type: 'raster',
+      source: 'owm-clouds-current',
       paint: {
-        'raster-opacity': showWeatherLayers && canUseWeatherLayers ? 0.4 : 0,
-        'raster-opacity-transition': { duration: 300 },
+        'raster-opacity': baseCloudOpacity * currentOpacity,
+        'raster-opacity-transition': { duration: 100 }, // Fast smooth transition
         'raster-resampling': 'linear'
       },
-      layout: {
-        'visibility': 'visible'
-      }
+      layout: { 'visibility': 'visible' }
     }, beforeLayer);
 
     map.addLayer({
-      id: 'weather-precipitation',
+      id: 'weather-precipitation-current',
       type: 'raster',
-      source: 'owm-precipitation',
+      source: 'owm-precipitation-current',
       paint: {
-        'raster-opacity': showWeatherLayers && canUseWeatherLayers ? 0.6 : 0,
-        'raster-opacity-transition': { duration: 300 },
+        'raster-opacity': basePrecipOpacity * currentOpacity,
+        'raster-opacity-transition': { duration: 100 },
         'raster-resampling': 'linear'
       },
-      layout: {
-        'visibility': 'visible'
-      }
-    }, 'weather-clouds');
+      layout: { 'visibility': 'visible' }
+    }, 'weather-clouds-current');
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`⏰ Weather tiles synced: ${showAnimation ? `animating at +${hourOffset}h` : 'current time'} (timestamp: ${timestamp})`);
+    // Add next frame layers (on top, crossfading in)
+    map.addLayer({
+      id: 'weather-clouds-next',
+      type: 'raster',
+      source: 'owm-clouds-next',
+      paint: {
+        'raster-opacity': baseCloudOpacity * nextOpacity,
+        'raster-opacity-transition': { duration: 100 },
+        'raster-resampling': 'linear'
+      },
+      layout: { 'visibility': 'visible' }
+    }, 'weather-precipitation-current');
+
+    map.addLayer({
+      id: 'weather-precipitation-next',
+      type: 'raster',
+      source: 'owm-precipitation-next',
+      paint: {
+        'raster-opacity': basePrecipOpacity * nextOpacity,
+        'raster-opacity-transition': { duration: 100 },
+        'raster-resampling': 'linear'
+      },
+      layout: { 'visibility': 'visible' }
+    }, 'weather-clouds-next');
+  }
+
+  // Helper to safely remove layers and sources
+  function removeLayerIfExists(map: mapboxgl.Map, layerId: string) {
+    if (map.getLayer(layerId)) {
+      map.removeLayer(layerId);
     }
-  }, [Math.floor(animationHour), showAnimation, showWeatherLayers, canUseWeatherLayers]);
+  }
+
+  function removeSourceIfExists(map: mapboxgl.Map, sourceId: string) {
+    if (map.getSource(sourceId)) {
+      map.removeSource(sourceId);
+    }
+  }
 
   return (
     <div className="relative w-full h-full">
