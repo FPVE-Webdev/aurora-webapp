@@ -16,8 +16,8 @@ if (!API_KEY) {
   console.warn('⚠️ TROMSO_AI_API_KEY is not set! API calls will fail.');
 }
 
-// Cache key includes current hour to ensure stability within the hour
-let cache: { data: any; timestamp: number; hours: number; cacheKey: string } | null = null;
+// Cache per location - Map with cacheKey as key
+const cacheMap = new Map<string, { data: any; timestamp: number; hours: number }>();
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -33,17 +33,18 @@ export async function GET(request: Request) {
     );
   }
 
-  // Create cache key based on current hour to ensure stability
+  // Create cache key based on current hour AND location to ensure stability per location
   const now = new Date();
-  const cacheKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}-${hours}`;
+  const cacheKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}-${hours}-${location}`;
 
-  // Check cache with hour-based key
-  if (cache && cache.cacheKey === cacheKey && (Date.now() - cache.timestamp < CACHE_DURATION)) {
+  // Check cache with location-specific key
+  const cachedEntry = cacheMap.get(cacheKey);
+  if (cachedEntry && (Date.now() - cachedEntry.timestamp < CACHE_DURATION)) {
     return NextResponse.json({
-      ...cache.data,
+      ...cachedEntry.data,
       meta: {
         cached: true,
-        cache_age: Math.floor((Date.now() - cache.timestamp) / 1000),
+        cache_age: Math.floor((Date.now() - cachedEntry.timestamp) / 1000),
         cache_key: cacheKey
       }
     });
@@ -85,12 +86,12 @@ export async function GET(request: Request) {
   ╚══════════════════════════════════════════
       `);
 
-      cache = {
+      // Store in location-specific cache
+      cacheMap.set(cacheKey, {
         data,
         timestamp: Date.now(),
-        hours,
-        cacheKey
-      };
+        hours
+      });
 
       return NextResponse.json({
         ...data,
@@ -183,13 +184,12 @@ export async function GET(request: Request) {
     fallbackData = generateMockHourly(hours, location);
   }
 
-  // Cache the fallback data with hour-based key for stability
-  cache = {
+  // Cache the fallback data with location-specific key for stability
+  cacheMap.set(cacheKey, {
     data: fallbackData,
     timestamp: Date.now(),
-    hours,
-    cacheKey
-  };
+    hours
+  });
 
   return NextResponse.json({
     ...fallbackData,
