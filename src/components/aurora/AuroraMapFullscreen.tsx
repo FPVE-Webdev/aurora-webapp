@@ -787,21 +787,91 @@ export default function AuroraMapFullscreen({
     }
   }, [showWeatherLayers, weatherLayerType, canUseWeatherLayers]);
 
-  // Sync weather tiles with animation timeline (Weather Maps 1.0 - static tiles)
-  // Note: Free tier uses current tiles (no timestamp), updates every 3 hours
-  // For Weather Maps 2.0 with animation, upgrade to paid tier
+  // Sync weather tiles with animation timeline
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !showWeatherLayers || !canUseWeatherLayers) return;
 
-    // Weather Maps 1.0 (Free tier) uses static current tiles
-    // No timestamp parameter needed - tiles update automatically every 3 hours
-    // This is sufficient for testing and basic weather overlay functionality
+    const owmApiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
+    if (!owmApiKey) return;
+
+    // Calculate timestamp based on animation state
+    // When animation is active: use animationHour offset (0-12 hours)
+    // When animation is off: use current time (0 offset)
+    const now = Date.now();
+    const hourOffset = showAnimation ? Math.floor(animationHour) : 0;
+    const timestamp = Math.floor(now / 1000) + (hourOffset * 3600);
+
+    const cloudTileUrl = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${owmApiKey}&date=${timestamp}`;
+    const precipTileUrl = `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmApiKey}&date=${timestamp}`;
+
+    // Remove existing layers and sources
+    if (map.getLayer('weather-precipitation')) {
+      map.removeLayer('weather-precipitation');
+    }
+    if (map.getLayer('weather-clouds')) {
+      map.removeLayer('weather-clouds');
+    }
+    if (map.getSource('owm-precipitation')) {
+      map.removeSource('owm-precipitation');
+    }
+    if (map.getSource('owm-clouds')) {
+      map.removeSource('owm-clouds');
+    }
+
+    // Re-create sources with new timestamp URLs
+    map.addSource('owm-clouds', {
+      type: 'raster',
+      tiles: [cloudTileUrl],
+      tileSize: 256,
+      maxzoom: 18,
+      scheme: 'xyz'
+    });
+
+    map.addSource('owm-precipitation', {
+      type: 'raster',
+      tiles: [precipTileUrl],
+      tileSize: 256,
+      maxzoom: 18,
+      scheme: 'xyz'
+    });
+
+    // Get layer position (before aurora oval if it exists)
+    const beforeLayer = map.getLayer('aurora-oval-fill') ? 'aurora-oval-fill' : undefined;
+
+    // Re-create layers
+    map.addLayer({
+      id: 'weather-clouds',
+      type: 'raster',
+      source: 'owm-clouds',
+      paint: {
+        'raster-opacity': showWeatherLayers && canUseWeatherLayers ? 0.4 : 0,
+        'raster-opacity-transition': { duration: 300 },
+        'raster-resampling': 'linear'
+      },
+      layout: {
+        'visibility': 'visible'
+      }
+    }, beforeLayer);
+
+    map.addLayer({
+      id: 'weather-precipitation',
+      type: 'raster',
+      source: 'owm-precipitation',
+      paint: {
+        'raster-opacity': showWeatherLayers && canUseWeatherLayers ? 0.6 : 0,
+        'raster-opacity-transition': { duration: 300 },
+        'raster-resampling': 'linear'
+      },
+      layout: {
+        'visibility': 'visible'
+      }
+    }, 'weather-clouds');
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('🌧️ Weather layers active (Weather Maps 1.0 - updates every 3h)');
+      console.log(`⏰ Weather tiles synced: ${showAnimation ? `animating at +${hourOffset}h` : 'current time'} (timestamp: ${timestamp})`);
     }
-  }, [showWeatherLayers, canUseWeatherLayers]);
+  }, [Math.floor(animationHour), showAnimation, showWeatherLayers, canUseWeatherLayers]);
 
   return (
     <div className="relative w-full h-full">
