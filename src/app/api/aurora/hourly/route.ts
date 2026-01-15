@@ -74,6 +74,17 @@ export async function GET(request: Request) {
     if (response.ok) {
       const data = await response.json();
 
+      // DEBUG: Log what Supabase returns per location
+      console.log(`
+  ╔══════════════════════════════════════════
+  ║ SUPABASE RESPONSE DEBUG
+  ║ Location requested: ${location}
+  ║ First hour cloudCoverage: ${data.hourly_forecast?.[0]?.weather?.cloudCoverage}
+  ║ First hour temperature: ${data.hourly_forecast?.[0]?.weather?.temperature}
+  ║ Response has ${data.hourly_forecast?.length || 0} hours
+  ╚══════════════════════════════════════════
+      `);
+
       cache = {
         data,
         timestamp: Date.now(),
@@ -86,7 +97,12 @@ export async function GET(request: Request) {
         meta: {
           cached: false,
           timestamp: new Date().toISOString(),
-          cache_key: cacheKey
+          cache_key: cacheKey,
+          debug: {
+            location_requested: location,
+            supabase_url: `${SUPABASE_FUNCTION_URL}?hours=${hours}&location=${location}`,
+            first_hour_clouds: data.hourly_forecast?.[0]?.weather?.cloudCoverage
+          }
         }
       });
     }
