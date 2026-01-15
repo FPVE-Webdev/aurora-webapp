@@ -769,20 +769,32 @@ export default function AuroraMapFullscreen({
     }
   }, [auroraData, showOverlay, kpIndex]);
 
-  // Weather layer - always show current weather (batch 0) regardless of animation
+  // Weather layer - animate through batches (0, 3, 6, 9, 12) based on timeline
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !canUseWeatherLayers) return;
 
-    // Weather layers are INDEPENDENT of aurora animation
-    // Always show batch 0 (current weather) at full opacity
+    // Determine which batch to show based on animationHour (0-12 range)
+    // Batches: 0h→batch0, 3h→batch3, 6h→batch6, 9h→batch9, 12h→batch12
     const batches = [0, 3, 6, 9, 12];
+    const currentHour = Math.floor(animationHour);
+
+    // Find the closest batch for the current animation hour
+    // Hours 0-2 → batch 0, hours 3-5 → batch 3, hours 6-8 → batch 6, etc.
+    let activeBatch = 0;
+    if (currentHour >= 9) activeBatch = 12;
+    else if (currentHour >= 6) activeBatch = 9;
+    else if (currentHour >= 3) activeBatch = 6;
+    else if (currentHour >= 1.5) activeBatch = 3;
+    else activeBatch = 0;
+
     batches.forEach((batch) => {
       const baseCloudOpacity = 0.65;
       const basePrecipOpacity = 0.75;
 
-      const targetCloudOpacity = batch === 0 ? baseCloudOpacity : 0;
-      const targetPrecipOpacity = batch === 0 ? basePrecipOpacity : 0;
+      // Only the active batch is visible, others are hidden
+      const targetCloudOpacity = batch === activeBatch ? baseCloudOpacity : 0;
+      const targetPrecipOpacity = batch === activeBatch ? basePrecipOpacity : 0;
 
       if (map.getLayer(`weather-clouds-${batch}`)) {
         map.setPaintProperty(`weather-clouds-${batch}`, 'raster-opacity', targetCloudOpacity);
@@ -791,7 +803,7 @@ export default function AuroraMapFullscreen({
         map.setPaintProperty(`weather-precipitation-${batch}`, 'raster-opacity', targetPrecipOpacity);
       }
     });
-  }, [canUseWeatherLayers]);
+  }, [canUseWeatherLayers, animationHour]);
 
   return (
     <div className="relative w-full h-full">
