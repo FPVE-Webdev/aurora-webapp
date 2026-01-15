@@ -711,68 +711,62 @@ export default function AuroraMapFullscreen({
     const owmApiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
     if (!owmApiKey) return;
 
+    // Helper to safely remove layers
+    const removeLayerIfExists = (layerId: string) => {
+      if (map.getLayer(layerId)) map.removeLayer(layerId);
+    };
+
+    // Helper to safely remove sources
+    const removeSourceIfExists = (sourceId: string) => {
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+    };
+
     // Calculate current and next timestamps for smooth interpolation
     const now = Date.now();
     const roundedNow = Math.floor(now / (3600 * 1000)) * 3600 * 1000;
 
+    let currentTimestamp: number;
+    let nextTimestamp: number;
+    let currentOpacity: number;
+    let nextOpacity: number;
+
     if (!showAnimation) {
       // Static mode: just show current weather
-      const timestamp = Math.floor(roundedNow / 1000);
-      updateWeatherLayers(map, owmApiKey, timestamp, timestamp, 1.0, 0.0);
-      return;
+      currentTimestamp = Math.floor(roundedNow / 1000);
+      nextTimestamp = currentTimestamp;
+      currentOpacity = 1.0;
+      nextOpacity = 0.0;
+    } else {
+      // Animation mode: smooth interpolation between current and next hour
+      const currentHour = Math.floor(animationHour);
+      const nextHour = currentHour + 1;
+      const progress = animationHour - currentHour; // 0.0 to 1.0 within the hour
+
+      currentTimestamp = Math.floor(roundedNow / 1000) + (currentHour * 3600);
+      nextTimestamp = Math.floor(roundedNow / 1000) + (nextHour * 3600);
+
+      // Crossfade: current layer fades out as next layer fades in
+      currentOpacity = 1.0 - progress; // 1.0 → 0.0
+      nextOpacity = progress; // 0.0 → 1.0
     }
 
-    // Animation mode: smooth interpolation between current and next hour
-    const currentHour = Math.floor(animationHour);
-    const nextHour = currentHour + 1;
-    const progress = animationHour - currentHour; // 0.0 to 1.0 within the hour
+    // Build tile URLs with timestamps
+    const currentCloudUrl = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${owmApiKey}&date=${currentTimestamp}`;
+    const currentPrecipUrl = `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmApiKey}&date=${currentTimestamp}`;
+    const nextCloudUrl = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${owmApiKey}&date=${nextTimestamp}`;
+    const nextPrecipUrl = `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmApiKey}&date=${nextTimestamp}`;
 
-    const currentTimestamp = Math.floor(roundedNow / 1000) + (currentHour * 3600);
-    const nextTimestamp = Math.floor(roundedNow / 1000) + (nextHour * 3600);
+    // Remove existing layers and sources
+    removeLayerIfExists('weather-precipitation-next');
+    removeLayerIfExists('weather-clouds-next');
+    removeLayerIfExists('weather-precipitation-current');
+    removeLayerIfExists('weather-clouds-current');
+    removeSourceIfExists('owm-precipitation-next');
+    removeSourceIfExists('owm-clouds-next');
+    removeSourceIfExists('owm-precipitation-current');
+    removeSourceIfExists('owm-clouds-current');
 
-    // Crossfade: current layer fades out as next layer fades in
-    const currentOpacity = 1.0 - progress; // 1.0 → 0.0
-    const nextOpacity = progress; // 0.0 → 1.0
-
-    updateWeatherLayers(map, owmApiKey, currentTimestamp, nextTimestamp, currentOpacity, nextOpacity);
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🌧️ Smooth weather: hour ${currentHour}→${nextHour}, progress: ${progress.toFixed(2)}, opacities: ${currentOpacity.toFixed(2)}/${nextOpacity.toFixed(2)}`);
-    }
-  }, [animationHour, showAnimation, showWeatherLayers, canUseWeatherLayers]);
-
-  // Helper function to update dual-layer weather system
-  function updateWeatherLayers(
-    map: mapboxgl.Map,
-    apiKey: string,
-    currentTimestamp: number,
-    nextTimestamp: number,
-    currentOpacity: number,
-    nextOpacity: number
-  ) {
-    const beforeLayer = map.getLayer('aurora-oval-fill') ? 'aurora-oval-fill' : undefined;
-
-    // LAYER SET 1: Current frame
-    const currentCloudUrl = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}&date=${currentTimestamp}`;
-    const currentPrecipUrl = `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}&date=${currentTimestamp}`;
-
-    // LAYER SET 2: Next frame (for crossfade)
-    const nextCloudUrl = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}&date=${nextTimestamp}`;
-    const nextPrecipUrl = `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}&date=${nextTimestamp}`;
-
-    // Remove and recreate current frame layers
-    removeLayerIfExists(map, 'weather-clouds-current');
-    removeLayerIfExists(map, 'weather-precipitation-current');
-    removeSourceIfExists(map, 'owm-clouds-current');
-    removeSourceIfExists(map, 'owm-precipitation-current');
-
-    // Remove and recreate next frame layers
-    removeLayerIfExists(map, 'weather-clouds-next');
-    removeLayerIfExists(map, 'weather-precipitation-next');
-    removeSourceIfExists(map, 'owm-clouds-next');
-    removeSourceIfExists(map, 'owm-precipitation-next');
-
-    // Add current frame sources
+    // Add sources
     map.addSource('owm-clouds-current', {
       type: 'raster',
       tiles: [currentCloudUrl],
@@ -789,7 +783,6 @@ export default function AuroraMapFullscreen({
       scheme: 'xyz'
     });
 
-    // Add next frame sources
     map.addSource('owm-clouds-next', {
       type: 'raster',
       tiles: [nextCloudUrl],
@@ -807,9 +800,11 @@ export default function AuroraMapFullscreen({
     });
 
     // Calculate visible opacity (accounting for toggle state)
-    // Higher opacity for better visibility over land areas
-    const baseCloudOpacity = showWeatherLayers && canUseWeatherLayers ? 0.65 : 0;
-    const basePrecipOpacity = showWeatherLayers && canUseWeatherLayers ? 0.75 : 0;
+    const baseCloudOpacity = 0.65;
+    const basePrecipOpacity = 0.75;
+
+    // Get layer position (before aurora oval if it exists)
+    const beforeLayer = map.getLayer('aurora-oval-fill') ? 'aurora-oval-fill' : undefined;
 
     // Add current frame layers (bottom)
     map.addLayer({
@@ -818,7 +813,7 @@ export default function AuroraMapFullscreen({
       source: 'owm-clouds-current',
       paint: {
         'raster-opacity': baseCloudOpacity * currentOpacity,
-        'raster-opacity-transition': { duration: 100 }, // Fast smooth transition
+        'raster-opacity-transition': { duration: 100 },
         'raster-resampling': 'linear'
       },
       layout: { 'visibility': 'visible' }
@@ -860,20 +855,11 @@ export default function AuroraMapFullscreen({
       },
       layout: { 'visibility': 'visible' }
     }, 'weather-clouds-next');
-  }
 
-  // Helper to safely remove layers and sources
-  function removeLayerIfExists(map: mapboxgl.Map, layerId: string) {
-    if (map.getLayer(layerId)) {
-      map.removeLayer(layerId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🌧️ Weather layers updated: ${showAnimation ? `animating (progress: ${((animationHour - Math.floor(animationHour)) * 100).toFixed(0)}%)` : 'static'}, timestamps: ${currentTimestamp}/${nextTimestamp}`);
     }
-  }
-
-  function removeSourceIfExists(map: mapboxgl.Map, sourceId: string) {
-    if (map.getSource(sourceId)) {
-      map.removeSource(sourceId);
-    }
-  }
+  }, [animationHour, showAnimation, showWeatherLayers, canUseWeatherLayers]);
 
   return (
     <div className="relative w-full h-full">
