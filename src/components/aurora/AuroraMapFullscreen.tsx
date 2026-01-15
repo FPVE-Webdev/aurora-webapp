@@ -309,9 +309,9 @@ export default function AuroraMapFullscreen({
       map.setPaintProperty('land-structure-polygon', 'fill-color', '#f0f4f8');
       map.setPaintProperty('land-structure-line', 'line-color', '#d0dce5');
 
-      // Override water to ice-blue
+      // Override water to darker blue for better cloud contrast
       if (map.getLayer('water')) {
-        map.setPaintProperty('water', 'fill-color', '#b8d4e8');
+        map.setPaintProperty('water', 'fill-color', '#5a8fb0');
       }
 
       // Add hillshade for dramatic snow-covered mountains
