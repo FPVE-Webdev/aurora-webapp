@@ -826,7 +826,7 @@ export default function AuroraMapFullscreen({
               : 'bg-black/50 text-white/70 hover:bg-black/70'
           }`}
         >
-          {showAnimation ? '✨ Animasjon på' : '✨ Animasjon av'}
+          {showAnimation ? '✨ Nordlys på' : '✨ Nordlys av'}
           {!canUseWeatherLayers && <LockedBadge />}
         </button>
 
