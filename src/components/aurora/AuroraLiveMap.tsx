@@ -110,10 +110,13 @@ export function AuroraLiveMap() {
       const windSpeed = sf.weather?.windSpeed ?? 0;
       const symbolCode = sf.weather?.symbolCode ?? 'cloudy';
 
+      // Use location-specific KP from hourly forecast if available, otherwise fall back to global KP
+      const locationKp = sf.hourlyForecast?.[0]?.kp ?? currentKp;
+
       return {
         spot: sf.spot,
         currentProbability: sf.currentProbability ?? 0,
-        kp: currentKp,
+        kp: locationKp,
         weather: {
           cloudCoverage,
           temperature,

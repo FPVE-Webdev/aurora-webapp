@@ -36,11 +36,12 @@ export function mapTromsøForecastToSpotForecast(
   weatherData?: { cloudCoverage: number; temperature: number; windSpeed?: number },
   hourlyApiData?: any[]
 ): SpotForecast {
-  // Prioritize KP from API if available, otherwise derive from score
-  const kpIndex = forecast.kp ?? scoreToKpIndex(forecast.score);
-
   // Extract current weather from hour 0 if hourly data available (single source of truth)
   const hour0Weather = hourlyApiData?.[0]?.weather;
+
+  // Use location-specific KP from hourly data if available, otherwise use global KP
+  // This ensures consistency between currentProbability and hourlyForecast[0].probability
+  const kpIndex = hourlyApiData?.[0]?.kp ?? forecast.kp ?? scoreToKpIndex(forecast.score);
 
   // Use hour 0 weather as priority, then weatherData, then stable defaults (NO hash-based variation)
   const cloudCoverage = hour0Weather?.cloudCoverage ?? weatherData?.cloudCoverage ?? 50;

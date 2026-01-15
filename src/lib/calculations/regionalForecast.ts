@@ -40,13 +40,13 @@ export function getRegionalForecast(
   const avgProb = regionSpots.reduce((sum, sf) => sum + sf.currentProbability, 0) / regionSpots.length;
 
   // Find best spot (highest probability)
-  const bestSpot = regionSpots.find(sf => sf.currentProbability === maxProb)?.spot || null;
+  const bestSpotForecast = regionSpots.find(sf => sf.currentProbability === maxProb);
+  const bestSpot = bestSpotForecast?.spot || null;
 
-  // Calculate average cloud coverage
-  const avgCloud = regionSpots.reduce((sum, sf) => sum + sf.weather.cloudCoverage, 0) / regionSpots.length;
-
-  // Calculate average temperature
-  const avgTemp = regionSpots.reduce((sum, sf) => sum + sf.weather.temperature, 0) / regionSpots.length;
+  // Use weather data from the best spot (not regional average)
+  // This ensures the weather data shown matches the location being recommended
+  const avgCloud = bestSpotForecast?.weather.cloudCoverage ?? 50;
+  const avgTemp = bestSpotForecast?.weather.temperature ?? -5;
 
   // KP index is global, so just take from first spot
   const kpIndex = regionSpots[0]?.hourlyForecast?.[0]?.kpIndex || 3;
