@@ -512,7 +512,7 @@ export default function AuroraMapFullscreen({
       map.setPaintProperty('aurora-oval-line', 'line-color', ovalColor);
       map.setPaintProperty('aurora-oval-line', 'line-opacity', ovalOpacity);
     }
-  }, [auroraData, showOverlay, showWeatherLayers]);
+  }, [auroraData, showOverlay]);
 
   // Add forecast markers (filtered by tier)
   useEffect(() => {
