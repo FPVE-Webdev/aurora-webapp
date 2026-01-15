@@ -75,10 +75,10 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
   premium_24h: {
     name: '24-timers pass',
     map: {
-      minZoom: 7,
-      maxZoom: 12,
-      initialZoom: 8.5,
-      bounds: TROMSO_REGION_BOUNDS,
+      minZoom: 5,
+      maxZoom: 14,
+      initialZoom: 5, // Maks zoom - viser alle tilgjengelige lokasjoner
+      bounds: null, // Unrestricted for premium
       maxSpots: 24, // All Tromsø region spots
       allowCustomPin: true,
       maxForecastHours: 48, // Full 48-hour forecast
@@ -101,10 +101,10 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
   premium_7d: {
     name: '7-dagers pass',
     map: {
-      minZoom: 7,
-      maxZoom: 12,
-      initialZoom: 8.5,
-      bounds: TROMSO_REGION_BOUNDS,
+      minZoom: 5,
+      maxZoom: 14,
+      initialZoom: 5, // Maks zoom - viser alle tilgjengelige lokasjoner
+      bounds: null, // Unrestricted for premium
       maxSpots: 24,
       allowCustomPin: true,
       maxForecastHours: 48, // Full 48-hour forecast
@@ -129,7 +129,7 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
     map: {
       minZoom: 5,
       maxZoom: 14,
-      initialZoom: 6,
+      initialZoom: 5, // Maks zoom - viser alle tilgjengelige lokasjoner
       bounds: null, // Unrestricted - full Nordic access
       maxSpots: 100, // All Norway spots
       allowCustomPin: true,

@@ -123,7 +123,7 @@ export default function AuroraMapFullscreen({
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [auroraData, setAuroraData] = useState<AuroraPoint[]>([]);
   const [showOverlay, setShowOverlay] = useState(true);
-  const [showAnimation, setShowAnimation] = useState(true);
+  const [showAnimation, setShowAnimation] = useState(false); // Default AV - bruker må aktivere manuelt
   const [hoveredMarker, setHoveredMarker] = useState<{
     name: string;
     temp: number;
@@ -706,10 +706,22 @@ export default function AuroraMapFullscreen({
   // Smooth weather tile animation with crossfade between frames
   useEffect(() => {
     const map = mapRef.current;
+
+    console.log('🌧️ Weather useEffect triggered:', {
+      hasMap: !!map,
+      showWeatherLayers,
+      canUseWeatherLayers,
+      animationHour,
+      showAnimation
+    });
+
     if (!map || !showWeatherLayers || !canUseWeatherLayers) return;
 
     const owmApiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
-    if (!owmApiKey) return;
+    if (!owmApiKey) {
+      console.error('❌ Missing OpenWeatherMap API key');
+      return;
+    }
 
     // Helper to safely remove layers
     const removeLayerIfExists = (layerId: string) => {
