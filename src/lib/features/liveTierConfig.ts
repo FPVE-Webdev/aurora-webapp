@@ -45,6 +45,11 @@ const TROMSO_REGION_BOUNDS: [[number, number], [number, number]] = [
   [19.2, 69.8],   // Northeast - includes Lyngen
 ];
 
+const TROMS_COUNTY_BOUNDS: [[number, number], [number, number]] = [
+  [16.5, 68.8],   // Southwest [lng, lat] - western edge of Troms
+  [22.0, 70.3],   // Northeast [lng, lat] - includes Lyngen, Skjervøy
+];
+
 export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
   free: {
     name: 'Gratis',
@@ -77,9 +82,9 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
     map: {
       minZoom: 5,
       maxZoom: 14,
-      initialZoom: 5, // Maks zoom - viser alle tilgjengelige lokasjoner
-      bounds: null, // Unrestricted for premium
-      maxSpots: 24, // All Tromsø region spots
+      initialZoom: 6, // Shows all Troms county
+      bounds: TROMS_COUNTY_BOUNDS, // Restricted to Troms county
+      maxSpots: 15, // All Troms county spots
       allowCustomPin: true,
       maxForecastHours: 48, // Full 48-hour forecast
     },
@@ -94,7 +99,7 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
       photoSpotDatabase: false, // Enterprise only
       priorityRefresh: false,
     },
-    upgradeMessage: 'Oppgrader til Enterprise for planleggingsverktøy',
+    upgradeMessage: 'Oppgrader til Enterprise for hele Nord-Norge og planleggingsverktøy',
     ctaPrice: 'Kontakt oss',
   },
 
@@ -103,9 +108,9 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
     map: {
       minZoom: 5,
       maxZoom: 14,
-      initialZoom: 5, // Maks zoom - viser alle tilgjengelige lokasjoner
-      bounds: null, // Unrestricted for premium
-      maxSpots: 24,
+      initialZoom: 6, // Shows all Troms county
+      bounds: TROMS_COUNTY_BOUNDS, // Restricted to Troms county
+      maxSpots: 15, // All Troms county spots
       allowCustomPin: true,
       maxForecastHours: 48, // Full 48-hour forecast
     },
@@ -120,7 +125,7 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
       photoSpotDatabase: false,
       priorityRefresh: false,
     },
-    upgradeMessage: 'Oppgrader til Enterprise for profesjonelle verktøy',
+    upgradeMessage: 'Oppgrader til Enterprise for hele Nord-Norge og profesjonelle verktøy',
     ctaPrice: 'Kontakt oss',
   },
 
