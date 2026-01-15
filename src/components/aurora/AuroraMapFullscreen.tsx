@@ -132,6 +132,10 @@ export default function AuroraMapFullscreen({
     y: number;
   } | null>(null);
 
+  // Weather layer state
+  const [showWeatherLayers, setShowWeatherLayers] = useState(false);
+  const [weatherLayerType] = useState<'clouds' | 'precipitation' | 'both'>('both'); // Start med begge layers
+
   // Get tier configuration
   const tierConfig = getTierConfig(subscriptionTier);
   const mapRestrictions = tierConfig.map;
@@ -345,6 +349,76 @@ export default function AuroraMapFullscreen({
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ 3D terrain and snow styling applied');
       }
+
+      // OpenWeatherMap tile sources (3D-compatible)
+      const owmApiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
+      if (owmApiKey) {
+        // Add cloud layer source
+        map.addSource('owm-clouds', {
+          type: 'raster',
+          tiles: [
+            `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${owmApiKey}`
+          ],
+          tileSize: 256,
+          maxzoom: 18,
+          scheme: 'xyz'
+        });
+
+        // Add precipitation layer source
+        map.addSource('owm-precipitation', {
+          type: 'raster',
+          tiles: [
+            `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmApiKey}`
+          ],
+          tileSize: 256,
+          maxzoom: 18,
+          scheme: 'xyz'
+        });
+
+        // Conditional layer insertion: Check if aurora oval exists
+        const beforeLayer = map.getLayer('aurora-oval-fill') ? 'aurora-oval-fill' : undefined;
+
+        // Add layers (initially hidden, below aurora oval)
+        // NOTE: Raster layers automatically adapt to pitch/bearing perspective
+        map.addLayer({
+          id: 'weather-clouds',
+          type: 'raster',
+          source: 'owm-clouds',
+          paint: {
+            'raster-opacity': 0,
+            'raster-opacity-transition': { duration: 300 },
+            'raster-resampling': 'linear' // Smooth interpolation for 3D view
+          },
+          layout: {
+            'visibility': 'visible' // Explicit visibility (controlled via opacity)
+          }
+        }, beforeLayer);
+
+        map.addLayer({
+          id: 'weather-precipitation',
+          type: 'raster',
+          source: 'owm-precipitation',
+          paint: {
+            'raster-opacity': 0,
+            'raster-opacity-transition': { duration: 300 },
+            'raster-resampling': 'linear'
+          },
+          layout: {
+            'visibility': 'visible'
+          }
+        }, 'weather-clouds'); // Stack on top of clouds
+
+        // Handle weather tile errors gracefully
+        map.on('error', (e: any) => {
+          if (e?.sourceId?.startsWith('owm-')) {
+            console.error('Weather tile load failed:', e);
+          }
+        });
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ OpenWeatherMap weather layers added (3D-compatible)');
+        }
+      }
     });
 
     mapRef.current = map;
@@ -401,14 +475,14 @@ export default function AuroraMapFullscreen({
         data: ovalGeoJSON
       });
 
-      // Fill layer
+      // Fill layer (with opacity boost when weather layers active)
       map.addLayer({
         id: 'aurora-oval-fill',
         type: 'fill',
         source: 'aurora-oval',
         paint: {
           'fill-color': ovalColor,
-          'fill-opacity': ovalOpacity * 0.3
+          'fill-opacity': showWeatherLayers ? ovalOpacity * 0.5 : ovalOpacity * 0.3
         }
       });
 
@@ -429,13 +503,14 @@ export default function AuroraMapFullscreen({
       const source = map.getSource('aurora-oval') as mapboxgl.GeoJSONSource;
       source.setData(ovalGeoJSON);
 
-      // Update colors
+      // Update colors (with opacity boost when weather layers active)
+      const adjustedOpacity = showWeatherLayers ? ovalOpacity * 0.5 : ovalOpacity * 0.3;
       map.setPaintProperty('aurora-oval-fill', 'fill-color', ovalColor);
-      map.setPaintProperty('aurora-oval-fill', 'fill-opacity', ovalOpacity * 0.3);
+      map.setPaintProperty('aurora-oval-fill', 'fill-opacity', adjustedOpacity);
       map.setPaintProperty('aurora-oval-line', 'line-color', ovalColor);
       map.setPaintProperty('aurora-oval-line', 'line-opacity', ovalOpacity);
     }
-  }, [auroraData, showOverlay]);
+  }, [auroraData, showOverlay, showWeatherLayers]);
 
   // Add forecast markers (filtered by tier)
   useEffect(() => {
@@ -688,6 +763,46 @@ export default function AuroraMapFullscreen({
     }
   }, [auroraData, showOverlay, kpIndex]);
 
+  // Toggle weather layer visibility based on state
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Calculate target opacity based on user settings and tier access
+    const cloudsVisible = showWeatherLayers && canUseWeatherLayers &&
+      (weatherLayerType === 'clouds' || weatherLayerType === 'both');
+    const precipVisible = showWeatherLayers && canUseWeatherLayers &&
+      (weatherLayerType === 'precipitation' || weatherLayerType === 'both');
+
+    const cloudsOpacity = cloudsVisible ? 0.4 : 0;
+    const precipOpacity = precipVisible ? 0.6 : 0;
+
+    // Update layer opacity with smooth transitions
+    if (map.getLayer('weather-clouds')) {
+      map.setPaintProperty('weather-clouds', 'raster-opacity', cloudsOpacity);
+    }
+
+    if (map.getLayer('weather-precipitation')) {
+      map.setPaintProperty('weather-precipitation', 'raster-opacity', precipOpacity);
+    }
+  }, [showWeatherLayers, weatherLayerType, canUseWeatherLayers]);
+
+  // Sync weather tiles with animation timeline (Weather Maps 1.0 - static tiles)
+  // Note: Free tier uses current tiles (no timestamp), updates every 3 hours
+  // For Weather Maps 2.0 with animation, upgrade to paid tier
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !showWeatherLayers || !canUseWeatherLayers) return;
+
+    // Weather Maps 1.0 (Free tier) uses static current tiles
+    // No timestamp parameter needed - tiles update automatically every 3 hours
+    // This is sufficient for testing and basic weather overlay functionality
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🌧️ Weather layers active (Weather Maps 1.0 - updates every 3h)');
+    }
+  }, [showWeatherLayers, canUseWeatherLayers]);
+
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainerRef} className="w-full h-full" />
@@ -702,7 +817,7 @@ export default function AuroraMapFullscreen({
         />
       )}
 
-      {/* Overlay + animation toggles under top info bar */}
+      {/* Overlay + animation + weather toggles under top info bar */}
       <div className="absolute top-16 left-0 right-0 z-[1000] px-4 flex items-center justify-between pointer-events-none">
         <button
           onClick={() => {
@@ -725,26 +840,50 @@ export default function AuroraMapFullscreen({
           {!canUseWeatherLayers && <LockedBadge />}
         </button>
 
-        <button
-          onClick={() => {
-            if (!canUseWeatherLayers) {
-              trackLockedFeatureClick(subscriptionTier, 'overlay_toggle', 'toolbar');
-              return;
-            }
-            setShowOverlay(!showOverlay);
-          }}
-          disabled={!canUseWeatherLayers}
-          className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
-            !canUseWeatherLayers
-              ? 'bg-black/50 text-white/40 cursor-not-allowed'
-              : showOverlay
-              ? 'bg-gradient-to-br from-green-400 to-green-600 text-white'
-              : 'bg-black/50 text-white/70 hover:bg-black/70'
-          }`}
-        >
-          {showOverlay ? '🌌 Nordlysbelte på' : '🌌 Nordlysbelte av'}
-          {!canUseWeatherLayers && <LockedBadge />}
-        </button>
+        <div className="flex gap-2 pointer-events-none">
+          {/* Weather layers toggle (Premium only) */}
+          <button
+            onClick={() => {
+              if (!canUseWeatherLayers) {
+                trackLockedFeatureClick(subscriptionTier, 'weather_layers', 'toolbar');
+                return;
+              }
+              setShowWeatherLayers(!showWeatherLayers);
+            }}
+            disabled={!canUseWeatherLayers}
+            className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
+              !canUseWeatherLayers
+                ? 'bg-black/50 text-white/40 cursor-not-allowed'
+                : showWeatherLayers
+                ? 'bg-gradient-to-br from-blue-400 to-blue-600 text-white'
+                : 'bg-black/50 text-white/70 hover:bg-black/70'
+            }`}
+          >
+            {showWeatherLayers ? '🌧️ Vær på' : '🌧️ Vær av'}
+            {!canUseWeatherLayers && <LockedBadge />}
+          </button>
+
+          <button
+            onClick={() => {
+              if (!canUseWeatherLayers) {
+                trackLockedFeatureClick(subscriptionTier, 'overlay_toggle', 'toolbar');
+                return;
+              }
+              setShowOverlay(!showOverlay);
+            }}
+            disabled={!canUseWeatherLayers}
+            className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
+              !canUseWeatherLayers
+                ? 'bg-black/50 text-white/40 cursor-not-allowed'
+                : showOverlay
+                ? 'bg-gradient-to-br from-green-400 to-green-600 text-white'
+                : 'bg-black/50 text-white/70 hover:bg-black/70'
+            }`}
+          >
+            {showOverlay ? '🌌 Nordlysbelte på' : '🌌 Nordlysbelte av'}
+            {!canUseWeatherLayers && <LockedBadge />}
+          </button>
+        </div>
       </div>
 
       {/* Map info badge */}
