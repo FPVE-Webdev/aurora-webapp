@@ -796,11 +796,14 @@ export default function AuroraMapFullscreen({
     if (!owmApiKey) return;
 
     // Calculate timestamp based on animation state
-    // When animation is active: use animationHour offset (0-12 hours)
-    // When animation is off: use current time (0 offset)
+    // When animation is active: use animationHour offset (0-12 hours from now)
+    // When animation is off: use nearest hour for caching efficiency
     const now = Date.now();
     const hourOffset = showAnimation ? Math.floor(animationHour) : 0;
-    const timestamp = Math.floor(now / 1000) + (hourOffset * 3600);
+
+    // Round to nearest hour for better caching
+    const roundedNow = Math.floor(now / (3600 * 1000)) * 3600 * 1000;
+    const timestamp = Math.floor(roundedNow / 1000) + (hourOffset * 3600);
 
     const cloudTileUrl = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${owmApiKey}&date=${timestamp}`;
     const precipTileUrl = `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmApiKey}&date=${timestamp}`;
