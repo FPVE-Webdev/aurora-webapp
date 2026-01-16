@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
 import { useRetention } from '@/contexts/RetentionContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { getStatusColor } from '@/lib/calculations/masterStatus';
 import { cn } from '@/lib/utils';
 import { ChevronDown, RefreshCw, Info } from 'lucide-react';
@@ -15,6 +16,7 @@ interface MasterStatusCardProps {
 export function MasterStatusCard({ className, showDetails = false }: MasterStatusCardProps) {
   const { result, isLoading, refresh, lastUpdated } = useMasterStatus();
   const { userMode } = useRetention();
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(showDetails);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -57,9 +59,9 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
                 "text-3xl font-bold tracking-tight",
                 result.status === 'GO' && "drop-shadow-lg"
               )}>
-                {result.status === 'GO' ? 'UT OG SE!' : 
-                 result.status === 'WAIT' ? 'VENT LITT' : 
-                 'LITE TROLIG'}
+                {result.status === 'GO' ? t('goOutAndSee2') :
+                 result.status === 'WAIT' ? t('waitABit') :
+                 t('unlikely')}
               </h2>
               <p className="text-white/80 text-sm font-medium">
                 {result.message}
@@ -72,8 +74,8 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
             onClick={handleRefresh}
             disabled={isLoading || isRefreshing}
             className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-50"
-            title="Oppdater status"
-            aria-label="Oppdater status"
+            title={t('refreshStatus')}
+            aria-label={t('refreshStatus')}
           >
             <RefreshCw className={cn(
               "w-5 h-5",
@@ -85,9 +87,9 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
         {/* Subtext - Tourist vs Geek Mode */}
         {userMode === 'tourist' ? (
           <p className="text-white/90 text-sm mb-3">
-            {result.status === 'GO' && 'Nå er det perfekt! Mørkt, klart vær og høy aktivitet.'}
-            {result.status === 'WAIT' && 'Hold deg oppdatert - det kan komme i løpet av noen timer.'}
-            {result.status === 'NO' && 'Enten for mye skyer, eller for lav aktivitet. Prøv i morgen.'}
+            {result.status === 'GO' && t('perfectNow')}
+            {result.status === 'WAIT' && t('stayUpdated')}
+            {result.status === 'NO' && t('tooCloudyOrLowActivity')}
           </p>
         ) : (
           <p className="text-white/90 text-sm mb-3">
@@ -102,7 +104,7 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
             className="flex items-center gap-1 text-white/60 hover:text-white/90 text-xs transition-colors"
           >
             <Info className="w-3.5 h-3.5" />
-            <span>Tekniske detaljer</span>
+            <span>{t('technicalDetails')}</span>
             <ChevronDown className={cn(
               "w-3.5 h-3.5 transition-transform",
               expanded && "rotate-180"
@@ -132,13 +134,13 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
 
             <div className="grid grid-cols-2 gap-3 text-center">
               <div>
-                <p className="text-white/50 text-[10px] uppercase tracking-wide">Mørkt</p>
+                <p className="text-white/50 text-[10px] uppercase tracking-wide">{t('dark')}</p>
                 <p className="text-white font-semibold">
                   {result.factors.isDark ? '✓' : '✗'}
                 </p>
               </div>
               <div>
-                <p className="text-white/50 text-[10px] uppercase tracking-wide">Skyer</p>
+                <p className="text-white/50 text-[10px] uppercase tracking-wide">{t('clouds')}</p>
                 <p className="text-white font-semibold">
                   {result.factors.cloudCoverage}%
                 </p>
@@ -146,7 +148,7 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
             </div>
             {lastUpdated && (
               <p className="text-white/40 text-[10px] text-center mt-3">
-                Oppdatert: {lastUpdated.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })}
+                {t('updated2')} {lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
               </p>
             )}
           </div>

@@ -8,6 +8,7 @@
 'use client';
 
 import { memo } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { HourlyForecast as HourlyForecastType } from '@/types/aurora';
 import { getProbabilityLevel, AURORA_EMOJI_MAP } from '@/lib/constants/auroraStatus';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,8 @@ interface HourlyForecastProps {
 }
 
 function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = 'free' }: HourlyForecastProps) {
+  const { t } = useLanguage();
+
   // Get max hours based on subscription tier
   const tierConfig = getTierConfig(subscriptionTier);
   const maxHours = tierConfig.map.maxForecastHours;
@@ -30,7 +33,7 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
   // Limit forecasts based on tier
   const limitedForecasts = forecasts.slice(0, maxHours);
   const hours = limitedForecasts.length;
-  const forecastLabel = hours <= 6 ? '6-timers prognose' : `${hours}-timers prognose`;
+  const forecastLabel = hours <= 6 ? t('sixHourForecast') : t('hourForecast').replace('{hours}', hours.toString());
 
   // Find the best time (highest probability) within limited forecasts
   const bestTimeIndex = limitedForecasts.reduce((bestIdx, forecast, idx, arr) =>

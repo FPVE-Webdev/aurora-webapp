@@ -262,6 +262,23 @@ const translations: Record<Language, Record<string, string>> = {
     hoursRemaining: '{hours}t igjen',
     oneNightPass: '1-Night Pass',
     sevenDayPass: '7-Day Pass',
+
+    // MasterStatusCard
+    goOutAndSee2: 'UT OG SE!',
+    waitABit: 'VENT LITT',
+    unlikely: 'LITE TROLIG',
+    refreshStatus: 'Oppdater status',
+    perfectNow: 'Nå er det perfekt! Mørkt, klart vær og høy aktivitet.',
+    stayUpdated: 'Hold deg oppdatert - det kan komme i løpet av noen timer.',
+    tooCloudyOrLowActivity: 'Enten for mye skyer, eller for lav aktivitet. Prøv i morgen.',
+    technicalDetails: 'Tekniske detaljer',
+    dark: 'Mørkt',
+    clouds: 'Skyer',
+    updated2: 'Oppdatert:',
+
+    // HourlyForecast
+    hourForecast: '{hours}-timers prognose',
+    sixHourForecast: '6-timers prognose',
   },
   en: {
     // Navigation & General
@@ -513,6 +530,23 @@ const translations: Record<Language, Record<string, string>> = {
     hoursRemaining: '{hours}h remaining',
     oneNightPass: '1-Night Pass',
     sevenDayPass: '7-Day Pass',
+
+    // MasterStatusCard
+    goOutAndSee2: 'GO OUT NOW!',
+    waitABit: 'WAIT A BIT',
+    unlikely: 'UNLIKELY',
+    refreshStatus: 'Refresh status',
+    perfectNow: 'Perfect right now! Dark, clear skies, and high activity.',
+    stayUpdated: 'Stay updated - it might come within a few hours.',
+    tooCloudyOrLowActivity: 'Either too cloudy or too low activity. Try tomorrow.',
+    technicalDetails: 'Technical details',
+    dark: 'Dark',
+    clouds: 'Clouds',
+    updated2: 'Updated:',
+
+    // HourlyForecast
+    hourForecast: '{hours}-hour forecast',
+    sixHourForecast: '6-hour forecast',
   },
 };
 
