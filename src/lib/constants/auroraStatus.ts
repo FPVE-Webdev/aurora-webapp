@@ -16,13 +16,14 @@ export const AURORA_EMOJI_MAP: Record<AuroraProbabilityLevel, string> = {
 };
 
 /**
- * Norwegian status labels for aurora probability levels
+ * English status labels for aurora probability levels
+ * Note: Use LanguageContext for translations in components
  */
 export const AURORA_STATUS_LABELS: Record<AuroraProbabilityLevel, string> = {
-  excellent: 'Utmerket!',
-  good: 'Gode forhold!',
-  moderate: 'Moderat',
-  poor: 'Dårlige forhold',
+  excellent: 'Excellent!',
+  good: 'Good conditions!',
+  moderate: 'Moderate',
+  poor: 'Poor conditions',
 };
 
 /**
