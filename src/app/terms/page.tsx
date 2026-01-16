@@ -19,130 +19,130 @@ export default function TermsPage() {
             className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            Tilbake
+            Back
           </Link>
           <div className="flex items-center gap-3">
             <FileText className="w-8 h-8 text-primary" />
-            <h1 className="text-4xl font-display font-bold text-white">Vilkår for bruk</h1>
+            <h1 className="text-4xl font-display font-bold text-white">Terms of Service</h1>
           </div>
         </div>
 
         <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-8">
           <div className="prose prose-invert max-w-none">
             <p className="text-white/80 text-sm mb-6">
-              Sist oppdatert: Desember 2025
+              Last updated: December 2025
             </p>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-4">Aksept av vilkår</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Acceptance of Terms</h2>
               <p className="text-white/70 leading-relaxed">
-                Ved å bruke Aurora.tromso.ai («Tjenesten») godtar du disse vilkårene for bruk.
-                Hvis du ikke godtar vilkårene, må du ikke bruke Tjenesten.
+                By using Aurora.tromso.ai ("the Service"), you agree to these terms of use.
+                If you do not agree to these terms, you must not use the Service.
               </p>
             </section>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-4">Tjenestebeskrivelse</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Service Description</h2>
               <p className="text-white/70 leading-relaxed mb-4">
-                Aurora.tromso.ai er en gratis nordlysprognose-tjeneste som gir:
+                Aurora.tromso.ai is a free aurora forecast service that provides:
               </p>
               <ul className="list-disc list-inside text-white/70 space-y-2">
-                <li>Live nordlysprognoser basert på solaktivitet og værforhold</li>
-                <li>Interaktive kart med 30+ observasjonssteder</li>
-                <li>12-timers animert nordlysprognose</li>
-                <li>Værdata og optimal visningstid</li>
+                <li>Live aurora forecasts based on solar activity and weather conditions</li>
+                <li>Interactive maps with 30+ observation spots</li>
+                <li>12-hour animated aurora forecast</li>
+                <li>Weather data and optimal viewing times</li>
               </ul>
             </section>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-4">Ansvarsfraskrivelse</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Disclaimer</h2>
               <p className="text-white/70 leading-relaxed mb-4">
-                Nordlysprognoser er basert på vitenskapelige data, men kan ikke garanteres 100% nøyaktige:
+                Aurora forecasts are based on scientific data but cannot be guaranteed 100% accurate:
               </p>
               <ul className="list-disc list-inside text-white/70 space-y-2">
-                <li>Prognosene er kun veiledende og kan ikke garanteres</li>
-                <li>Faktiske nordlysforhold kan avvike fra prognosen</li>
-                <li>Vi er ikke ansvarlige for feiltolkninger eller tap som følge av bruk av tjenesten</li>
-                <li>Tjenesten leveres «som den er» uten garantier av noe slag</li>
+                <li>Forecasts are for guidance only and cannot be guaranteed</li>
+                <li>Actual aurora conditions may differ from the forecast</li>
+                <li>We are not responsible for misinterpretations or losses resulting from use of the service</li>
+                <li>The Service is provided "as is" without warranties of any kind</li>
               </ul>
             </section>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-4">Datakilder</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Data Sources</h2>
               <p className="text-white/70 leading-relaxed mb-4">
-                Tjenesten henter data fra følgende kilder:
+                The Service retrieves data from the following sources:
               </p>
               <ul className="list-disc list-inside text-white/70 space-y-2">
-                <li><strong>NOAA</strong> - KP-indeks og solaktivitet</li>
-                <li><strong>MET.no</strong> - Værmeldinger for Norge</li>
-                <li><strong>Tromsø.AI</strong> - Nordlysprognoser og AI-baserte anbefalinger</li>
+                <li><strong>NOAA</strong> - KP index and solar activity</li>
+                <li><strong>MET.no</strong> - Weather forecasts for Norway</li>
+                <li><strong>Tromsø.AI</strong> - Aurora forecasts and AI-based recommendations</li>
               </ul>
               <p className="text-white/70 leading-relaxed mt-4">
-                Vi er ikke ansvarlige for feil eller forsinkelser i data fra tredjepartskilder.
+                We are not responsible for errors or delays in data from third-party sources.
               </p>
             </section>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-4">Begrensninger i bruk</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Usage Restrictions</h2>
               <p className="text-white/70 leading-relaxed mb-4">
-                Du godtar å ikke:
+                You agree not to:
               </p>
               <ul className="list-disc list-inside text-white/70 space-y-2">
-                <li>Bruke Tjenesten til ulovlige formål</li>
-                <li>Forsøke å hacke, overvelde eller forstyrre Tjenesten</li>
-                <li>Kopiere, reprodusere eller videresalge Tjenestens innhold uten tillatelse</li>
-                <li>Bruke automatiserte systemer til å trekke ut data (web scraping)</li>
+                <li>Use the Service for illegal purposes</li>
+                <li>Attempt to hack, overwhelm, or disrupt the Service</li>
+                <li>Copy, reproduce, or resell the Service's content without permission</li>
+                <li>Use automated systems to extract data (web scraping)</li>
               </ul>
             </section>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-4">Opphavsrett</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Copyright</h2>
               <p className="text-white/70 leading-relaxed">
-                Alt innhold på Aurora.tromso.ai, inkludert design, kode og tekstmateriell,
-                er beskyttet av opphavsrett. Du kan ikke kopiere eller redistribuere innholdet
-                uten skriftlig tillatelse.
+                All content on Aurora.tromso.ai, including design, code, and text material,
+                is protected by copyright. You may not copy or redistribute the content
+                without written permission.
               </p>
             </section>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-4">Tilgjengelighet</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Availability</h2>
               <p className="text-white/70 leading-relaxed">
-                Vi tilstreber 24/7 tilgjengelighet, men kan ikke garantere at Tjenesten
-                alltid vil være tilgjengelig. Vi kan midlertidig stanse Tjenesten for
-                vedlikehold, oppdateringer eller andre grunner uten forvarsel.
+                We strive for 24/7 availability, but cannot guarantee that the Service
+                will always be available. We may temporarily suspend the Service for
+                maintenance, updates, or other reasons without notice.
               </p>
             </section>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-4">Endringer i vilkår</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Changes to Terms</h2>
               <p className="text-white/70 leading-relaxed">
-                Vi forbeholder oss retten til å endre disse vilkårene når som helst.
-                Endringer trer i kraft umiddelbart etter publisering. Din fortsatte bruk
-                av Tjenesten etter endringer utgjør aksept av de oppdaterte vilkårene.
+                We reserve the right to change these terms at any time.
+                Changes take effect immediately upon publication. Your continued use
+                of the Service after changes constitutes acceptance of the updated terms.
               </p>
             </section>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-4">Ansvarsgrense</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Limitation of Liability</h2>
               <p className="text-white/70 leading-relaxed">
-                I den grad loven tillater det, er vår ansvar begrenset til maksimalt
-                det beløpet du har betalt for bruk av Tjenesten (for gratis brukere: 0 NOK).
-                Vi er ikke ansvarlige for indirekte tap, tapte inntekter eller følgeskader.
+                To the extent permitted by law, our liability is limited to a maximum of
+                the amount you have paid for use of the Service (for free users: 0 NOK).
+                We are not liable for indirect losses, lost revenue, or consequential damages.
               </p>
             </section>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-4">Gjeldende lov</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Governing Law</h2>
               <p className="text-white/70 leading-relaxed">
-                Disse vilkårene reguleres av norsk lov. Eventuelle tvister skal løses
-                i norske domstoler.
+                These terms are governed by Norwegian law. Any disputes shall be resolved
+                in Norwegian courts.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">Kontakt</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Contact</h2>
               <p className="text-white/70 leading-relaxed">
-                Har du spørsmål om vilkårene? Kontakt oss via innstillingssiden.
+                Do you have questions about the terms? Contact us via the settings page.
               </p>
             </section>
           </div>
@@ -154,13 +154,13 @@ export default function TermsPage() {
             href="/privacy"
             className="text-primary hover:text-primary/80 transition-colors"
           >
-            ← Personvern
+            ← Privacy Policy
           </Link>
           <Link
             href="/settings"
             className="text-primary hover:text-primary/80 transition-colors"
           >
-            Innstillinger →
+            Settings →
           </Link>
         </div>
       </div>
