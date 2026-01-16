@@ -7,6 +7,7 @@
 'use client';
 
 import { memo } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Clock, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,12 +24,14 @@ function BestTimeWindowComponent({
   probability,
   className
 }: BestTimeWindowProps) {
+  const { t } = useLanguage();
+
   // Determine quality level
   const getQualityLevel = () => {
-    if (probability >= 70) return { label: 'Utmerket', color: 'text-green-400', bgColor: 'bg-green-500/20', borderColor: 'border-green-500/40' };
-    if (probability >= 50) return { label: 'Godt', color: 'text-emerald-400', bgColor: 'bg-emerald-500/20', borderColor: 'border-emerald-500/40' };
-    if (probability >= 30) return { label: 'Moderat', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20', borderColor: 'border-yellow-500/40' };
-    return { label: 'Lavt', color: 'text-white/60', bgColor: 'bg-arctic-700', borderColor: 'border-white/10' };
+    if (probability >= 70) return { labelKey: 'excellent', color: 'text-green-400', bgColor: 'bg-green-500/20', borderColor: 'border-green-500/40' };
+    if (probability >= 50) return { labelKey: 'good', color: 'text-emerald-400', bgColor: 'bg-emerald-500/20', borderColor: 'border-emerald-500/40' };
+    if (probability >= 30) return { labelKey: 'moderate', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20', borderColor: 'border-yellow-500/40' };
+    return { labelKey: 'low', color: 'text-white/60', bgColor: 'bg-arctic-700', borderColor: 'border-white/10' };
   };
 
   const quality = getQualityLevel();
@@ -49,7 +52,7 @@ function BestTimeWindowComponent({
         <div className="flex items-center justify-center gap-2 text-center">
           <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
           <h4 className="text-sm font-bold text-primary uppercase tracking-wider">
-            Beste visningstid
+            {t('bestViewingTime')}
           </h4>
           <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
         </div>
@@ -67,9 +70,9 @@ function BestTimeWindowComponent({
         {/* Quality Bar */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-white/60">Kvalitet:</span>
+            <span className="text-white/60">{t('quality')}</span>
             <span className={cn('font-semibold', quality.color)}>
-              {quality.label} ({probability}%)
+              {t(quality.labelKey as any)} ({probability}%)
             </span>
           </div>
           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -86,7 +89,7 @@ function BestTimeWindowComponent({
         {/* Recommendation */}
         {probability >= 50 && (
           <p className="text-xs text-center text-white/70 pt-2 border-t border-white/10">
-            🎯 Høy sannsynlighet for nordlys i dette tidsvinduet!
+            🎯 {t('highProbabilityWindow')}
           </p>
         )}
       </div>

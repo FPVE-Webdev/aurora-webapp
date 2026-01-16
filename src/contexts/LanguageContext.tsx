@@ -279,6 +279,15 @@ const translations: Record<Language, Record<string, string>> = {
     // HourlyForecast
     hourForecast: '{hours}-timers prognose',
     sixHourForecast: '6-timers prognose',
+
+    // BestTimeWindow
+    bestViewingTime: 'Beste visningstid',
+    excellent: 'Utmerket',
+    good: 'Godt',
+    moderate: 'Moderat',
+    low: 'Lavt',
+    quality: 'Kvalitet:',
+    highProbabilityWindow: 'Høy sannsynlighet for nordlys i dette tidsvinduet!',
   },
   en: {
     // Navigation & General
@@ -547,6 +556,15 @@ const translations: Record<Language, Record<string, string>> = {
     // HourlyForecast
     hourForecast: '{hours}-hour forecast',
     sixHourForecast: '6-hour forecast',
+
+    // BestTimeWindow
+    bestViewingTime: 'Best viewing time',
+    excellent: 'Excellent',
+    good: 'Good',
+    moderate: 'Moderate',
+    low: 'Low',
+    quality: 'Quality:',
+    highProbabilityWindow: 'High probability for aurora in this time window!',
   },
 };
 
