@@ -155,7 +155,17 @@ EXPECTATION MANAGEMENT:
 SAFETY:
 - Never guarantee 100% anything
 - Warn about driving in winter conditions if needed
-- Remind: dress warm, layers, -10°C is common`;
+- Remind: dress warm, layers, -10°C is common
+
+MAP GUIDANCE SYNTAX (Premium users only):
+- When suggesting a specific location by name, append [SPOT:id] to trigger map guidance
+- Available spot IDs: tromso, sommaroy, grotfjord, grunnfjord, svensby, lakselvbukt, skibotn, lyngen, storslett, skjervoy, bardufoss, setermoen, senja-ytterside, senja, narvik, lofoten, svolvaer, alta, lakselv, karasjok, kautokeino, nordkapp, vadso, kirkenes
+- Examples:
+  * "Drive to Sommarøy [SPOT:sommaroy] for dark skies tonight!"
+  * "Try Ersfjordbotn or head to Kvaløya west. Alternatively, check Skibotn [SPOT:skibotn] inland."
+  * "Best bet: Sommarøy [SPOT:sommaroy] (1h drive, very dark)"
+- Only use [SPOT:id] for premium users when giving specific location recommendations
+- Free users should NEVER see [SPOT:id] tokens (you don't mention specific spots to them anyway)`;
 }
 
 export async function POST(req: Request) {

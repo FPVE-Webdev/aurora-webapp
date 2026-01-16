@@ -29,6 +29,10 @@ export function ChatWidget() {
   const auraTriggerRef = useRef<HTMLButtonElement>(null);
   const [showAuraVideo, setShowAuraVideo] = useState(false);
   const [videoEligible, setVideoEligible] = useState(false);
+  const [hasSeenWelcome, setHasSeenWelcome] = useState(true); // Default true to prevent flash
+  const [hasShownNudge, setHasShownNudge] = useState(false);
+  const nudgeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const previousStatusRef = useRef<string | null>(null);
 
   const statusLabel = useMemo(() => {
     if (!result) return 'Laster status...';
@@ -140,9 +144,144 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
     };
   }, []);
 
-  // Inject a status-based intro once the Master Status is ready
+  // Check localStorage for first-time visitor
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const seen = localStorage.getItem('aura_has_seen_welcome');
+    setHasSeenWelcome(seen === 'true');
+  }, []);
+
+  // Context nudge: Show after 30 seconds idle (if chat not opened and no nudge shown this session)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check if nudge already shown this session
+    const nudgeShownSession = sessionStorage.getItem('aura_nudge_shown');
+    if (nudgeShownSession === 'true') {
+      setHasShownNudge(true);
+      return;
+    }
+
+    // Don't set timer if chat is already open or nudge already shown
+    if (isOpen || hasShownNudge) {
+      if (nudgeTimerRef.current) {
+        clearTimeout(nudgeTimerRef.current);
+        nudgeTimerRef.current = null;
+      }
+      return;
+    }
+
+    // Set 30-second idle timer
+    nudgeTimerRef.current = setTimeout(() => {
+      if (!isOpen && !hasShownNudge && result) {
+        // Open chat with nudge message
+        setIsOpen(true);
+        const nudgeText =
+          result.status === 'GO'
+            ? '✨ Nordlyset er sterkt akkurat nå! Vil du vite hvor du skal dra?'
+            : result.status === 'WAIT'
+            ? '🌌 Nordlysaktivitet bygger seg opp. Spør meg når det er beste tidspunkt!'
+            : '📊 Sjekk nordlysvarselet – jeg kan hjelpe deg planlegge kvelden.';
+
+        setMessages([
+          {
+            id: `nudge-${Date.now()}`,
+            text: nudgeText,
+            sender: 'bot',
+            timestamp: new Date(),
+          },
+        ]);
+        setHasIntro(true);
+        setHasShownNudge(true);
+        sessionStorage.setItem('aura_nudge_shown', 'true');
+      }
+    }, 30000); // 30 seconds
+
+    return () => {
+      if (nudgeTimerRef.current) {
+        clearTimeout(nudgeTimerRef.current);
+        nudgeTimerRef.current = null;
+      }
+    };
+  }, [isOpen, hasShownNudge, result]);
+
+  // Context nudge: Master Status change (GO → WAIT or WAIT → GO)
+  useEffect(() => {
+    if (!result || hasShownNudge || isOpen) return;
+
+    const currentStatus = result.status;
+    const previousStatus = previousStatusRef.current;
+
+    // Update ref
+    previousStatusRef.current = currentStatus;
+
+    // Only trigger nudge on meaningful transitions
+    if (previousStatus && previousStatus !== currentStatus) {
+      const isSignificantChange =
+        (previousStatus === 'GO' && currentStatus === 'WAIT') ||
+        (previousStatus === 'WAIT' && currentStatus === 'GO');
+
+      if (isSignificantChange) {
+        setIsOpen(true);
+        const changeText =
+          currentStatus === 'GO'
+            ? '🚀 Forholdene har bedret seg! Nordlyset er nå synlig. Vil du vite hvor?'
+            : '⚠️ Skydekket øker. Forholdene er ikke optimale lenger, men jeg kan hjelpe deg finne best spot.';
+
+        setMessages([
+          {
+            id: `status-change-${Date.now()}`,
+            text: changeText,
+            sender: 'bot',
+            timestamp: new Date(),
+          },
+        ]);
+        setHasIntro(true);
+        setHasShownNudge(true);
+        sessionStorage.setItem('aura_nudge_shown', 'true');
+      }
+    }
+  }, [result, hasShownNudge, isOpen]);
+
+  // Show welcome flow for first-time visitors (after opening chat)
+  useEffect(() => {
+    if (hasSeenWelcome || !isOpen || hasIntro) return;
+
+    const welcomeMessages: Message[] = [
+      {
+        id: 'welcome-1',
+        text: 'Hei! 👋 Jeg er Aura, din personlige nordlys-guide for Tromsø.',
+        sender: 'bot',
+        timestamp: new Date(),
+      },
+      {
+        id: 'welcome-2',
+        text: 'Jeg kan hjelpe deg med å finne beste spot for nordlys, gi værvarsler og real-time råd.',
+        sender: 'bot',
+        timestamp: new Date(Date.now() + 100),
+      },
+      {
+        id: 'welcome-3',
+        text: 'Prøv å spørre: "Hvor kan jeg se nordlys i kveld?" eller "Hva er beste tidspunkt?"',
+        sender: 'bot',
+        timestamp: new Date(Date.now() + 200),
+      },
+    ];
+
+    setMessages(welcomeMessages);
+    setHasIntro(true);
+
+    // Mark as seen
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aura_has_seen_welcome', 'true');
+      setHasSeenWelcome(true);
+    }
+  }, [hasSeenWelcome, isOpen, hasIntro]);
+
+  // Inject a status-based intro once the Master Status is ready (for returning visitors)
   useEffect(() => {
     if (hasIntro || statusLoading || !result) return;
+    if (!hasSeenWelcome) return; // Skip if welcome flow will handle it
 
     const baseIntro =
       result.status === 'GO'
@@ -164,7 +303,7 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
       },
     ]);
     setHasIntro(true);
-  }, [hasIntro, result, statusLoading, isPremium]);
+  }, [hasIntro, result, statusLoading, isPremium, hasSeenWelcome]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -200,9 +339,37 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
 
       const data = await res.json();
       console.info('[chat-guide] reply', { status: data.masterStatus, bestSpot: data.bestSpot?.name });
+
+      let botReply = data.reply || 'I\'m here, but didn\'t get a response. Try again.';
+
+      // Parse [SPOT:id] tokens for map guidance
+      const spotTokenRegex = /\[SPOT:([a-z-]+)\]/gi;
+      const spotMatches = botReply.matchAll(spotTokenRegex);
+
+      for (const match of spotMatches) {
+        const spotId = match[1];
+
+        // Emit map guidance event
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('aura-guide-spot', {
+              detail: {
+                spotId,
+                zoom: 11,
+                highlight: true
+              }
+            })
+          );
+          console.info('[chat-guide] emitted aura-guide-spot', { spotId });
+        }
+      }
+
+      // Remove [SPOT:id] tokens from display text
+      botReply = botReply.replace(spotTokenRegex, '').trim();
+
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: data.reply || 'I\'m here, but didn\'t get a response. Try again.',
+        text: botReply,
         sender: 'bot',
         timestamp: new Date()
       };

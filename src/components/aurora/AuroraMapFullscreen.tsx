@@ -737,6 +737,62 @@ export default function AuroraMapFullscreen({
     });
   }, [allowedForecasts, subscriptionTier, onSelectSpot, animationHour, kpIndex, selectedSpotId]);
 
+  // Listen for Aura guide events (map guidance from chatbot)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleAuraGuide = (event: Event) => {
+      const custom = event as CustomEvent<{
+        spotId: string;
+        coordinates?: [number, number]; // [lat, lon]
+        zoom?: number;
+        highlight?: boolean;
+      }>;
+      const detail = custom.detail;
+      if (!detail) return;
+
+      const map = mapRef.current;
+      if (!map) return;
+
+      // Find spot by ID in forecasts
+      const targetSpot = allowedForecasts.find(f => f.spot.id === detail.spotId);
+      if (!targetSpot) {
+        console.warn('[aura-guide] Spot not found:', detail.spotId);
+        return;
+      }
+
+      // Use provided coordinates or spot's coordinates
+      const [lat, lon] = detail.coordinates || [targetSpot.spot.latitude, targetSpot.spot.longitude];
+      const targetZoom = detail.zoom || 10;
+
+      if (debugLive) {
+        console.log('[aura-guide] Flying to spot:', {
+          spotId: detail.spotId,
+          name: targetSpot.spot.name,
+          coordinates: [lat, lon],
+          zoom: targetZoom
+        });
+      }
+
+      // Fly to the spot location
+      map.flyTo({
+        center: [lon, lat],
+        zoom: targetZoom,
+        pitch: 65,
+        duration: 2000,
+        essential: true
+      });
+
+      // Select the spot (updates marker styling)
+      onSelectSpot(detail.spotId);
+    };
+
+    window.addEventListener('aura-guide-spot', handleAuraGuide as EventListener);
+    return () => {
+      window.removeEventListener('aura-guide-spot', handleAuraGuide as EventListener);
+    };
+  }, [allowedForecasts, onSelectSpot]);
+
   // Add aurora oval halo badges
   useEffect(() => {
     const map = mapRef.current;
