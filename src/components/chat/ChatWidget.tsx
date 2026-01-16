@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageCircle, X, Send, Sparkles, Loader2, Trash2 } from 'lucide-react';
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
 import { usePremium } from '@/contexts/PremiumContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import type { StripeProductKey } from '@/lib/stripe';
 
@@ -23,6 +24,7 @@ interface QuickReply {
 export function ChatWidget() {
   const { status, result, isLoading: statusLoading } = useMasterStatus();
   const { isPremium, subscriptionTier } = usePremium();
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -44,11 +46,11 @@ export function ChatWidget() {
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const statusLabel = useMemo(() => {
-    if (!result) return 'Laster status...';
+    if (!result) return t('loadingStatus');
     if (result.status === 'GO') return 'GO NOW';
-    if (result.status === 'WAIT') return 'WAIT';
-    return 'NO (vent)';
-  }, [result]);
+    if (result.status === 'WAIT') return t('statusWait');
+    return 'NO';
+  }, [result, t]);
 
   const quickReplies = useMemo<QuickReply[]>(() => {
     // Dynamic suggestions based on Master Status
@@ -268,10 +270,10 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
         setIsOpen(true);
         const nudgeText =
           result.status === 'GO'
-            ? '✨ Nordlyset er sterkt akkurat nå! Vil du vite hvor du skal dra?'
+            ? t('strongActivityNow')
             : result.status === 'WAIT'
-            ? '🌌 Nordlysaktivitet bygger seg opp. Spør meg når det er beste tidspunkt!'
-            : '📊 Sjekk nordlysvarselet – jeg kan hjelpe deg planlegge kvelden.';
+            ? t('activityBuilding')
+            : t('checkForecast');
 
         setMessages([
           {
@@ -315,8 +317,8 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
         setIsOpen(true);
         const changeText =
           currentStatus === 'GO'
-            ? '🚀 Forholdene har bedret seg! Nordlyset er nå synlig. Vil du vite hvor?'
-            : '⚠️ Skydekket øker. Forholdene er ikke optimale lenger, men jeg kan hjelpe deg finne best spot.';
+            ? t('conditionsImproved')
+            : t('conditionsWorsened');
 
         setMessages([
           {
@@ -340,19 +342,19 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
     const welcomeMessages: Message[] = [
       {
         id: 'welcome-1',
-        text: 'Hei! 👋 Jeg er Aura, din personlige nordlys-guide for Tromsø.',
+        text: t('welcomeMessage1'),
         sender: 'bot',
         timestamp: new Date(),
       },
       {
         id: 'welcome-2',
-        text: 'Jeg kan hjelpe deg med å finne beste spot for nordlys, gi værvarsler og real-time råd.',
+        text: t('welcomeMessage2'),
         sender: 'bot',
         timestamp: new Date(Date.now() + 100),
       },
       {
         id: 'welcome-3',
-        text: 'Prøv å spørre: "Hvor kan jeg se nordlys i kveld?" eller "Hva er beste tidspunkt?"',
+        text: t('welcomeMessage3'),
         sender: 'bot',
         timestamp: new Date(Date.now() + 200),
       },
@@ -541,7 +543,7 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
   const handleClearHistory = () => {
     if (typeof window === 'undefined') return;
 
-    const confirmed = confirm('Er du sikker på at du vil slette alle chat-meldinger?');
+    const confirmed = confirm(t('confirmDeleteChat'));
     if (!confirmed) return;
 
     setMessages([]);
@@ -554,14 +556,14 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
       setUpgradeLoading(true);
       setUpgradeError(null);
 
-      const email = prompt('Skriv inn e-postadressen din for kvittering:');
+      const email = prompt(t('enterEmailForReceipt'));
       if (!email) {
         setUpgradeLoading(false);
         return;
       }
 
       if (!email.includes('@')) {
-        setUpgradeError('Ugyldig e-postadresse');
+        setUpgradeError(t('invalidEmail'));
         setUpgradeLoading(false);
         return;
       }
@@ -579,18 +581,18 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Kunne ikke åpne betalingsvindu');
+        throw new Error(data.error || t('couldNotOpenPayment'));
       }
 
       if (!data.url) {
-        throw new Error('Stripe returnerte ikke en betalingslenke');
+        throw new Error(t('couldNotOpenPayment'));
       }
 
       window.location.href = data.url;
     } catch (error) {
       console.error('Upgrade error:', error);
       setUpgradeError(
-        error instanceof Error ? error.message : 'Betaling feilet, prøv igjen'
+        error instanceof Error ? error.message : t('paymentFailed')
       );
     } finally {
       setUpgradeLoading(false);
@@ -672,7 +674,7 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
                       disabled={upgradeLoading}
                       className="px-4 py-2 rounded-lg bg-gradient-to-r from-primary to-purple-500 text-white text-xs font-semibold hover:shadow-lg hover:scale-105 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {upgradeLoading ? 'Åpner Stripe...' : 'Unlock Premium • From 49 NOK'}
+                      {upgradeLoading ? t('openingStripe') : 'Unlock Premium • From 49 NOK'}
                     </button>
                     {upgradeError && (
                       <span className="text-[11px] text-red-300">
@@ -721,15 +723,15 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Type a message..."
+              placeholder={t('typeMessage')}
               className="w-full bg-black/20 border border-white/10 rounded-full px-4 py-2.5 pr-12 text-sm text-white placeholder-white/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-light"
             />
             <button
               type="submit"
               disabled={!inputText.trim() || isSending}
               className="absolute right-1.5 p-1.5 bg-primary rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-hover transition-colors"
-              title="Send message"
-              aria-label="Send message"
+              title={t('sendMessage')}
+              aria-label={t('sendMessage')}
             >
               {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
@@ -746,7 +748,7 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
             isOpen && "opacity-0 translate-y-1 pointer-events-none"
           )}
         >
-          Snakk med Aura
+          {t('chatWithAura')}
         </div>
 
         <button
@@ -764,11 +766,11 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
             "group relative flex items-center justify-center p-0 bg-transparent text-white transition-transform duration-300 pointer-events-auto hover:scale-105 active:scale-100 focus-visible:drop-shadow-[0_0_18px_rgba(52,245,197,0.8)] outline-none",
             isOpen && "scale-0 opacity-0"
           )}
-          title="Snakk med Aura"
-          aria-label="Snakk med Aura"
+          title={t('chatWithAura')}
+          aria-label={t('chatWithAura')}
         >
           <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-2 rounded-xl bg-black/75 border border-white/10 text-sm text-white/90 shadow-lg opacity-0 translate-x-2 transition-all duration-200 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0">
-            Snakk med Aura
+            {t('chatWithAura')}
           </div>
           <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
             <img
@@ -805,8 +807,8 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
           "absolute bottom-0 right-0 flex items-center justify-center w-14 h-14 rounded-full bg-slate-800 text-white shadow-lg hover:bg-slate-700 hover:scale-105 transition-all duration-300 pointer-events-auto",
           !isOpen && "scale-0 opacity-0 rotate-90"
         )}
-        title="Close chat"
-        aria-label="Close chat"
+        title={t('closeChat')}
+        aria-label={t('closeChat')}
       >
         <X className="w-7 h-7" />
       </button>

@@ -102,8 +102,8 @@ export function calculateMasterStatus(input: MasterStatusInput): MasterStatusRes
   if (!isDark) {
     return {
       status: 'NO',
-      message: 'Ikke mørkt nok',
-      subtext: 'Nordlys er kun synlig når det er mørkt. Vent til det blir natt.',
+      message: 'Not dark enough',
+      subtext: "Aurora is only visible when it's dark. Wait until nighttime.",
       confidence: 100,
       factors,
     };
@@ -113,8 +113,8 @@ export function calculateMasterStatus(input: MasterStatusInput): MasterStatusRes
   if (cloudCoverage > 80) {
     return {
       status: 'NO',
-      message: 'For mye skyer',
-      subtext: 'Tykk skydekke blokkerer sikten. Sjekk igjen senere.',
+      message: 'Too many clouds',
+      subtext: 'Heavy cloud cover is blocking the view. Check back later.',
       confidence: Math.min(90, cloudCoverage),
       factors,
     };
@@ -124,8 +124,8 @@ export function calculateMasterStatus(input: MasterStatusInput): MasterStatusRes
   if (probability >= 30 && cloudCoverage < 30) {
     return {
       status: 'GO',
-      message: 'Ut og se!',
-      subtext: 'Gode forhold for nordlys akkurat nå.',
+      message: 'Go out and see!',
+      subtext: 'Good conditions for aurora right now.',
       confidence: Math.min(95, probability),
       factors,
     };
@@ -135,8 +135,8 @@ export function calculateMasterStatus(input: MasterStatusInput): MasterStatusRes
   if (probability >= 20 && cloudCoverage >= 30) {
     return {
       status: 'WAIT',
-      message: 'Aktivitet, men skyer',
-      subtext: 'Solaktiviteten er høy. Sjekk kartet for klarvær.',
+      message: 'Activity, but clouds',
+      subtext: 'Solar activity is high. Check the map for clear skies.',
       confidence: Math.round((probability + (100 - cloudCoverage)) / 2),
       factors,
     };
@@ -146,8 +146,8 @@ export function calculateMasterStatus(input: MasterStatusInput): MasterStatusRes
   if (cloudCoverage < 50 && probability >= 10) {
     return {
       status: 'WAIT',
-      message: 'Klart, men lav aktivitet',
-      subtext: 'Klar himmel. Venter på at aktiviteten tar seg opp.',
+      message: 'Clear, but low activity',
+      subtext: 'Clear skies. Waiting for activity to pick up.',
       confidence: Math.round(probability * 0.8),
       factors,
     };
@@ -156,8 +156,8 @@ export function calculateMasterStatus(input: MasterStatusInput): MasterStatusRes
   // DEFAULT: NO - Low probability overall
   return {
     status: 'NO',
-    message: 'Lite sannsynlig',
-    subtext: 'Lav solaktivitet akkurat nå. Slapp av og prøv igjen senere.',
+    message: 'Unlikely now',
+    subtext: 'Low solar activity right now. Relax and try again later.',
     confidence: Math.max(10, 100 - probability),
     factors,
   };

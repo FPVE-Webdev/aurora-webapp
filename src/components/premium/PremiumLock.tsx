@@ -2,6 +2,7 @@
 
 import { ReactNode, useState } from 'react';
 import { usePremium } from '@/contexts/PremiumContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Lock, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StripeProductKey } from '@/lib/stripe';
@@ -13,21 +14,22 @@ interface PremiumLockProps {
   blurStrength?: 'light' | 'medium' | 'strong';
 }
 
-const FEATURE_CONFIG = {
+// Translation keys for each feature
+const FEATURE_KEYS = {
   chatbot_routing: {
-    title: 'Presise kjøreinstruksjoner',
-    description: 'GPS-koordinater, kjøretider og beste rute til nordlyset',
-    badge: 'AI-guide',
+    titleKey: 'preciseDrivingInstructions',
+    descriptionKey: 'gpsCoordinatesDriveTime',
+    badgeKey: 'aiGuide',
   },
   map_best_spot: {
-    title: 'Beste spot akkurat nå',
-    description: 'Live kart med GPS-navigasjon til klareste himmel',
-    badge: 'Live Kart',
+    titleKey: 'bestSpotRightNow',
+    descriptionKey: 'liveMapGpsNavigation',
+    badgeKey: 'liveMap',
   },
   forecast_24h: {
-    title: '24-timers prognose',
-    description: 'Full oversikt over aktivitet, skyer og beste tidspunkt',
-    badge: 'Prognose',
+    titleKey: 'forecast24h',
+    descriptionKey: 'fullOverviewActivity',
+    badgeKey: 'forecastLabel',
   },
 } as const;
 
@@ -38,6 +40,7 @@ export function PremiumLock({
   blurStrength = 'medium',
 }: PremiumLockProps) {
   const { isPremium, isExpired, hoursRemaining } = usePremium();
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +49,12 @@ export function PremiumLock({
     return <>{children}</>;
   }
 
-  const config = FEATURE_CONFIG[feature];
+  const keys = FEATURE_KEYS[feature];
+  const config = {
+    title: t(keys.titleKey as any),
+    description: t(keys.descriptionKey as any),
+    badge: t(keys.badgeKey as any),
+  };
   const blurClass =
     blurStrength === 'light'
       ? 'blur-[2px]'
@@ -60,7 +68,7 @@ export function PremiumLock({
 
     try {
       // Collect email (prompt user)
-      const email = prompt('Skriv inn e-postadressen din for kvittering:');
+      const email = prompt(t('enterEmailForReceipt2'));
       if (!email) {
         setIsLoading(false);
         return;
@@ -68,7 +76,7 @@ export function PremiumLock({
 
       // Validate email
       if (!email.includes('@')) {
-        setError('Ugyldig e-postadresse');
+        setError(t('invalidEmailAddress'));
         setIsLoading(false);
         return;
       }
@@ -99,7 +107,7 @@ export function PremiumLock({
       }
     } catch (err) {
       console.error('Payment error:', err);
-      setError(err instanceof Error ? err.message : 'Betalingsfeil');
+      setError(err instanceof Error ? err.message : t('paymentError'));
       setIsLoading(false);
     }
   };
@@ -137,8 +145,8 @@ export function PremiumLock({
               disabled={isLoading}
             >
               <div className="text-left">
-                <p className="text-white font-semibold">1-Night Pass</p>
-                <p className="text-slate-400 text-xs">Perfekt for i kveld</p>
+                <p className="text-white font-semibold">{t('oneNightPass')}</p>
+                <p className="text-slate-400 text-xs">{t('perfectForTonight')}</p>
               </div>
               <p className="text-primary font-bold text-lg">49 kr</p>
             </button>
@@ -149,8 +157,8 @@ export function PremiumLock({
               disabled={isLoading}
             >
               <div className="text-left">
-                <p className="text-white font-semibold">7-Day Pass</p>
-                <p className="text-slate-400 text-xs">Best value · Populær</p>
+                <p className="text-white font-semibold">{t('sevenDayPass')}</p>
+                <p className="text-slate-400 text-xs">{t('bestValuePopular')}</p>
               </div>
               <div className="text-right">
                 <p className="text-primary font-bold text-lg">149 kr</p>
@@ -169,13 +177,13 @@ export function PremiumLock({
           {isLoading && (
             <div className="flex items-center justify-center gap-2 mb-4 text-primary">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Åpner betalingsvindu...</span>
+              <span className="text-sm">{t('openingPaymentWindow')}</span>
             </div>
           )}
 
           {/* Trust signals */}
           <p className="text-slate-500 text-xs mt-4">
-            Trygg betaling · Ingen abonnement · Umiddelbar tilgang
+            {t('securePaymentNoSubscription')}
           </p>
         </div>
       </div>
@@ -183,14 +191,14 @@ export function PremiumLock({
       {/* Expired badge (if user had premium before) */}
       {isExpired && (
         <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-semibold">
-          Utløpt
+          {t('expired')}
         </div>
       )}
 
       {/* Time remaining badge (if premium is active) */}
       {hoursRemaining && hoursRemaining <= 6 && (
         <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-semibold">
-          {hoursRemaining}t igjen
+          {t('hoursRemaining').replace('{hours}', hoursRemaining.toString())}
         </div>
       )}
     </div>
