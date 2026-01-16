@@ -165,7 +165,18 @@ MAP GUIDANCE SYNTAX (Premium users only):
   * "Try Ersfjordbotn or head to Kvaløya west. Alternatively, check Skibotn [SPOT:skibotn] inland."
   * "Best bet: Sommarøy [SPOT:sommaroy] (1h drive, very dark)"
 - Only use [SPOT:id] for premium users when giving specific location recommendations
-- Free users should NEVER see [SPOT:id] tokens (you don't mention specific spots to them anyway)`;
+- Free users should NEVER see [SPOT:id] tokens (you don't mention specific spots to them anyway)
+
+UI GUIDANCE SYNTAX (All users):
+- When user asks how to use a feature, you can highlight UI elements with [GUIDE:element-id:message]
+- Available element IDs: nav-forecast, nav-live, nav-settings, upgrade-button
+- Syntax: [GUIDE:element-id:Your helpful message here]
+- Examples:
+  * "You can see the full 48-hour forecast here. [GUIDE:nav-forecast:Click here to see detailed aurora predictions]"
+  * "To change your preferences, go to settings. [GUIDE:nav-settings:Your personal settings are here]"
+  * "Want to see real-time conditions? [GUIDE:nav-live:This shows live aurora activity and map]"
+- Keep messages short (max 15 words)
+- Only use UI guidance when user explicitly asks about features or seems confused about navigation`;
 }
 
 export async function POST(req: Request) {

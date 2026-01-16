@@ -14,10 +14,10 @@ export function Navigation() {
   const { liveViewers, userMode, setUserMode } = useRetention();
 
   const navItems = [
-    { href: '/', label: t('home'), icon: Home },
-    { href: '/live', label: t('liveMap'), icon: MapIcon },
-    { href: '/forecast', label: t('forecast'), icon: Calendar },
-    { href: '/settings', label: t('settings'), icon: Settings },
+    { href: '/', label: t('home'), icon: Home, guideId: 'nav-home' },
+    { href: '/live', label: t('liveMap'), icon: MapIcon, guideId: 'nav-live' },
+    { href: '/forecast', label: t('forecast'), icon: Calendar, guideId: 'nav-forecast' },
+    { href: '/settings', label: t('settings'), icon: Settings, guideId: 'nav-settings' },
   ];
 
   const isActive = (path: string) => {
@@ -79,6 +79,7 @@ export function Navigation() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  data-guide-id={item.guideId}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                     active
                       ? 'bg-primary/20 text-primary border border-primary/30'
@@ -140,6 +141,7 @@ export function Navigation() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  data-guide-id={item.guideId}
                   onClick={() => setIsOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                     active

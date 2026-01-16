@@ -17,6 +17,7 @@ import { Navigation } from '@/components/shared/Navigation';
 import Footer from '@/components/shared/Footer';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 import { AuraRoot } from '../../aura/AuraRoot';
+import { UIGuideProvider } from '@/components/guide/UIGuideProvider';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 
@@ -69,9 +70,11 @@ export default function ClientLayout({
                         <RetentionProvider>
                           <MasterStatusProvider>
                             <WelcomeProvider>
-                              <LayoutContent>{children}</LayoutContent>
-                              <ChatWidget />
-                              <AuraRoot />
+                              <UIGuideProvider>
+                                <LayoutContent>{children}</LayoutContent>
+                                <ChatWidget />
+                                <AuraRoot />
+                              </UIGuideProvider>
                               <Toaster
                                 position="top-right"
                                 theme="dark"

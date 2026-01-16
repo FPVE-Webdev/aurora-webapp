@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { MessageCircle, X, Send, Sparkles, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, Sparkles, Loader2, Trash2 } from 'lucide-react';
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
 import { usePremium } from '@/contexts/PremiumContext';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,7 @@ export function ChatWidget() {
   const [hasShownNudge, setHasShownNudge] = useState(false);
   const nudgeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const previousStatusRef = useRef<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   const statusLabel = useMemo(() => {
     if (!result) return 'Laster status...';
@@ -143,6 +144,56 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
       window.removeEventListener('aura-location-selected', onLocationSelected as EventListener);
     };
   }, []);
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined' || historyLoaded) return;
+
+    try {
+      const savedMessages = localStorage.getItem('aura_chat_history');
+      if (savedMessages) {
+        const parsed = JSON.parse(savedMessages) as Message[];
+        // Only load if messages exist and are from last 24 hours
+        const now = Date.now();
+        const validMessages = parsed.filter(msg => {
+          const msgTime = new Date(msg.timestamp).getTime();
+          return now - msgTime < 24 * 60 * 60 * 1000; // 24 hours
+        });
+
+        if (validMessages.length > 0) {
+          setMessages(validMessages);
+          setHasIntro(true); // Prevent duplicate intro
+        }
+      }
+    } catch (error) {
+      // Corrupt data, clear it
+      localStorage.removeItem('aura_chat_history');
+    }
+
+    setHistoryLoaded(true);
+  }, [historyLoaded]);
+
+  // Save chat history to localStorage whenever messages change
+  useEffect(() => {
+    if (typeof window === 'undefined' || !historyLoaded || messages.length === 0) return;
+
+    try {
+      // Only save last 50 messages to prevent localStorage overflow
+      const messagesToSave = messages.slice(-50);
+      localStorage.setItem('aura_chat_history', JSON.stringify(messagesToSave));
+    } catch (error) {
+      console.warn('[chat-history] Failed to save to localStorage:', error);
+      // If quota exceeded, clear old messages
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        const reduced = messages.slice(-20);
+        try {
+          localStorage.setItem('aura_chat_history', JSON.stringify(reduced));
+        } catch {
+          localStorage.removeItem('aura_chat_history');
+        }
+      }
+    }
+  }, [messages, historyLoaded]);
 
   // Check localStorage for first-time visitor
   useEffect(() => {
@@ -364,8 +415,34 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
         }
       }
 
-      // Remove [SPOT:id] tokens from display text
-      botReply = botReply.replace(spotTokenRegex, '').trim();
+      // Parse [GUIDE:element-id:message] tokens for UI guidance
+      const guideTokenRegex = /\[GUIDE:([a-z-]+):([^\]]+)\]/gi;
+      const guideMatches = botReply.matchAll(guideTokenRegex);
+
+      for (const match of guideMatches) {
+        const elementId = match[1];
+        const message = match[2];
+
+        // Emit UI guidance event
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('aura-ui-guide', {
+              detail: {
+                elementId,
+                message,
+                pulseColor: 'rgb(52, 245, 197)'
+              }
+            })
+          );
+          console.info('[chat-guide] emitted aura-ui-guide', { elementId, message });
+        }
+      }
+
+      // Remove [SPOT:id] and [GUIDE:...] tokens from display text
+      botReply = botReply
+        .replace(spotTokenRegex, '')
+        .replace(guideTokenRegex, '')
+        .trim();
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -385,6 +462,17 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleClearHistory = () => {
+    if (typeof window === 'undefined') return;
+
+    const confirmed = confirm('Er du sikker på at du vil slette alle chat-meldinger?');
+    if (!confirmed) return;
+
+    setMessages([]);
+    setHasIntro(false);
+    localStorage.removeItem('aura_chat_history');
   };
 
   const handleUpgrade = async (productKey: StripeProductKey = 'PREMIUM_24H') => {
@@ -458,14 +546,26 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
               </p>
             </div>
           </div>
-          <button 
-            onClick={() => setIsOpen(false)}
-            className="text-white/50 hover:text-white transition-colors p-1"
-            title="Close chat"
-            aria-label="Close chat"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {messages.length > 0 && (
+              <button
+                onClick={handleClearHistory}
+                className="text-white/40 hover:text-white transition-colors p-1"
+                title="Clear chat history"
+                aria-label="Clear chat history"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-white/50 hover:text-white transition-colors p-1"
+              title="Close chat"
+              aria-label="Close chat"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
