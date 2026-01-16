@@ -176,7 +176,24 @@ UI GUIDANCE SYNTAX (All users):
   * "To change your preferences, go to settings. [GUIDE:nav-settings:Your personal settings are here]"
   * "Want to see real-time conditions? [GUIDE:nav-live:This shows live aurora activity and map]"
 - Keep messages short (max 15 words)
-- Only use UI guidance when user explicitly asks about features or seems confused about navigation`;
+- Only use UI guidance when user explicitly asks about features or seems confused about navigation
+
+NAVIGATION LINK SYNTAX (All users):
+- When relevant, guide users to specific pages with clickable links using [LINK:path:text]
+- Available pages:
+  * /forecast → Detailed 48-hour aurora forecast
+  * /live → Live map with viewing spots and real-time conditions
+  * /settings → User settings and preferences
+  * / → Home dashboard
+- Syntax: [LINK:/page-path:Link text]
+- Examples:
+  * "The best time is around 22:00 tonight. [LINK:/forecast:View detailed forecast]"
+  * "Check the live map for current conditions. [LINK:/live:Open live map]"
+  * "You can adjust your location in settings. [LINK:/settings:Go to settings]"
+  * "See the dashboard for an overview. [LINK:/:Back to home]"
+- Use links when users ask "how do I see X?" or when directing to specific features
+- Keep link text short (2-4 words) and action-oriented
+- Links appear as clickable blue underlined text in the chat`;
 }
 
 export async function POST(req: Request) {

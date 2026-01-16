@@ -14,6 +14,12 @@ interface Message {
   timestamp: Date;
 }
 
+interface QuickReply {
+  id: string;
+  text: string;
+  emoji: string;
+}
+
 export function ChatWidget() {
   const { status, result, isLoading: statusLoading } = useMasterStatus();
   const { isPremium, subscriptionTier } = usePremium();
@@ -34,12 +40,45 @@ export function ChatWidget() {
   const nudgeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const previousStatusRef = useRef<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [showQuickReplies, setShowQuickReplies] = useState(true);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const statusLabel = useMemo(() => {
     if (!result) return 'Laster status...';
     if (result.status === 'GO') return 'GO NOW';
     if (result.status === 'WAIT') return 'WAIT';
     return 'NO (vent)';
+  }, [result]);
+
+  const quickReplies = useMemo<QuickReply[]>(() => {
+    // Dynamic suggestions based on Master Status
+    if (result?.status === 'GO') {
+      return [
+        { id: 'where-now', text: 'Where should I go now?', emoji: '📍' },
+        { id: 'how-long', text: 'How long will it last?', emoji: '⏰' },
+        { id: 'what-kp', text: 'What is Kp index?', emoji: '📊' },
+      ];
+    } else if (result?.status === 'WAIT') {
+      return [
+        { id: 'when-improve', text: 'When will it improve?', emoji: '⏰' },
+        { id: 'best-spot', text: "What's the best viewing spot?", emoji: '📍' },
+        { id: 'what-kp', text: 'What is Kp index?', emoji: '📊' },
+      ];
+    } else if (result?.status === 'NO') {
+      return [
+        { id: 'any-chance', text: 'Any chance later tonight?', emoji: '🌟' },
+        { id: 'forecast', text: 'Show me the forecast', emoji: '📈' },
+        { id: 'how-app', text: 'How to use this app?', emoji: 'ℹ️' },
+      ];
+    }
+
+    // Default suggestions (shown before Master Status loads or on first open)
+    return [
+      { id: 'when-go', text: 'When should I go out tonight?', emoji: '🌙' },
+      { id: 'best-spot', text: "What's the best viewing spot?", emoji: '📍' },
+      { id: 'what-kp', text: 'What is Kp index?', emoji: '📊' },
+      { id: 'how-app', text: 'How to use this app?', emoji: 'ℹ️' },
+    ];
   }, [result]);
 
   const scrollToBottom = () => {
@@ -356,6 +395,24 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
     setHasIntro(true);
   }, [hasIntro, result, statusLoading, isPremium, hasSeenWelcome]);
 
+  const sendQuickReply = (text: string) => {
+    setInputText(text);
+    // Trigger send immediately
+    setTimeout(() => {
+      const event = new Event('submit', { bubbles: true, cancelable: true });
+      document.querySelector('form')?.dispatchEvent(event);
+    }, 100);
+  };
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    idleTimerRef.current = setTimeout(() => {
+      setShowQuickReplies(true);
+    }, 20000); // 20 seconds idle
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputText.trim()) return;
@@ -369,6 +426,8 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
 
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
+    setShowQuickReplies(false); // Hide quick replies after first user message
+    resetIdleTimer(); // Start idle timer
 
     setIsSending(true);
 
@@ -436,6 +495,21 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
           );
           console.info('[chat-guide] emitted aura-ui-guide', { elementId, message });
         }
+      }
+
+      // Parse [LINK:path:text] tokens for navigation links
+      const linkTokenRegex = /\[LINK:(\/[^:]+):([^\]]+)\]/gi;
+      const linkMatches = botReply.matchAll(linkTokenRegex);
+
+      for (const match of linkMatches) {
+        const path = match[1];
+        const text = match[2];
+
+        // Replace with clickable link
+        botReply = botReply.replace(
+          match[0],
+          `<a href="${path}" class="text-teal-400 underline hover:text-teal-300 font-medium">${text} →</a>`
+        );
       }
 
       // Remove [SPOT:id] and [GUIDE:...] tokens from display text
@@ -587,9 +661,8 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
                         ? "bg-primary text-white rounded-br-sm"
                         : "bg-white/10 text-white/90 rounded-bl-sm backdrop-blur-sm"
                     )}
-                  >
-                    {msg.text}
-                  </div>
+                    dangerouslySetInnerHTML={{ __html: msg.text }}
+                  />
                 </div>
                 {/* Upgrade CTA for locked features */}
                 {hasLockIcon && !isPremium && (
@@ -623,8 +696,27 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSendMessage} className="p-3 border-t border-white/10 bg-white/5">
-          <div className="relative flex items-center">
+        <form onSubmit={handleSendMessage} className="border-t border-white/10 bg-white/5">
+          {/* Quick Replies */}
+          {showQuickReplies && quickReplies.length > 0 && (
+            <div className="flex flex-wrap gap-2 p-3 pb-2 border-b border-white/5">
+              {quickReplies.map((reply) => (
+                <button
+                  key={reply.id}
+                  type="button"
+                  onClick={() => sendQuickReply(reply.text)}
+                  className="px-3 py-1.5 text-xs bg-teal-500/20 hover:bg-teal-500/30
+                             rounded-full border border-teal-500/40 transition-colors
+                             text-white/90 font-medium flex items-center gap-1.5"
+                >
+                  <span>{reply.emoji}</span>
+                  <span>{reply.text}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="relative flex items-center p-3">
             <input
               type="text"
               value={inputText}
