@@ -186,7 +186,7 @@ export default function WelcomeView() {
 
             {/* Fun Facts Bulletin */}
             <div className="mt-4 mb-4">
-              <FunfactPanel funfacts={getRandomFunfacts(3, 'no')} />
+              <FunfactPanel funfacts={getRandomFunfacts(3, 'en')} />
             </div>
 
             <div className="mt-3 text-[11px] text-white/55">

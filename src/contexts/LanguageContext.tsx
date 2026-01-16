@@ -288,6 +288,11 @@ const translations: Record<Language, Record<string, string>> = {
     low: 'Lavt',
     quality: 'Kvalitet:',
     highProbabilityWindow: 'Høy sannsynlighet for nordlys i dette tidsvinduet!',
+
+    // RegionalView & SpotSelector
+    selectRegion: 'Velg region',
+    clickRegionForDetails: 'Klikk på en region for å se detaljerte prognoser',
+    selectObservationPoint: 'Velg observasjonspunkt',
   },
   en: {
     // Navigation & General
@@ -565,6 +570,11 @@ const translations: Record<Language, Record<string, string>> = {
     low: 'Low',
     quality: 'Quality:',
     highProbabilityWindow: 'High probability for aurora in this time window!',
+
+    // RegionalView & SpotSelector
+    selectRegion: 'Select region',
+    clickRegionForDetails: 'Click on a region to see detailed forecasts',
+    selectObservationPoint: 'Select observation point',
   },
 };
 

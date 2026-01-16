@@ -14,6 +14,7 @@ import { MapPin, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { auroraShadows } from '@/lib/auroraTheme';
 import { usePremium } from '@/contexts/PremiumContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { filterSpotsByTier } from '@/lib/utils/spotFiltering';
 
 interface SpotSelectorProps {
@@ -37,6 +38,7 @@ const getSpotsByRegion = (regionId: string, spots: ObservationSpot[]): Observati
 export function SpotSelector({ selectedSpot, onSelectSpot }: SpotSelectorProps) {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const { subscriptionTier } = usePremium();
+  const { t } = useLanguage();
 
   // Filter all spots based on user's subscription tier
   const availableSpots = useMemo(() => {
@@ -87,7 +89,7 @@ export function SpotSelector({ selectedSpot, onSelectSpot }: SpotSelectorProps) 
               className="flex items-center gap-1 hover:text-white transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
-              Velg observasjonspunkt
+              {t('selectObservationPoint')}
             </button>
             <span className="text-white">/ {currentRegionName}</span>
           </>

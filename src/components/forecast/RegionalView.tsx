@@ -2,6 +2,7 @@
 
 import { RegionalForecast } from '@/types/regions';
 import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Cloud, Thermometer, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProbabilityLevel } from '@/lib/calculations/regionalForecast';
@@ -12,14 +13,16 @@ interface RegionalViewProps {
 }
 
 export function RegionalView({ regionalForecasts, onSelectRegion }: RegionalViewProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
         <h2 className="text-2xl font-display font-bold text-white mb-2">
-          Velg region
+          {t('selectRegion')}
         </h2>
         <p className="text-white/60">
-          Klikk på en region for å se detaljerte prognoser
+          {t('clickRegionForDetails')}
         </p>
       </div>
 
