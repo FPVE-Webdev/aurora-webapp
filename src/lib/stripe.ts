@@ -6,17 +6,17 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   typescript: true,
 });
 
-// Product configuration
+// Product configuration (Launch prices)
 export const STRIPE_PRODUCTS = {
   PREMIUM_24H: {
     name: 'Nordlys Tromsø - 24-timers tilgang',
-    price: 4900, // 49 NOK in øre
+    price: 1900, // 19 NOK in øre (launch price)
     duration_hours: 24,
     tier: 'premium_24h' as const,
   },
   PREMIUM_7D: {
     name: 'Nordlys Tromsø - 7-dagers tilgang',
-    price: 14900, // 149 NOK in øre
+    price: 4900, // 49 NOK in øre (launch price)
     duration_hours: 168, // 7 days = 7 × 24 = 168 hours
     tier: 'premium_7d' as const,
   },

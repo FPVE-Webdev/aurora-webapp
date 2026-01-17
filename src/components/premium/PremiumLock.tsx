@@ -148,7 +148,7 @@ export function PremiumLock({
                 <p className="text-white font-semibold">{t('oneNightPass')}</p>
                 <p className="text-slate-400 text-xs">{t('perfectForTonight')}</p>
               </div>
-              <p className="text-primary font-bold text-lg">49 kr</p>
+              <p className="text-primary font-bold text-lg">19 kr</p>
             </button>
 
             <button
@@ -161,7 +161,7 @@ export function PremiumLock({
                 <p className="text-slate-400 text-xs">{t('bestValuePopular')}</p>
               </div>
               <div className="text-right">
-                <p className="text-primary font-bold text-lg">149 kr</p>
+                <p className="text-primary font-bold text-lg">49 kr</p>
               </div>
             </button>
           </div>

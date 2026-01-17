@@ -1,25 +1,80 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Check, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, Sparkles, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { StripeProductKey } from '@/lib/stripe';
+import { useState } from 'react';
 
 export default function UpgradePage() {
   const searchParams = useSearchParams();
   const { subscriptionTier } = usePremium();
   const { t } = useLanguage();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const from = searchParams.get('from') || 'free';
   const feature = searchParams.get('feature') || '';
   const source = searchParams.get('source') || '';
 
+  const handlePurchase = async (productKey: StripeProductKey) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Collect email (prompt user)
+      const email = prompt(t('enterEmailForReceipt2'));
+      if (!email) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Validate email
+      if (!email.includes('@')) {
+        setError(t('invalidEmailAddress'));
+        setIsLoading(false);
+        return;
+      }
+
+      // Store email for verification later
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user_email', email);
+      }
+
+      // Create Stripe Checkout Session
+      const response = await fetch('/api/payments/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productKey, email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError(err instanceof Error ? err.message : t('paymentError'));
+      setIsLoading(false);
+    }
+  };
+
   const plans = [
     {
+      stripeProductKey: 'PREMIUM_24H' as StripeProductKey,
       id: 'premium_24h',
       name: '24-timers pass',
-      price: '49 kr',
+      price: '19 kr',
       period: '24 timer',
       features: [
         'Full zoom til gatenivå',
@@ -28,11 +83,13 @@ export default function UpgradePage() {
         'Ingen annonser',
       ],
       highlighted: from === 'free',
+      comingSoon: false,
     },
     {
+      stripeProductKey: 'PREMIUM_7D' as StripeProductKey,
       id: 'premium_7d',
       name: '7-dagers pass',
-      price: '199 kr',
+      price: '49 kr',
       period: '7 dager',
       features: [
         'Alt fra 24-timers pass',
@@ -42,21 +99,7 @@ export default function UpgradePage() {
         'Prioritert support',
       ],
       highlighted: from === 'premium_24h',
-    },
-    {
-      id: 'enterprise',
-      name: 'Enterprise',
-      price: 'Kontakt oss',
-      period: '',
-      features: [
-        'Alt fra 7-dagers pass',
-        'Ubegrenset historiske data',
-        'API-tilgang',
-        'White-label løsning',
-        'Dedikert account manager',
-        'SLA garantier',
-      ],
-      highlighted: from === 'premium_7d',
+      comingSoon: false,
     },
   ];
 
@@ -128,21 +171,35 @@ export default function UpgradePage() {
               </ul>
 
               <button
-                className={`w-full py-3 px-6 rounded-lg font-semibold transition-all ${
+                className={`w-full py-3 px-6 rounded-lg font-semibold transition-all disabled:opacity-50 ${
                   plan.highlighted
                     ? 'bg-primary hover:bg-primary/90 text-white'
                     : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
                 }`}
-                onClick={() => {
-                  // TODO: Integrate with Stripe checkout
-                  alert(`Stripe integration kommer snart! Plan: ${plan.name}`);
-                }}
+                onClick={() => handlePurchase(plan.stripeProductKey)}
+                disabled={isLoading || subscriptionTier === plan.id}
               >
-                {subscriptionTier === plan.id ? 'Gjeldende plan' : 'Velg plan'}
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {t('openingPaymentWindow')}
+                  </span>
+                ) : subscriptionTier === plan.id ? (
+                  'Gjeldende plan'
+                ) : (
+                  'Velg plan'
+                )}
               </button>
             </div>
           ))}
         </div>
+
+        {/* Error message */}
+        {error && (
+          <div className="max-w-md mx-auto mb-6 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
+            {error}
+          </div>
+        )}
 
         {/* Additional Info */}
         <div className="text-center text-sm text-white/60">
