@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Notification Diagnostics</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0f1118;
+      color: #fff;
+    }
+    .status {
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border-left: 4px solid;
+    }
+    .success {
+      background: #1a3d2e;
+      border-color: #6ff3a8;
+    }
+    .error {
+      background: #3d1a1a;
+      border-color: #ff6b6b;
+    }
+    .warning {
+      background: #3d3d1a;
+      border-color: #ffd93d;
+    }
+    h1 { color: #6ff3a8; }
+    button {
+      background: #6ff3a8;
+      color: #0f1118;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #5dd991;
+    }
+    pre {
+      background: #1a1d26;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Push Notification Diagnostics</h1>
+
+  <div id="results"></div>
+
+  <button onclick="runDiagnostics()">Run Diagnostics</button>
+  <button onclick="testNotification()">Test Browser Notification</button>
+  <button onclick="checkServiceWorker()">Check Service Worker</button>
+
+  <script>
+    const results = document.getElementById('results');
+
+    function log(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `status ${type}`;
+      div.innerHTML = message;
+      results.appendChild(div);
+    }
+
+    function clear() {
+      results.innerHTML = '';
+    }
+
+    async function runDiagnostics() {
+      clear();
+      log('<strong>🚀 Starting diagnostics...</strong>');
+
+      // 1. Check if Service Worker is supported
+      if (!('serviceWorker' in navigator)) {
+        log('❌ Service Workers not supported in this browser', 'error');
+        return;
+      }
+      log('✅ Service Workers supported', 'success');
+
+      // 2. Check if Push is supported
+      if (!('PushManager' in window)) {
+        log('❌ Push API not supported in this browser', 'error');
+        return;
+      }
+      log('✅ Push API supported', 'success');
+
+      // 3. Check Notification permission
+      log(`📱 Notification permission: <strong>${Notification.permission}</strong>`,
+          Notification.permission === 'granted' ? 'success' : 'error');
+
+      // 4. Check Service Worker registration
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        log(`📋 Service Worker registrations: ${registrations.length}`,
+            registrations.length > 0 ? 'success' : 'warning');
+
+        if (registrations.length > 0) {
+          for (let i = 0; i < registrations.length; i++) {
+            const reg = registrations[i];
+            log(`   Registration ${i + 1}: ${reg.scope}`, 'success');
+
+            // Check for push subscription
+            const subscription = await reg.pushManager.getSubscription();
+            if (subscription) {
+              log(`   ✅ Push subscription exists`, 'success');
+              log(`<pre>${JSON.stringify(subscription.toJSON(), null, 2)}</pre>`, 'success');
+            } else {
+              log(`   ⚠️ No push subscription found`, 'warning');
+            }
+          }
+        }
+      } catch (error) {
+        log(`❌ Error checking Service Worker: ${error.message}`, 'error');
+      }
+
+      // 5. Test notification permission
+      if (Notification.permission !== 'granted') {
+        log('⚠️ Notification permission not granted. Click "Request Permission" to enable.', 'warning');
+      }
+
+      // 6. Check browser info
+      log(`🌐 User Agent: ${navigator.userAgent}`, 'info');
+      log(`🖥️ Platform: ${navigator.platform}`, 'info');
+    }
+
+    async function testNotification() {
+      if (Notification.permission !== 'granted') {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          log('❌ Notification permission denied', 'error');
+          return;
+        }
+      }
+
+      try {
+        const notification = new Notification('🧪 Test Notification', {
+          body: 'Dette er en test fra diagnostics!',
+          icon: '/Aurahalo.png',
+          badge: '/favicon.ico',
+          tag: 'test',
+          requireInteraction: false
+        });
+
+        log('✅ Browser notification created! Check your screen.', 'success');
+
+        notification.onclick = () => {
+          log('✅ Notification was clicked!', 'success');
+          notification.close();
+        };
+      } catch (error) {
+        log(`❌ Error creating notification: ${error.message}`, 'error');
+      }
+    }
+
+    async function checkServiceWorker() {
+      clear();
+
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        log('✅ Service Worker is ready', 'success');
+        log(`   Scope: ${registration.scope}`, 'success');
+        log(`   Active: ${!!registration.active}`, 'success');
+
+        if (registration.active) {
+          log(`   Script URL: ${registration.active.scriptURL}`, 'success');
+          log(`   State: ${registration.active.state}`, 'success');
+        }
+
+        // Check push subscription
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          log('✅ Push subscription exists', 'success');
+          log(`   Endpoint: ${subscription.endpoint.substring(0, 80)}...`, 'success');
+          log(`<pre>${JSON.stringify(subscription.toJSON(), null, 2)}</pre>`, 'success');
+        } else {
+          log('❌ No push subscription found!', 'error');
+          log('Go to /settings and click "Enable Alerts"', 'warning');
+        }
+      } catch (error) {
+        log(`❌ Service Worker not ready: ${error.message}`, 'error');
+        log('Try refreshing the page or go to /settings', 'warning');
+      }
+    }
+
+    // Auto-run diagnostics on load
+    runDiagnostics();
+  </script>
+</body>
+</html>
