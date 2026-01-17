@@ -1,72 +1,26 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Check, Sparkles, Loader2 } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Check, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { StripeProductKey } from '@/lib/stripe';
-import { useState } from 'react';
 
 export default function UpgradePage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { subscriptionTier } = usePremium();
   const { t } = useLanguage();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const from = searchParams.get('from') || 'free';
   const feature = searchParams.get('feature') || '';
   const source = searchParams.get('source') || '';
 
-  const handlePurchase = async (productKey: StripeProductKey) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Collect email (prompt user)
-      const email = prompt(t('enterEmailForReceipt2'));
-      if (!email) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Validate email
-      if (!email.includes('@')) {
-        setError(t('invalidEmailAddress'));
-        setIsLoading(false);
-        return;
-      }
-
-      // Store email for verification later
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('user_email', email);
-      }
-
-      // Create Stripe Checkout Session
-      const response = await fetch('/api/payments/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productKey, email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create checkout session');
-      }
-
-      // Redirect to Stripe Checkout
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL returned');
-      }
-    } catch (err) {
-      console.error('Payment error:', err);
-      setError(err instanceof Error ? err.message : t('paymentError'));
-      setIsLoading(false);
-    }
+  const handleSelectPlan = (planId: string) => {
+    // Map plan ID to checkout plan parameter
+    const checkoutPlan = planId === 'premium_24h' ? '24h' : '7d';
+    router.push(`/checkout?plan=${checkoutPlan}`);
   };
 
   const plans = [
@@ -179,30 +133,14 @@ export default function UpgradePage() {
                     ? 'bg-primary hover:bg-primary/90 text-white'
                     : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
                 }`}
-                onClick={() => handlePurchase(plan.stripeProductKey)}
-                disabled={isLoading || subscriptionTier === plan.id}
+                onClick={() => handleSelectPlan(plan.id)}
+                disabled={subscriptionTier === plan.id}
               >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {t('openingPaymentWindow')}
-                  </span>
-                ) : subscriptionTier === plan.id ? (
-                  'Current plan'
-                ) : (
-                  'Choose plan'
-                )}
+                {subscriptionTier === plan.id ? 'Current plan' : 'Choose plan'}
               </button>
             </div>
           ))}
         </div>
-
-        {/* Error message */}
-        {error && (
-          <div className="max-w-md mx-auto mb-6 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
 
         {/* Additional Info */}
         <div className="text-center text-sm text-white/60">
