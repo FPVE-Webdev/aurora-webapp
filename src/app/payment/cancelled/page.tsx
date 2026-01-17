@@ -30,8 +30,8 @@ export default function PaymentCancelledPage() {
 
         <p className="text-slate-500 text-sm mt-6">
           Har du spørsmål? Kontakt oss på{' '}
-          <a href="mailto:support@nordlystromso.no" className="text-primary hover:underline">
-            support@nordlystromso.no
+          <a href="mailto:support@tromso.ai" className="text-primary hover:underline">
+            support@tromso.ai
           </a>
         </p>
       </div>

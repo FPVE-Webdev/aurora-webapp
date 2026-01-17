@@ -100,10 +100,10 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-xs text-white/40 pt-2">
               Hvis problemet vedvarer, kontakt oss på{' '}
               <a
-                href="mailto:support@nordlystromso.no"
+                href="mailto:support@tromso.ai"
                 className="text-primary hover:underline"
               >
-                support@nordlystromso.no
+                support@tromso.ai
               </a>
             </p>
           </div>
