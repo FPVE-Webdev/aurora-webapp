@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Lock, Loader2, ChevronDown, Shield, CreditCard } from
 import Link from 'next/link';
 import { StripeProductKey } from '@/lib/stripe';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PaymentRequestButton from '@/components/checkout/PaymentRequestButton';
 
 type PlanId = '24h' | '7d';
 
@@ -14,6 +15,7 @@ interface PlanConfig {
   stripeKey: StripeProductKey;
   name: string;
   price: string;
+  priceInOre: number; // Price in øre for Stripe
   duration: string;
   features: string[];
   recommended: boolean;
@@ -25,6 +27,7 @@ const PLANS: PlanConfig[] = [
     stripeKey: 'PREMIUM_24H',
     name: '24-hour pass',
     price: '19 kr',
+    priceInOre: 1900,
     duration: '24 hours',
     features: [
       'Live aurora animation',
@@ -41,6 +44,7 @@ const PLANS: PlanConfig[] = [
     stripeKey: 'PREMIUM_7D',
     name: '7-day pass',
     price: '49 kr',
+    priceInOre: 4900,
     duration: '7 days',
     features: [
       'Live aurora animation',
@@ -257,11 +261,33 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* CTA Button */}
+          {/* Payment Request Button (Apple Pay / Google Pay) */}
+          {email && email.includes('@') && (
+            <>
+              <PaymentRequestButton
+                amount={plan.priceInOre}
+                currency="nok"
+                email={email}
+                planName={plan.name}
+                productKey={plan.stripeKey}
+                onSuccess={() => router.push('/payment/success')}
+                onError={(error) => setError(error)}
+              />
+
+              {/* OR Divider */}
+              <div className="flex items-center gap-4 my-4">
+                <div className="flex-1 border-t border-white/10"></div>
+                <span className="text-sm text-white/60">OR</span>
+                <div className="flex-1 border-t border-white/10"></div>
+              </div>
+            </>
+          )}
+
+          {/* Fallback CTA Button (Card Payment via Stripe Checkout) */}
           <button
             type="submit"
             disabled={isLoading || !email}
-            className="w-full py-4 px-6 rounded-lg bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white font-semibold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-4 px-6 rounded-lg border-2 border-white/20 hover:border-primary bg-white/5 hover:bg-white/10 text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -270,8 +296,8 @@ export default function CheckoutPage() {
               </>
             ) : (
               <>
-                <Lock className="w-5 h-5" />
-                Proceed to Secure Payment
+                <CreditCard className="w-5 h-5" />
+                Pay with Card
               </>
             )}
           </button>

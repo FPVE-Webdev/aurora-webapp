@@ -85,6 +85,59 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+
+        // Extract metadata
+        const { productKey, tier, duration_hours, email } = paymentIntent.metadata || {};
+
+        if (!productKey || !tier || !duration_hours || !email) {
+          console.error('Missing required metadata in payment intent:', paymentIntent.id);
+          break;
+        }
+
+        // Calculate expiry time
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + parseInt(duration_hours));
+
+        // Store in Supabase
+        const supabase = getSupabaseClient();
+
+        if (supabase) {
+          const { error } = await supabase
+            .from('stripe_customers')
+            .upsert({
+              user_email: email,
+              stripe_customer_id: paymentIntent.customer as string | null,
+              subscription_status: 'active',
+              current_tier: tier,
+              expires_at: expiresAt.toISOString(),
+              payment_intent_id: paymentIntent.id,
+              payment_method_type: paymentIntent.payment_method_types?.[0] || 'unknown',
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'user_email',
+            });
+
+          if (error) {
+            console.error('Error storing payment intent in Supabase:', error);
+          } else {
+            console.log(`✅ Payment Intent succeeded for ${email} - ${tier} until ${expiresAt}`);
+          }
+        } else {
+          console.warn('Supabase not configured - payment received but not stored');
+        }
+
+        break;
+      }
+
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const email = paymentIntent.metadata?.email || 'unknown';
+        console.error(`❌ Payment Intent failed for ${email}:`, paymentIntent.id);
+        break;
+      }
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
