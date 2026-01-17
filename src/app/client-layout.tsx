@@ -29,7 +29,7 @@ const syne = Syne({
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin');
-  const isImmersiveRoute = pathname === '/kart2' || pathname === '/kart3';
+  const isImmersiveRoute = pathname === '/kart3';
 
   return (
     <>
