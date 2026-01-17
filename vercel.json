@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/collect-noaa",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/check-aurora-alerts",
+      "schedule": "*/15 * * * *"
     }
   ],
   "headers": [

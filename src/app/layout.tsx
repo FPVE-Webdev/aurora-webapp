@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     icon: '/Aurahalo.png',
     apple: '/Aurahalo.png',
   },
+  manifest: '/manifest.json',
   openGraph: {
     type: 'website',
     locale: 'no_NO',

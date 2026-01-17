@@ -20,6 +20,7 @@ import { AuraRoot } from '../../aura/AuraRoot';
 import { UIGuideProvider } from '@/components/guide/UIGuideProvider';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { useServiceWorker } from '@/hooks/useServiceWorker';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -55,6 +56,9 @@ export default function ClientLayout({
       },
     },
   }));
+
+  // Register service worker for push notifications
+  useServiceWorker();
 
   return (
     <html lang="no">
