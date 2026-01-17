@@ -28,6 +28,25 @@ const nextConfig = {
     };
     return config;
   },
+
+  // Ensure .well-known files are served correctly for Apple Pay domain verification
+  async headers() {
+    return [
+      {
+        source: '/.well-known/:path*',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/plain',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 // Sentry configuration options
