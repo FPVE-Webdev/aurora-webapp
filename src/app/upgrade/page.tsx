@@ -73,14 +73,16 @@ export default function UpgradePage() {
     {
       stripeProductKey: 'PREMIUM_24H' as StripeProductKey,
       id: 'premium_24h',
-      name: '24-timers pass',
+      name: '24-hour pass',
       price: '19 kr',
-      period: '24 timer',
+      period: '24 hours',
       features: [
-        'Full zoom til gatenivå',
-        'Høyoppløselige kart',
-        'Historiske data (7 dager)',
-        'Ingen annonser',
+        'Live aurora animation',
+        'Weather layers (clouds, precipitation)',
+        'Street-level zoom',
+        '48-hour forecast',
+        'Export map screenshots',
+        'All Troms region spots',
       ],
       highlighted: from === 'free',
       comingSoon: false,
@@ -88,15 +90,16 @@ export default function UpgradePage() {
     {
       stripeProductKey: 'PREMIUM_7D' as StripeProductKey,
       id: 'premium_7d',
-      name: '7-dagers pass',
+      name: '7-day pass',
       price: '49 kr',
-      period: '7 dager',
+      period: '7 days',
       features: [
-        'Alt fra 24-timers pass',
-        'Historiske data (30 dager)',
-        'Eksporter bilder i høy kvalitet',
-        'AI Aurora Guide',
-        'Prioritert support',
+        'Live aurora animation',
+        'Weather layers (clouds, precipitation)',
+        'Street-level zoom',
+        '48-hour forecast',
+        'Export map screenshots',
+        'All Troms region spots',
       ],
       highlighted: from === 'premium_24h',
       comingSoon: false,
@@ -124,17 +127,17 @@ export default function UpgradePage() {
 
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
-            Oppgrader til Premium
+            Upgrade to Premium
           </h1>
           {feature && (
             <p className="text-lg text-white/70">
-              Lås opp <span className="text-primary font-semibold">{feature}</span> og mer
+              Unlock <span className="text-primary font-semibold">{feature}</span> and more
             </p>
           )}
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid md:grid-cols-2 gap-6 mb-12 max-w-4xl mx-auto">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -148,7 +151,7 @@ export default function UpgradePage() {
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                   <div className="bg-primary px-4 py-1 rounded-full flex items-center gap-2">
                     <Sparkles className="w-4 h-4" />
-                    <span className="text-sm font-semibold">Anbefalt</span>
+                    <span className="text-sm font-semibold">Recommended</span>
                   </div>
                 </div>
               )}
@@ -157,7 +160,7 @@ export default function UpgradePage() {
                 <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
                 <div className="text-3xl font-bold text-primary mb-1">{plan.price}</div>
                 {plan.period && (
-                  <div className="text-sm text-white/60">per {plan.period}</div>
+                  <div className="text-sm text-white/60">for {plan.period}</div>
                 )}
               </div>
 
@@ -185,9 +188,9 @@ export default function UpgradePage() {
                     {t('openingPaymentWindow')}
                   </span>
                 ) : subscriptionTier === plan.id ? (
-                  'Gjeldende plan'
+                  'Current plan'
                 ) : (
-                  'Velg plan'
+                  'Choose plan'
                 )}
               </button>
             </div>
@@ -203,11 +206,11 @@ export default function UpgradePage() {
 
         {/* Additional Info */}
         <div className="text-center text-sm text-white/60">
-          <p className="mb-2">Sikker betaling via Stripe • Ingen skjulte kostnader</p>
+          <p className="mb-2">Secure payment via Stripe • No hidden fees</p>
           <p>
-            Spørsmål?{' '}
+            Questions?{' '}
             <a href="mailto:support@tromso.ai" className="text-primary hover:text-primary/80">
-              Kontakt oss
+              Contact us
             </a>
           </p>
         </div>
