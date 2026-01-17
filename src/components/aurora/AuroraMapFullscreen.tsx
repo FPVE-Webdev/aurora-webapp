@@ -389,7 +389,7 @@ export default function AuroraMapFullscreen({
             type: 'raster',
             source: `owm-clouds-${hourOffset}`,
             paint: {
-              'raster-opacity': hourOffset === 0 ? 0.65 : 0,
+              'raster-opacity': hourOffset === 0 ? 0.85 : 0,
               'raster-opacity-transition': { duration: 300 },
               'raster-resampling': 'linear'
             },
@@ -864,7 +864,7 @@ export default function AuroraMapFullscreen({
     else activeBatch = 0;
 
     batches.forEach((batch) => {
-      const baseCloudOpacity = 0.65;
+      const baseCloudOpacity = 0.85;
       const basePrecipOpacity = 0.75;
 
       // Only the active batch is visible, others are hidden
