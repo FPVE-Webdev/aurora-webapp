@@ -16,11 +16,11 @@ const stripePromise = loadStripe(
 interface PaymentRequestButtonProps {
   amount: number; // In øre
   currency: string; // 'nok'
-  email: string;
   planName: string;
   productKey: StripeProductKey;
   onSuccess: () => void;
   onError: (error: string) => void;
+  onCanMakePayment?: (canMake: boolean) => void; // Callback to parent
 }
 
 export default function PaymentRequestButton(
@@ -36,11 +36,11 @@ export default function PaymentRequestButton(
 function PaymentRequestForm({
   amount,
   currency,
-  email,
   planName,
   productKey,
   onSuccess,
   onError,
+  onCanMakePayment,
 }: PaymentRequestButtonProps) {
   const stripe = useStripe();
   const [paymentRequest, setPaymentRequest] =
@@ -67,6 +67,9 @@ function PaymentRequestForm({
       if (result) {
         setPaymentRequest(pr);
         setCanMakePayment(true);
+        onCanMakePayment?.(true); // Notify parent that wallets are supported
+      } else {
+        onCanMakePayment?.(false); // Notify parent that wallets are NOT supported
       }
     });
 
@@ -77,11 +80,21 @@ function PaymentRequestForm({
       setIsProcessing(true);
 
       try {
+        // Get email from wallet
+        const payerEmail = ev.payerEmail;
+
+        if (!payerEmail) {
+          ev.complete('fail');
+          onError('Email is required from wallet');
+          setIsProcessing(false);
+          return;
+        }
+
         // 1. Create Payment Intent on server
         const response = await fetch('/api/payments/create-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, productKey }),
+          body: JSON.stringify({ email: payerEmail, productKey }),
         });
 
         if (!response.ok) {
@@ -104,9 +117,9 @@ function PaymentRequestForm({
         } else {
           ev.complete('success');
 
-          // Store email in localStorage for verification
+          // Store email from wallet in localStorage for verification
           if (typeof window !== 'undefined') {
-            localStorage.setItem('user_email', email);
+            localStorage.setItem('user_email', payerEmail);
           }
 
           onSuccess();
@@ -120,7 +133,7 @@ function PaymentRequestForm({
         setIsProcessing(false);
       }
     });
-  }, [stripe, amount, currency, email, planName, productKey, onSuccess, onError, isProcessing]);
+  }, [stripe, amount, currency, planName, productKey, onSuccess, onError, onCanMakePayment, isProcessing]);
 
   if (!canMakePayment) {
     return null; // Component hides if wallets not supported
