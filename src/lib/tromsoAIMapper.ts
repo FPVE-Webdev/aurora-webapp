@@ -34,14 +34,15 @@ export function mapTromsøForecastToSpotForecast(
   forecast: TromsøAuroraForecast,
   spot: ObservationSpot,
   weatherData?: { cloudCoverage: number; temperature: number; windSpeed?: number },
-  hourlyApiData?: any[]
+  hourlyApiData?: any[],
+  globalKp?: number
 ): SpotForecast {
   // Extract current weather from hour 0 if hourly data available (single source of truth)
   const hour0Weather = hourlyApiData?.[0]?.weather;
 
-  // Use location-specific KP from hourly data if available, otherwise use global KP
-  // This ensures consistency between currentProbability and hourlyForecast[0].probability
-  const kpIndex = hourlyApiData?.[0]?.kp ?? forecast.kp ?? scoreToKpIndex(forecast.score);
+  // Use global KP from context, fallback to forecast.kp or derive from score
+  // KP is a GLOBAL planetary index - all locations have the same KP at any given time
+  const kpIndex = globalKp ?? forecast.kp ?? scoreToKpIndex(forecast.score);
 
   // Use hour 0 weather as priority, then weatherData, then stable defaults (NO hash-based variation)
   const cloudCoverage = hour0Weather?.cloudCoverage ?? weatherData?.cloudCoverage ?? 50;
@@ -68,7 +69,7 @@ export function mapTromsøForecastToSpotForecast(
 
       // Calculate probability using System A for consistency across all pages
       const calculatedProb = calculateAuroraProbability({
-        kpIndex: apiHour.kp ?? kpIndex,
+        kpIndex: kpIndex, // Always use global KP
         cloudCoverage: apiHour.weather?.cloudCoverage ?? apiHour.cloudCoverage ?? 50,
         temperature: apiHour.weather?.temperature ?? apiHour.temperature ?? 0,
         latitude: spot.latitude,
@@ -84,7 +85,7 @@ export function mapTromsøForecastToSpotForecast(
         probability: calculatedProb.probability, // Use System A calculation
         cloudCoverage: Math.round(apiHour.weather?.cloudCoverage ?? apiHour.cloudCoverage ?? 50),
         temperature: Math.round(apiHour.weather?.temperature ?? apiHour.temperature ?? 0),
-        kpIndex: apiHour.kp ?? kpIndex,
+        kpIndex: kpIndex, // Always use global KP
         symbolCode: apiHour.weather?.symbolCode ??
                    ((apiHour.weather?.cloudCoverage ?? 50) > 50 ? 'cloudy' : 'clearsky_night'),
         twilightPhase: (timeOfDay >= 21 || timeOfDay <= 6) ? 'night' : 'day',
@@ -107,11 +108,8 @@ export function mapTromsøForecastToSpotForecast(
       const tempVariation = Math.sin((i - 12) * 0.26) * 2; // ±2°C variation
       const hourTemperature = temperature + tempVariation;
 
-      // Keep KP index stable or slight deterministic variation
-      const kpVariation = Math.sin(i * 0.3) * 0.5;
-      const hourKpIndex = Math.max(0, Math.min(9,
-        kpIndex + kpVariation
-      ));
+      // Use consistent global KP for all hours (KP is planetary, not time-varying)
+      const hourKpIndex = kpIndex;
 
       // Calculate probability for this specific hour WITH DAYLIGHT CHECK
       const { probability: hourProbability, canView: hourCanView } = calculateAuroraProbability({

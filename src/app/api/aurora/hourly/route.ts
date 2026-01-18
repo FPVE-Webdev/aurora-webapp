@@ -136,7 +136,7 @@ export async function GET(request: Request) {
             time: forecastDate.toISOString(),
             hour: parseInt(hour),
             probability: f.probability,
-            kp: f.kp,
+            // KP removed - it's a global planetary index, not location-specific
             weather: {
               cloudCoverage: f.cloudCoverage,
               temperature: f.temperature,
@@ -166,7 +166,7 @@ export async function GET(request: Request) {
             time: forecastDate.toISOString(),
             hour: parseInt(hour),
             probability: f.probability,
-            kp: f.kp,
+            // KP removed - it's a global planetary index, not location-specific
             weather: {
               cloudCoverage: f.cloudCoverage,
               temperature: f.temperature,
@@ -233,7 +233,7 @@ function generateMockHourly(hours: number, location: string) {
       time: date.toISOString(),
       hour: date.getHours(),
       probability,
-      kp: parseFloat(kp.toFixed(1)),
+      // KP removed - it's a global planetary index, not location-specific
       weather: {
         cloudCoverage: Math.floor(cloudCoverage),
         temperature: Math.floor(seededRandom(hourSeed + 3) * 10) - 5,

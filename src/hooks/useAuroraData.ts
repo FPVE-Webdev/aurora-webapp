@@ -14,6 +14,7 @@ import { mapTromsøForecastToSpotForecast, scoreToKpIndex } from '@/lib/tromsoAI
 import { OBSERVATION_SPOTS, FREE_OBSERVATION_SPOTS } from '@/lib/constants';
 import { SpotForecast, ObservationSpot } from '@/types/aurora';
 import { TromsøAuroraForecast, ExtendedMetrics } from '@/types/tromsoAI';
+import { useKpIndex } from '@/contexts/KpIndexContext';
 
 interface AuroraState {
   currentKp: number;
@@ -122,6 +123,9 @@ function getLanguage(): 'no' | 'en' {
  * Fetches and manages aurora forecast data from Tromsø.AI API
  */
 export function useAuroraData() {
+  // Use global KP from context as single source of truth
+  const { currentKp: globalKp } = useKpIndex();
+
   const [state, setState] = useState<AuroraState>({
     currentKp: 3,
     globalProbability: 0,
@@ -156,8 +160,8 @@ export function useAuroraData() {
         cacheForecast(forecast);
       }
 
-      // Convert to KP index for compatibility
-      const kpIndex = scoreToKpIndex(forecast.score);
+      // Use global KP from context instead of deriving from score
+      const kpIndex = globalKp;
       const dataTimestamp = new Date(forecast.updated);
 
       // Fetch weather data and hourly forecasts for all spots in parallel
@@ -175,11 +179,11 @@ export function useAuroraData() {
             currentWeather = hourlyData?.[0]?.weather;
           }
 
-          // Map forecast using hour 0 weather for current probability
-          return mapTromsøForecastToSpotForecast(forecast!, spot, currentWeather, hourlyData);
+          // Map forecast using hour 0 weather for current probability and global KP
+          return mapTromsøForecastToSpotForecast(forecast!, spot, currentWeather, hourlyData, globalKp);
         } catch (error) {
           console.warn(`Failed to fetch hourly forecast for ${spot.name}, using fallback`);
-          return mapTromsøForecastToSpotForecast(forecast!, spot);
+          return mapTromsøForecastToSpotForecast(forecast!, spot, undefined, undefined, globalKp);
         }
       });
 
@@ -223,9 +227,9 @@ export function useAuroraData() {
       // Try to use cached data on error
       const cached = getCachedForecast();
       if (cached) {
-        const kpIndex = scoreToKpIndex(cached.score);
+        const kpIndex = globalKp; // Use global KP from context
         const spotForecasts = OBSERVATION_SPOTS.map(spot =>
-          mapTromsøForecastToSpotForecast(cached, spot, undefined, undefined)
+          mapTromsøForecastToSpotForecast(cached, spot, undefined, undefined, globalKp)
         );
 
         setState(prev => ({

@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { TemperatureProvider } from '@/contexts/TemperatureContext';
 import { PremiumProvider } from '@/contexts/PremiumContext';
+import { KpIndexProvider } from '@/contexts/KpIndexContext';
 import { DevModeProvider } from '@/contexts/DevModeContext';
 import { DataModeProvider } from '@/contexts/DataModeContext';
 import { RetentionProvider } from '@/contexts/RetentionContext';
@@ -68,37 +69,39 @@ export default function ClientLayout({
           <QueryClientProvider client={queryClient}>
             <LanguageProvider>
               <TemperatureProvider>
-                <DevModeProvider>
-                  <DataModeProvider>
-                    <AuroraDataProvider>
-                      <PremiumProvider>
-                        <RetentionProvider>
-                          <MasterStatusProvider>
-                            <WelcomeProvider>
-                              <UIGuideProvider>
-                                <StructuredData />
-                                <LayoutContent>{children}</LayoutContent>
-                                <ChatWidget />
-                                <AuraRoot />
-                              </UIGuideProvider>
-                              <Toaster
-                                position="top-right"
-                                theme="dark"
-                                toastOptions={{
-                                  style: {
-                                    background: 'rgb(15, 17, 24)',
-                                    border: '1px solid rgba(255, 255, 3, 0.1)',
-                                    color: 'white',
-                                  },
-                                }}
-                              />
-                            </WelcomeProvider>
-                          </MasterStatusProvider>
-                        </RetentionProvider>
-                      </PremiumProvider>
-                    </AuroraDataProvider>
-                  </DataModeProvider>
-                </DevModeProvider>
+                <KpIndexProvider>
+                  <DevModeProvider>
+                    <DataModeProvider>
+                      <AuroraDataProvider>
+                        <PremiumProvider>
+                          <RetentionProvider>
+                            <MasterStatusProvider>
+                              <WelcomeProvider>
+                                <UIGuideProvider>
+                                  <StructuredData />
+                                  <LayoutContent>{children}</LayoutContent>
+                                  <ChatWidget />
+                                  <AuraRoot />
+                                </UIGuideProvider>
+                                <Toaster
+                                  position="top-right"
+                                  theme="dark"
+                                  toastOptions={{
+                                    style: {
+                                      background: 'rgb(15, 17, 24)',
+                                      border: '1px solid rgba(255, 255, 3, 0.1)',
+                                      color: 'white',
+                                    },
+                                  }}
+                                />
+                              </WelcomeProvider>
+                            </MasterStatusProvider>
+                          </RetentionProvider>
+                        </PremiumProvider>
+                      </AuroraDataProvider>
+                    </DataModeProvider>
+                  </DevModeProvider>
+                </KpIndexProvider>
               </TemperatureProvider>
             </LanguageProvider>
           </QueryClientProvider>
