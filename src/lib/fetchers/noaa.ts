@@ -34,15 +34,15 @@ export interface NOAASolarWindData {
 }
 
 /**
- * Fetch current KP index from NOAA Ovation model
- * Converts aurora intensity (0-100) to KP scale (0-9)
+ * Fetch current KP index from NOAA Planetary K-index
+ * Returns actual measured KP value (not modeled from aurora intensity)
  */
 export async function fetchCurrentKp(): Promise<number> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    const response = await fetch(NOAA_OVATION_URL, {
+    const response = await fetch(NOAA_KP_URL, {
       signal: controller.signal,
       headers: {
         'User-Agent': USER_AGENT,
@@ -56,24 +56,21 @@ export async function fetchCurrentKp(): Promise<number> {
       throw new Error(`NOAA SWPC returned ${response.status}`);
     }
 
-    const data: NOAAOvationData = await response.json();
+    const data = await response.json();
 
-    // Extract maximum aurora value from coordinates
-    // Format: [lon, lat, aurora] where aurora is 0-100
-    if (data.coordinates && Array.isArray(data.coordinates)) {
-      const values = data.coordinates
-        .map((c) => c[2] || 0) // aurora is 3rd element
-        .filter((v) => !isNaN(v) && v >= 0);
-
-      if (values.length > 0) {
-        const maxAurora = Math.max(...values);
-        // Convert aurora intensity (0-100) to KP scale (0-9)
-        const kp = (maxAurora / 100) * 9;
-        return Math.min(9, Math.max(0, Math.round(kp * 10) / 10));
+    // Data format: [[timestamp, kp, ...], ...]
+    // Skip header row (index 0), get last data row
+    if (Array.isArray(data) && data.length > 1) {
+      const lastRow = data[data.length - 1];
+      if (Array.isArray(lastRow) && lastRow.length > 1) {
+        const kp = parseFloat(lastRow[1]);
+        if (!isNaN(kp) && kp >= 0 && kp <= 9) {
+          return Math.round(kp * 100) / 100; // Round to 2 decimals
+        }
       }
     }
 
-    throw new Error('No valid aurora data in NOAA response');
+    throw new Error('No valid KP data in NOAA response');
   } catch (error) {
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
