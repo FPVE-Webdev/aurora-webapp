@@ -10,7 +10,8 @@ import { weatherService } from '@/services/weatherService';
 import { OBSERVATION_SPOTS } from '@/lib/constants';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 
-const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/hourly';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yoooexmshwfpsrhzisgu.supabase.co';
+const SUPABASE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/aurora/hourly`;
 const API_KEY = process.env.TROMSO_AI_API_KEY;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour - values should be stable for entire hour

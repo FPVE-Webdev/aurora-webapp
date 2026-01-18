@@ -6,7 +6,8 @@
 import { NextResponse } from 'next/server';
 import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
 
-const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/forecast';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yoooexmshwfpsrhzisgu.supabase.co';
+const SUPABASE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/aurora/forecast`;
 const API_KEY = process.env.TROMSO_AI_API_KEY;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
