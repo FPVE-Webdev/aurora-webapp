@@ -6,6 +6,9 @@
 import { NextResponse } from 'next/server';
 import { seededRandom, timeSeed } from '@/lib/deterministicRandom';
 import { generateTromsoForecast, generateSimpleForecast } from '@/lib/noaa/locationForecast';
+import { weatherService } from '@/services/weatherService';
+import { OBSERVATION_SPOTS } from '@/lib/constants';
+import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 
 const SUPABASE_FUNCTION_URL = 'https://byvcabgcjkykwptzmwsl.supabase.co/functions/v1/aurora/hourly';
 const API_KEY = process.env.TROMSO_AI_API_KEY;
@@ -114,9 +117,41 @@ export async function GET(request: Request) {
     }
   }
 
-  // Fallback: Try NOAA-based forecast for Tromsø, then simple forecast
+  // Fallback: Try real Met.no weather data first, then NOAA-based forecast for Tromsø, then simple forecast
   let fallbackData;
 
+  // Step 1: Try fetching real weather data from Met.no (requires global KP)
+  try {
+    // Fetch current global KP from NOAA
+    const kpResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/noaa/kp-index`);
+    const kpData = kpResponse.ok ? await kpResponse.json() : null;
+    const globalKp = kpData?.current ?? 3.67; // Fallback to moderate KP
+
+    const realWeatherData = await generateRealWeatherHourly(hours, location, globalKp);
+    if (realWeatherData) {
+      // Cache the real weather data
+      cacheMap.set(cacheKey, {
+        data: realWeatherData,
+        timestamp: Date.now(),
+        hours
+      });
+
+      return NextResponse.json({
+        ...realWeatherData,
+        meta: {
+          cached: false,
+          fallback: false,
+          realWeather: true,
+          timestamp: new Date().toISOString(),
+          cache_key: cacheKey
+        }
+      });
+    }
+  } catch (error) {
+    console.warn('⚠️ Real weather fetch failed, trying NOAA-based forecast:', error);
+  }
+
+  // Step 2: If Met.no fails, try NOAA-based forecast for Tromsø
   if (location === 'tromso') {
     try {
       // Generate NOAA-based forecast for Tromsø
@@ -251,5 +286,71 @@ function generateMockHourly(hours: number, location: string) {
     hourly_forecast: hourlyData,
     generated_at: new Date().toISOString()
   };
+}
+
+/**
+ * Generate hourly forecast with REAL weather data from Met.no
+ */
+async function generateRealWeatherHourly(hours: number, location: string, globalKp: number) {
+  try {
+    // Find spot coordinates
+    const spot = OBSERVATION_SPOTS.find(s => s.id === location);
+    if (!spot) {
+      console.warn(`⚠️ Unknown location: ${location}, falling back to mock data`);
+      return null;
+    }
+
+    // Fetch real weather data from Met.no
+    const metnoForecast = await weatherService.getHourlyForecast(spot.latitude, spot.longitude, hours);
+
+    if (!metnoForecast || metnoForecast.length === 0) {
+      console.warn(`⚠️ No Met.no data for ${location}, falling back`);
+      return null;
+    }
+
+    console.log(`✅ Real weather data fetched for ${location}: ${metnoForecast.length} hours from Met.no`);
+
+    // Map Met.no data to our hourly format with real probability calculations
+    const hourlyData = metnoForecast.map((metHour, i) => {
+      const date = new Date(metHour.time);
+
+      // Calculate real probability using actual weather conditions and global KP
+      const probResult = calculateAuroraProbability({
+        kpIndex: globalKp,
+        cloudCoverage: metHour.cloudCoverage,
+        temperature: metHour.temperature,
+        latitude: spot.latitude,
+        longitude: spot.longitude,
+        date: date
+      });
+
+      return {
+        time: metHour.time,
+        hour: date.getHours(),
+        probability: probResult.probability,
+        weather: {
+          cloudCoverage: Math.round(metHour.cloudCoverage),
+          temperature: Math.round(metHour.temperature),
+          windSpeed: 10, // Met.no doesn't provide windSpeed in timeseries instant, use default
+          conditions: metHour.symbolCode || (metHour.cloudCoverage < 30 ? 'clear' : metHour.cloudCoverage < 60 ? 'partly_cloudy' : 'cloudy'),
+          symbolCode: metHour.symbolCode
+        },
+        visibility: metHour.cloudCoverage < 30 ? 'excellent' : metHour.cloudCoverage < 60 ? 'good' : 'poor',
+        canSeeAurora: probResult.canView
+      };
+    });
+
+    return {
+      status: 'success',
+      location,
+      hours: hourlyData.length,
+      hourly_forecast: hourlyData,
+      generated_at: new Date().toISOString(),
+      source: 'met.no'
+    };
+  } catch (error) {
+    console.error(`❌ Error fetching real weather for ${location}:`, error);
+    return null;
+  }
 }
 
