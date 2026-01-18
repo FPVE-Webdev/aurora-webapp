@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { Instagram, Facebook } from 'lucide-react';
 
 export default function Footer() {
   const pathname = usePathname();
@@ -79,9 +80,29 @@ export default function Footer() {
           {/* Info */}
           <div>
             <h3 className="text-white font-semibold mb-3 text-sm">Aurora Tromsø</h3>
-            <p className="text-white/60 text-xs leading-relaxed">
+            <p className="text-white/60 text-xs leading-relaxed mb-4">
               Real-time Northern Lights forecast for Tromsø, Norway. Know exactly when and where to see aurora borealis.
             </p>
+            <div className="flex items-center gap-3">
+              <a
+                href="https://www.instagram.com/tromso.ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/60 hover:text-primary transition-colors"
+                aria-label="Follow us on Instagram"
+              >
+                <Instagram className="w-5 h-5" />
+              </a>
+              <a
+                href="https://www.facebook.com/profile.php?id=61586643456809"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/60 hover:text-primary transition-colors"
+                aria-label="Follow us on Facebook"
+              >
+                <Facebook className="w-5 h-5" />
+              </a>
+            </div>
           </div>
         </div>
 
