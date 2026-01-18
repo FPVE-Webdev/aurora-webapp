@@ -339,7 +339,7 @@ export function AlertSettings() {
 
       {/* Unsubscribe button */}
       {isSubscribed && (
-        <div className="mt-6">
+        <div className="mt-6 flex items-center gap-4">
           <button
             onClick={unsubscribeFromPush}
             disabled={isLoading}
@@ -347,6 +347,34 @@ export function AlertSettings() {
           >
             <BellOff className="w-4 h-4" />
             {t('disableAlerts') || 'Disable Alerts'}
+          </button>
+
+          <button
+            onClick={async () => {
+              try {
+                const registration = await navigator.serviceWorker.ready;
+                await registration.showNotification('🧪 Test: Nordlys Alert', {
+                  body: 'Dette er en test-notifikasjon!',
+                  icon: '/Aurahalo.png',
+                  badge: '/favicon.ico',
+                  tag: 'test-notification',
+                  requireInteraction: false,
+                  data: {
+                    url: '/',
+                    test: true,
+                  },
+                });
+                toast.success('Test notification sent!');
+              } catch (error) {
+                console.error('Test notification failed:', error);
+                toast.error('Test failed: ' + (error as Error).message);
+              }
+            }}
+            disabled={isLoading}
+            className="text-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium"
+          >
+            <Zap className="w-4 h-4" />
+            Test Push
           </button>
         </div>
       )}
