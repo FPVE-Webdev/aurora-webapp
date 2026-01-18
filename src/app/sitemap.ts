@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { SPOT_SLUGS } from '@/lib/constants/spotDatabase';
 
 /**
  * Generate sitemap for SEO
@@ -8,7 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://aurora.tromso.ai';
   const now = new Date();
 
-  return [
+  const mainPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
       lastModified: now,
@@ -52,4 +53,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.3,
     },
   ];
+
+  // Programmatic spot pages (Phase 3 SEO)
+  const spotPages: MetadataRoute.Sitemap = SPOT_SLUGS.map((slug) => ({
+    url: `${baseUrl}/spot/${slug}`,
+    lastModified: now,
+    changeFrequency: 'hourly',
+    priority: 0.8,
+  }));
+
+  return [...mainPages, ...spotPages];
 }
