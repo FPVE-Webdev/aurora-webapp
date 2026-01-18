@@ -18,6 +18,7 @@ import Footer from '@/components/shared/Footer';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 import { AuraRoot } from '../../aura/AuraRoot';
 import { UIGuideProvider } from '@/components/guide/UIGuideProvider';
+import { StructuredData } from '@/components/seo/StructuredData';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useServiceWorker } from '@/hooks/useServiceWorker';
@@ -75,6 +76,7 @@ export default function ClientLayout({
                           <MasterStatusProvider>
                             <WelcomeProvider>
                               <UIGuideProvider>
+                                <StructuredData />
                                 <LayoutContent>{children}</LayoutContent>
                                 <ChatWidget />
                                 <AuraRoot />
