@@ -124,7 +124,7 @@ function getLanguage(): 'no' | 'en' {
  */
 export function useAuroraData() {
   // Use global KP from context as single source of truth
-  const { currentKp: globalKp } = useKpIndex();
+  const { currentKp: globalKp, isLoading: kpLoading } = useKpIndex();
 
   const [state, setState] = useState<AuroraState>({
     currentKp: 3,
@@ -142,6 +142,7 @@ export function useAuroraData() {
   });
 
   const isFetchingRef = useRef(false);
+  const previousGlobalKpRef = useRef<number | null>(null);
 
   const fetchData = useCallback(async () => {
     if (isFetchingRef.current) return;
@@ -160,8 +161,9 @@ export function useAuroraData() {
         cacheForecast(forecast);
       }
 
-      // Use global KP from context instead of deriving from score
-      const kpIndex = globalKp;
+      // Use global KP from context (fallback to forecast if context hasn't loaded yet)
+      // Note: globalKp can be 0 during very quiet conditions, so we only check isLoading
+      const kpIndex = !kpLoading ? globalKp : (forecast.kp ?? scoreToKpIndex(forecast.score));
       const dataTimestamp = new Date(forecast.updated);
 
       // Fetch weather data and hourly forecasts for all spots in parallel
@@ -180,10 +182,10 @@ export function useAuroraData() {
           }
 
           // Map forecast using hour 0 weather for current probability and global KP
-          return mapTromsøForecastToSpotForecast(forecast!, spot, currentWeather, hourlyData, globalKp);
+          return mapTromsøForecastToSpotForecast(forecast!, spot, currentWeather, hourlyData, kpIndex);
         } catch (error) {
           console.warn(`Failed to fetch hourly forecast for ${spot.name}, using fallback`);
-          return mapTromsøForecastToSpotForecast(forecast!, spot, undefined, undefined, globalKp);
+          return mapTromsøForecastToSpotForecast(forecast!, spot, undefined, undefined, kpIndex);
         }
       });
 
@@ -227,9 +229,9 @@ export function useAuroraData() {
       // Try to use cached data on error
       const cached = getCachedForecast();
       if (cached) {
-        const kpIndex = globalKp; // Use global KP from context
+        const kpIndex = !kpLoading ? globalKp : (cached.kp ?? scoreToKpIndex(cached.score));
         const spotForecasts = OBSERVATION_SPOTS.map(spot =>
-          mapTromsøForecastToSpotForecast(cached, spot, undefined, undefined, globalKp)
+          mapTromsøForecastToSpotForecast(cached, spot, undefined, undefined, !kpLoading ? globalKp : (cached.kp ?? scoreToKpIndex(cached.score)))
         );
 
         setState(prev => ({
@@ -274,6 +276,37 @@ export function useAuroraData() {
 
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  // Update currentKp and re-map spotForecasts when global KP from context changes (after it finishes loading)
+  useEffect(() => {
+    // Only update if KP context is loaded, KP is valid, and KP has actually changed
+    if (!kpLoading && globalKp >= 0 && previousGlobalKpRef.current !== globalKp) {
+      previousGlobalKpRef.current = globalKp;
+
+      // Update state with new global KP
+      setState(prev => {
+        // Re-map all spot forecasts with updated global KP
+        const updatedSpotForecasts = prev.spotForecasts.map(sf => ({
+          ...sf,
+          // Recalculate current probability with new global KP using simplified formula
+          currentProbability: Math.round(
+            (globalKp / 9) * 100 * (1 - (sf.weather?.cloudCoverage ?? 50) / 150)
+          ),
+          // Update hourly forecast KP values
+          hourlyForecast: sf.hourlyForecast?.map(hf => ({
+            ...hf,
+            kpIndex: globalKp
+          })) ?? []
+        }));
+
+        return {
+          ...prev,
+          currentKp: globalKp,
+          spotForecasts: updatedSpotForecasts
+        };
+      });
+    }
+  }, [globalKp, kpLoading]);
 
   const selectedSpotForecast = state.spotForecasts.find(
     sf => sf.spot.id === state.selectedSpot.id
