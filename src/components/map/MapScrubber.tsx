@@ -11,6 +11,21 @@ import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 
+/**
+ * Map symbolCode from Met.no to weather emoji icon
+ */
+function getWeatherIcon(symbolCode: string): string {
+  const code = symbolCode?.toLowerCase() || '';
+  if (code.includes('clearsky') || code.includes('fair')) return '☀️';
+  if (code.includes('partlycloudy')) return '⛅';
+  if (code.includes('cloudy')) return '☁️';
+  if (code.includes('snow')) return '❄️';
+  if (code.includes('sleet')) return '🌨️';
+  if (code.includes('rain')) return '🌧️';
+  if (code.includes('fog')) return '🌫️';
+  return '☁️'; // Default to cloudy
+}
+
 interface MapScrubberProps {
   isPlaying: boolean;
   animationProgress: number;
@@ -23,6 +38,12 @@ interface MapScrubberProps {
   stopAnimation: () => void;
   getAnimationTimeLabel: () => string;
   getKpForHour: (hour: number) => number;
+  hourlyWeather?: Array<{
+    hour: number;
+    symbolCode: string;
+    temperature: number;
+    cloudCoverage: number;
+  }>;
 }
 
 export function MapScrubber({
@@ -36,7 +57,8 @@ export function MapScrubber({
   stepForward,
   stopAnimation,
   getAnimationTimeLabel,
-  getKpForHour
+  getKpForHour,
+  hourlyWeather
 }: MapScrubberProps) {
   return (
     <div className="px-4 max-w-md mx-auto mt-[20px] mb-[12px]">
@@ -88,6 +110,11 @@ export function MapScrubber({
 
             <div className="text-xs ml-0.5">
               <div className="font-medium text-white flex items-center gap-1.5">
+                {hourlyWeather && (
+                  <span className="text-sm">
+                    {getWeatherIcon(hourlyWeather[Math.floor(animationProgress)]?.symbolCode || '')}
+                  </span>
+                )}
                 <span className="text-[11px]">12t</span>
               </div>
               <div className="text-[10px] text-white/60 flex items-center gap-1.5">
@@ -120,25 +147,37 @@ export function MapScrubber({
           <span className="text-[10px] text-white/60 w-8 text-right">+{maxHours}t</span>
         </div>
 
-        {/* Hour markers below slider */}
+        {/* Hour markers below slider with weather icons */}
         <div className="flex justify-between mt-1.5 px-7">
-          {[0, 3, 6, 9, 12].map((hour) => (
-            <button
-              key={hour}
-              onClick={() => {
-                setAnimationProgress(hour);
-                if (isPlaying) stopAnimation();
-              }}
-              className={cn(
-                'text-[9px] leading-tight transition-all min-w-[20px]',
-                animationHour === hour
-                  ? 'text-primary font-medium'
-                  : 'text-white/40 hover:text-white/60'
-              )}
-            >
-              {hour === 0 ? '0' : `+${hour}`}
-            </button>
-          ))}
+          {[0, 3, 6, 9, 12].map((hour) => {
+            const weatherData = hourlyWeather?.find(h => h.hour === hour);
+            const icon = weatherData ? getWeatherIcon(weatherData.symbolCode) : null;
+
+            return (
+              <button
+                key={hour}
+                onClick={() => {
+                  setAnimationProgress(hour);
+                  if (isPlaying) stopAnimation();
+                }}
+                className={cn(
+                  'flex flex-col items-center gap-0.5 px-1 py-0.5 rounded transition-all',
+                  'hover:bg-white/10',
+                  animationHour === hour && 'bg-white/5'
+                )}
+              >
+                {icon && <span className="text-xs leading-none">{icon}</span>}
+                <span className={cn(
+                  'text-[9px] leading-tight',
+                  animationHour === hour
+                    ? 'text-primary font-medium'
+                    : 'text-white/40'
+                )}>
+                  {hour === 0 ? 'Nå' : `+${hour}t`}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

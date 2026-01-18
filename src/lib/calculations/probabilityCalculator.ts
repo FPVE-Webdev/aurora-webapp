@@ -101,8 +101,25 @@ export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityRes
     (latScore * 0.10) +
     (moonScore * 0.05);
 
+  // BLOCKING FACTOR: Skydekke blokkerer nordlys fullstendig
+  // Uavhengig av KP, breddegrad osv - umulig å se nordlys gjennom tette skyer
+  let finalScore = weightedScore;
+  if (inputs.cloudCoverage >= 98) {
+    // Nesten 100% skydekke = ingen mulighet
+    finalScore = 0;
+  } else if (inputs.cloudCoverage >= 95) {
+    // 95-97% skydekke = maksimalt 2% sjanse (ekstremt lite gap i skyer)
+    finalScore = Math.min(finalScore, 2);
+  } else if (inputs.cloudCoverage >= 85) {
+    // 85-94% skydekke = maksimalt 5% sjanse (lite gap i skyer)
+    finalScore = Math.min(finalScore, 5);
+  } else if (inputs.cloudCoverage >= 70) {
+    // 70-84% skydekke = maksimalt 15% sjanse
+    finalScore = Math.min(finalScore, 15);
+  }
+
   // Normaliser til 0-100
-  const probability = Math.round(Math.max(0, Math.min(100, weightedScore)));
+  const probability = Math.round(Math.max(0, Math.min(100, finalScore)));
 
   return {
     probability,

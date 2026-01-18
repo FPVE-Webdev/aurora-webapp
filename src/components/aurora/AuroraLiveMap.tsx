@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Cloud, Thermometer, Wind, ChevronDown, Play, Pause, Loader2, ExternalLink } from 'lucide-react';
@@ -10,6 +10,7 @@ import { useAuroraData } from '@/hooks/useAuroraData';
 import { TierGate } from '@/components/live/TierGate';
 import { hasFeature, filterSpotsByTier } from '@/lib/features/liveTierConfig';
 import { navigateToUpgrade } from '@/lib/utils/upgradeHandler';
+import { MapScrubber } from '@/components/map/MapScrubber';
 
 const debugLive =
   process.env.NODE_ENV === 'development' ||
@@ -187,6 +188,60 @@ export function AuroraLiveMap() {
     }
   };
 
+  const stepBackward = () => {
+    if (!canUseAnimation) return;
+    setAnimationProgress((prev) => Math.max(0, prev - 1));
+    stopAnimation();
+  };
+
+  const stepForward = () => {
+    if (!canUseAnimation) return;
+    setAnimationProgress((prev) => Math.min(12, prev + 1));
+    stopAnimation();
+  };
+
+  const stopAnimation = () => {
+    setIsPlaying(false);
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+  };
+
+  const getKpForHour = useCallback((hour: number) => {
+    return currentKp; // Global KP is same for all hours
+  }, [currentKp]);
+
+  // Extract hourly weather for timeline from selected spot
+  const timelineWeather = useMemo(() => {
+    if (debugLive) {
+      console.log('[debug-live] timelineWeather useMemo', {
+        hasSelectedForecast: !!selectedForecast,
+        hasHourlyForecast: !!selectedForecast?.hourlyForecast,
+        hourlyForecastLength: selectedForecast?.hourlyForecast?.length,
+        firstHour: selectedForecast?.hourlyForecast?.[0]
+      });
+    }
+
+    if (!selectedForecast?.hourlyForecast) return [];
+
+    const mapped = selectedForecast.hourlyForecast.map(hf => ({
+      hour: hf.hour,
+      symbolCode: hf.weather?.conditions || hf.weather?.symbolCode || 'cloudy',
+      temperature: hf.weather?.temperature || 0,
+      cloudCoverage: hf.weather?.cloudCoverage || 50,
+    }));
+
+    if (debugLive) {
+      console.log('[debug-live] timelineWeather mapped result', {
+        length: mapped.length,
+        first3: mapped.slice(0, 3)
+      });
+    }
+
+    return mapped;
+  }, [selectedForecast]);
+
   const getProbabilityLevel = (probability: number): 'excellent' | 'good' | 'moderate' | 'poor' => {
     if (probability >= 50) return 'excellent';
     if (probability >= 30) return 'good';
@@ -360,19 +415,19 @@ export function AuroraLiveMap() {
           )}
         </div>
 
-        {/* Floating forecast bubble */}
+        {/* Timeline Scrubber with weather icons */}
         <div
-          className="absolute left-4 right-4 z-[1000] animate-in fade-in slide-in-from-bottom-4 duration-200"
+          className="absolute left-0 right-0 z-[1000] animate-in fade-in slide-in-from-bottom-4 duration-200"
           style={{
             pointerEvents: 'auto',
-            bottom: '5rem'
+            bottom: '1rem'
           }}
         >
           <TierGate
             currentTier={subscriptionTier}
             feature="animation"
             featureTitle="Tidslinje-animasjon"
-            featureDescription="Se nordlysprognoser frem i tid med interaktiv tidslinje (0-12 timer)"
+            featureDescription="Se nordlysprognoser frem i tid med interaktiv tidslinje (0-12 timer) og værikon per time"
             onUpgrade={() => {
               navigateToUpgrade({
                 from: subscriptionTier,
@@ -381,65 +436,20 @@ export function AuroraLiveMap() {
               });
             }}
           >
-            <div
-              className="rounded-2xl backdrop-blur-xl max-w-md mx-auto p-3"
-              style={{
-                background: level === 'excellent'
-                  ? 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(3,10,24,0.9) 100%)'
-                  : level === 'good'
-                  ? 'linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(3,10,24,0.9) 100%)'
-                  : level === 'moderate'
-                  ? 'linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(3,10,24,0.9) 100%)'
-                  : 'linear-gradient(135deg, rgba(52,245,197,0.08) 0%, rgba(3,10,24,0.85) 100%)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                border: '1px solid rgba(255,255,255,0.08)'
-              }}
-            >
-              {/* Animation controls with location info */}
-              <div className="flex items-center justify-between gap-4 px-2">
-                {/* Left: Location info */}
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-2xl flex-shrink-0">{getWeatherIcon()}</span>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-white truncate">
-                      {selectedForecast.spot.name}
-                    </div>
-                    <div className="text-xs text-white/60">
-                      {selectedForecast.currentProbability}% sannsynlighet
-                    </div>
-                  </div>
-                </div>
-
-                {/* Center: Play button */}
-                <button
-                  onClick={toggleAnimation}
-                  disabled={!canUseAnimation}
-                  className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0',
-                    !canUseAnimation && 'opacity-50 cursor-not-allowed',
-                    isPlaying
-                      ? 'bg-primary/30 ring-2 ring-primary/50'
-                      : 'bg-white/10 hover:bg-white/20'
-                  )}
-                >
-                  {isPlaying ? (
-                    <Pause className="w-5 h-5 text-white" />
-                  ) : (
-                    <Play className="w-5 h-5 text-white ml-0.5" />
-                  )}
-                </button>
-
-                {/* Right: Time + KP */}
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-white">
-                    {getAnimationTimeLabel()}
-                  </div>
-                  <div className="text-xs text-white/60">
-                    KP {currentKp.toFixed(1)}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <MapScrubber
+              isPlaying={isPlaying}
+              animationProgress={animationProgress}
+              animationHour={animationProgress}
+              maxHours={12}
+              setAnimationProgress={setAnimationProgress}
+              toggleAnimation={toggleAnimation}
+              stepBackward={stepBackward}
+              stepForward={stepForward}
+              stopAnimation={stopAnimation}
+              getAnimationTimeLabel={getAnimationTimeLabel}
+              getKpForHour={getKpForHour}
+              hourlyWeather={timelineWeather}
+            />
           </TierGate>
         </div>
       </div>
