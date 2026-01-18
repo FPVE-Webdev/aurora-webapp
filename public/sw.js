@@ -1,18 +1,38 @@
 // Service Worker for Web Push Notifications
 // Aurora Webapp - Tromsø
 
-const CACHE_NAME = 'aurora-webapp-v1';
+const CACHE_NAME = 'aurora-webapp-v2';
+const SW_VERSION = '2.0.0';
+
+console.log(`[Service Worker] Version ${SW_VERSION} loading...`);
 
 // Install event
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing...');
+  console.log(`[Service Worker] Version ${SW_VERSION} installing...`);
+  // Force immediate activation
   self.skipWaiting();
 });
 
 // Activate event
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating...');
-  event.waitUntil(clients.claim());
+  console.log(`[Service Worker] Version ${SW_VERSION} activating...`);
+
+  // Clear old caches
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('[Service Worker] Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => {
+      console.log(`[Service Worker] Version ${SW_VERSION} activated and claiming clients`);
+      return clients.claim();
+    })
+  );
 });
 
 // Push event - handle incoming push notifications
