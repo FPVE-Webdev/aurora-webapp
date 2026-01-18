@@ -126,7 +126,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [expiresAt, isPremium, subscriptionTier, hoursRemaining]);
+  }, [expiresAt]);
 
   // Initialize on mount and check expiry every minute
   useEffect(() => {
