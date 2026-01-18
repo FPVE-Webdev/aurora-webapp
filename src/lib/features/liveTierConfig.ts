@@ -214,7 +214,7 @@ export function getRefreshInterval(tier: SubscriptionTier): number {
  * Filter observation spots by tier
  * Supports both direct { id: string } and nested { spot: { id: string } }
  */
-export function filterSpotsByTier<T extends { id: string } | { spot: { id: string } }>(
+export function filterSpotsByTier<T extends { id: string; tier?: string } | { spot: { id: string; tier?: string } }>(
   spots: T[],
   tier: SubscriptionTier,
   freeSpotIds: string[] = ['tromso', 'sommaroy', 'grotfjord']
@@ -229,6 +229,17 @@ export function filterSpotsByTier<T extends { id: string } | { spot: { id: strin
     });
   }
 
-  // Premium/Enterprise: show all spots up to maxSpots limit
+  // Premium users: filter out enterprise-only spots
+  if (tier === 'premium_24h' || tier === 'premium_7d') {
+    const filtered = spots.filter(spot => {
+      // Type narrowing: check if it's a direct spot or nested spot
+      const spotTier = 'spot' in spot && spot.spot ? spot.spot.tier : ('tier' in spot ? spot.tier : undefined);
+      // Premium can access free and pro spots, but NOT enterprise
+      return spotTier === 'free' || spotTier === 'pro';
+    });
+    return filtered.slice(0, config.map.maxSpots);
+  }
+
+  // Enterprise: show all spots up to maxSpots limit
   return spots.slice(0, config.map.maxSpots);
 }

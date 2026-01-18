@@ -24,24 +24,22 @@ export const PRO_OBSERVATION_SPOTS: ObservationSpot[] = [
   { id: 'setermoen', name: 'Setermoen', latitude: 68.82, longitude: 18.25, region: 'troms', tier: 'pro' },
   { id: 'senja-ytterside', name: 'Senja (ytterside)', latitude: 69.35, longitude: 16.95, region: 'troms', tier: 'pro' },
   { id: 'senja', name: 'Senja', latitude: 69.00, longitude: 17.80, region: 'troms', tier: 'pro' },
-  // Nordland detailed locations
-  { id: 'narvik', name: 'Narvik', latitude: 68.4385, longitude: 17.4272, region: 'nordland', tier: 'pro' },
-  { id: 'lofoten', name: 'Lofoten', latitude: 68.1543, longitude: 13.6090, region: 'nordland', tier: 'pro' },
-  { id: 'svolvaer', name: 'Svolvær', latitude: 68.2340, longitude: 14.5680, region: 'nordland', tier: 'pro' },
-  // Finnmark detailed locations
-  { id: 'alta', name: 'Alta', latitude: 69.9689, longitude: 23.2717, region: 'finnmark', tier: 'pro' },
-  { id: 'lakselv', name: 'Lakselv', latitude: 70.0500, longitude: 24.9667, region: 'finnmark', tier: 'pro' },
-  { id: 'karasjok', name: 'Karasjok', latitude: 69.4667, longitude: 25.5000, region: 'finnmark', tier: 'pro' },
-  { id: 'kautokeino', name: 'Kautokeino', latitude: 69.0167, longitude: 23.0333, region: 'finnmark', tier: 'pro' },
-  { id: 'nordkapp', name: 'Nordkapp', latitude: 71.1725, longitude: 25.7844, region: 'finnmark', tier: 'pro' },
-  { id: 'vadso', name: 'Vadsø', latitude: 70.0742, longitude: 29.7500, region: 'finnmark', tier: 'pro' },
-  { id: 'kirkenes', name: 'Kirkenes', latitude: 69.7267, longitude: 30.0453, region: 'finnmark', tier: 'pro' },
 ];
 
-// Enterprise-only observation spots (Nordic/Arctic regions)
+// Enterprise-only observation spots (Nordland, Finnmark, and Nordic/Arctic regions)
 export const ENTERPRISE_OBSERVATION_SPOTS: ObservationSpot[] = [
-  // Add Nordic/Arctic spots here when available
-  // Example: { id: 'iceland', name: 'Iceland', ..., tier: 'enterprise' }
+  // Nordland detailed locations (enterprise only)
+  { id: 'narvik', name: 'Narvik', latitude: 68.4385, longitude: 17.4272, region: 'nordland', tier: 'enterprise' },
+  { id: 'lofoten', name: 'Lofoten', latitude: 68.1543, longitude: 13.6090, region: 'nordland', tier: 'enterprise' },
+  { id: 'svolvaer', name: 'Svolvær', latitude: 68.2340, longitude: 14.5680, region: 'nordland', tier: 'enterprise' },
+  // Finnmark detailed locations (enterprise only)
+  { id: 'alta', name: 'Alta', latitude: 69.9689, longitude: 23.2717, region: 'finnmark', tier: 'enterprise' },
+  { id: 'lakselv', name: 'Lakselv', latitude: 70.0500, longitude: 24.9667, region: 'finnmark', tier: 'enterprise' },
+  { id: 'karasjok', name: 'Karasjok', latitude: 69.4667, longitude: 25.5000, region: 'finnmark', tier: 'enterprise' },
+  { id: 'kautokeino', name: 'Kautokeino', latitude: 69.0167, longitude: 23.0333, region: 'finnmark', tier: 'enterprise' },
+  { id: 'nordkapp', name: 'Nordkapp', latitude: 71.1725, longitude: 25.7844, region: 'finnmark', tier: 'enterprise' },
+  { id: 'vadso', name: 'Vadsø', latitude: 70.0742, longitude: 29.7500, region: 'finnmark', tier: 'enterprise' },
+  { id: 'kirkenes', name: 'Kirkenes', latitude: 69.7267, longitude: 30.0453, region: 'finnmark', tier: 'enterprise' },
 ];
 
 // All observation spots combined
