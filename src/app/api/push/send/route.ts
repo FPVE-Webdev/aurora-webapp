@@ -77,8 +77,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Prepare notification payload
-    const payload = JSON.stringify({
+    // Prepare notification payload as Buffer to ensure proper encoding
+    const payloadObject = {
       title,
       body: message,
       icon: '/Aurahalo.png',
@@ -89,7 +89,12 @@ export async function POST(request: NextRequest) {
         url: url || '/',
         timestamp: new Date().toISOString(),
       },
-    });
+    };
+
+    const payload = Buffer.from(JSON.stringify(payloadObject), 'utf-8');
+
+    console.log('[Push Send] Payload being sent:', payloadObject);
+    console.log('[Push Send] Payload size:', payload.length, 'bytes');
 
     // Send notifications
     const results = await Promise.allSettled(
@@ -103,7 +108,15 @@ export async function POST(request: NextRequest) {
             },
           };
 
-          await webpush.sendNotification(pushSubscription, payload);
+          console.log('[Push Send] Sending to endpoint:', sub.endpoint.substring(0, 50) + '...');
+
+          // Send with explicit options for better compatibility
+          await webpush.sendNotification(pushSubscription, payload, {
+            contentEncoding: 'aes128gcm',
+            TTL: 60, // Time to live in seconds
+          });
+
+          console.log('[Push Send] Successfully sent to endpoint');
 
           // Update last_alert_sent_at
           await supabase

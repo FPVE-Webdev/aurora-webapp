@@ -35,17 +35,30 @@ self.addEventListener('push', (event) => {
   // Parse incoming data if present
   if (event.data) {
     try {
-      const payload = event.data.json();
-      console.log('[Service Worker] Parsed payload:', payload);
+      // Try to read as text first to see what we're getting
+      const rawText = event.data.text();
+      console.log('[Service Worker] Raw push data (text):', rawText);
+      console.log('[Service Worker] Raw data length:', rawText.length);
+
+      // Now parse as JSON
+      const payload = JSON.parse(rawText);
+      console.log('[Service Worker] Successfully parsed payload:', payload);
       data = { ...data, ...payload };
     } catch (e) {
       console.error('[Service Worker] Failed to parse push data:', e);
-      // Use text fallback
+      console.error('[Service Worker] Error details:', e.message);
+
+      // Try arrayBuffer method as fallback
       try {
-        const text = event.data.text();
-        console.log('[Service Worker] Push data as text:', text);
+        const arrayBuffer = event.data.arrayBuffer();
+        const decoder = new TextDecoder('utf-8');
+        const text = decoder.decode(arrayBuffer);
+        console.log('[Service Worker] Decoded from arrayBuffer:', text);
+
+        const payload = JSON.parse(text);
+        data = { ...data, ...payload };
       } catch (e2) {
-        console.error('[Service Worker] Could not read push data as text either:', e2);
+        console.error('[Service Worker] ArrayBuffer decode also failed:', e2);
       }
     }
   } else {
