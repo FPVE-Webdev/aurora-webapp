@@ -9,6 +9,7 @@ import { generateTromsoForecast, generateSimpleForecast } from '@/lib/noaa/locat
 import { weatherService } from '@/services/weatherService';
 import { OBSERVATION_SPOTS } from '@/lib/constants';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
+import * as Sentry from '@sentry/nextjs';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yoooexmshwfpsrhzisgu.supabase.co';
 const SUPABASE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/aurora/hourly`;
@@ -305,7 +306,26 @@ async function generateRealWeatherHourly(hours: number, location: string, global
     const metnoForecast = await weatherService.getHourlyForecast(spot.latitude, spot.longitude, hours);
 
     if (!metnoForecast || metnoForecast.length === 0) {
-      console.warn(`⚠️ No Met.no data for ${location}, falling back`);
+      const isProduction = process.env.NODE_ENV === 'production';
+      console.warn(`⚠️ No Met.no data for ${location}, falling back to mock data`);
+
+      // Alert in production when falling back to mock data
+      if (isProduction) {
+        Sentry.captureMessage(`Met.no weather data unavailable for ${location}`, {
+          level: 'warning',
+          tags: {
+            component: 'generateRealWeatherHourly',
+            location,
+            severity: 'high',
+            impact: 'mock_data_fallback'
+          },
+          extra: {
+            spotName: spot.name,
+            coordinates: { lat: spot.latitude, lon: spot.longitude },
+            requestedHours: hours
+          }
+        });
+      }
       return null;
     }
 
@@ -350,7 +370,26 @@ async function generateRealWeatherHourly(hours: number, location: string, global
       source: 'met.no'
     };
   } catch (error) {
-    console.error(`❌ Error fetching real weather for ${location}:`, error);
+    const isProduction = process.env.NODE_ENV === 'production';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ Error fetching real weather for ${location}:`, errorMessage);
+
+    // Report to Sentry in production
+    if (isProduction) {
+      Sentry.captureException(error, {
+        tags: {
+          component: 'generateRealWeatherHourly',
+          location,
+          severity: 'high',
+          impact: 'weather_fetch_failed'
+        },
+        extra: {
+          errorMessage,
+          fallbackBehavior: 'Using mock weather data'
+        }
+      });
+    }
+
     return null;
   }
 }
