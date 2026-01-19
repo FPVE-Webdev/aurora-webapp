@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Building2, Key, Activity, TrendingUp, Loader2, Settings } from 'lucide-react';
 import Link from 'next/link';
+import { HealthMonitor } from '@/components/admin/HealthMonitor';
 
 interface DashboardStats {
   totalOrganizations: number;
@@ -103,6 +104,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Service Health Monitor */}
+      <HealthMonitor />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

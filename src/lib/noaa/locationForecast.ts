@@ -6,6 +6,7 @@
 
 import axios from 'axios';
 import { fetchHourlyForecast } from '@/lib/fetchers/metno';
+import * as Sentry from '@sentry/nextjs';
 
 interface NOAAConditions {
   kp: number;
@@ -124,11 +125,34 @@ export async function generateTromsoForecast(hours: number = 12): Promise<Hourly
 
   // Try to fetch REAL weather data from Met.no
   let metnoData: Awaited<ReturnType<typeof fetchHourlyForecast>> | null = null;
+  let usedMockData = false;
+
   try {
     metnoData = await fetchHourlyForecast(TROMSO_LAT, TROMSO_LON, Math.min(maxHours, 48));
     console.log('✅ generateTromsoForecast: Using REAL Met.no weather data');
   } catch (error) {
-    console.warn('⚠️ generateTromsoForecast: Met.no fetch failed, using fallback weather:', error);
+    const isProduction = process.env.NODE_ENV === 'production';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Log to Sentry in production
+    if (isProduction) {
+      Sentry.captureException(error, {
+        tags: {
+          component: 'generateTromsoForecast',
+          severity: 'high',
+          impact: 'mock_data_used'
+        },
+        extra: {
+          errorMessage,
+          fallbackBehavior: 'Using mock weather data',
+          location: 'Tromsø',
+          coordinates: { lat: TROMSO_LAT, lon: TROMSO_LON }
+        }
+      });
+    }
+
+    console.error('❌ generateTromsoForecast: Met.no fetch failed in production!', errorMessage);
+    usedMockData = true;
   }
 
   for (let i = 0; i < maxHours; i++) {
@@ -147,6 +171,9 @@ export async function generateTromsoForecast(hours: number = 12): Promise<Hourly
       windSpeed = 10; // Met.no instant doesn't include windSpeed, use default
     } else {
       // Fallback to mock data (only if Met.no failed)
+      if (i === 0) {
+        console.warn('⚠️ USING MOCK WEATHER DATA - Met.no unavailable');
+      }
       const cloudVariation = Math.sin(i / 3) * 20;
       cloudCoverage = Math.max(0, Math.min(100, 40 + cloudVariation));
 
