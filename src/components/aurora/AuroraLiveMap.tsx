@@ -225,12 +225,17 @@ export function AuroraLiveMap() {
 
     if (!selectedForecast?.hourlyForecast) return [];
 
-    const mapped = selectedForecast.hourlyForecast.map(hf => ({
-      hour: hf.hour,
-      symbolCode: hf.weather?.conditions || hf.weather?.symbolCode || 'cloudy',
-      temperature: hf.weather?.temperature || 0,
-      cloudCoverage: hf.weather?.cloudCoverage || 50,
-    }));
+    const mapped = selectedForecast.hourlyForecast.map(hf => {
+      // Parse hour from "HH:00" format to number (e.g., "15:00" → 15)
+      const hourNum = parseInt(hf.hour.split(':')[0], 10);
+
+      return {
+        hour: hourNum,
+        symbolCode: hf.symbolCode || 'cloudy',
+        temperature: hf.temperature || 0,
+        cloudCoverage: hf.cloudCoverage || 50,
+      };
+    });
 
     if (debugLive) {
       console.log('[debug-live] timelineWeather mapped result', {
