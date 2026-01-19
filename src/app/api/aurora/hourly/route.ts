@@ -85,9 +85,12 @@ export async function GET(request: Request) {
   ╔══════════════════════════════════════════
   ║ SUPABASE RESPONSE DEBUG
   ║ Location requested: ${location}
+  ║ Data source: ${data.source || 'unknown'}
   ║ First hour cloudCoverage: ${data.hourly_forecast?.[0]?.weather?.cloudCoverage}
   ║ First hour temperature: ${data.hourly_forecast?.[0]?.weather?.temperature}
+  ║ First hour symbolCode: ${data.hourly_forecast?.[0]?.weather?.symbolCode}
   ║ Response has ${data.hourly_forecast?.length || 0} hours
+  ║ Generated at: ${data.generated_at}
   ╚══════════════════════════════════════════
       `);
 
@@ -159,11 +162,14 @@ export async function GET(request: Request) {
       // Generate NOAA-based forecast for Tromsø
       const noaaForecast = await generateTromsoForecast(hours);
 
+      console.warn(`⚠️ Using NOAA fallback for ${location} (Supabase unavailable)`);
+
       // Convert to hourly API format
       fallbackData = {
         status: 'success',
         location,
         hours: noaaForecast.length,
+        source: 'noaa-fallback', // Mark as fallback
         hourly_forecast: noaaForecast.map(f => {
           const [hour] = f.hour.split(':');
           const forecastDate = new Date();
@@ -189,11 +195,13 @@ export async function GET(request: Request) {
       console.warn('⚠️ NOAA-based forecast failed, using simple forecast:', error);
 
       // Fallback to simple forecast
+      console.warn(`⚠️ Using SIMPLE MOCK fallback for ${location} (NOAA failed)`);
       const simpleForecast = generateSimpleForecast(hours);
       fallbackData = {
         status: 'success',
         location,
         hours: simpleForecast.length,
+        source: 'mock-simple-fallback', // Mark as mock
         hourly_forecast: simpleForecast.map(f => {
           const [hour] = f.hour.split(':');
           const forecastDate = new Date();
@@ -217,8 +225,14 @@ export async function GET(request: Request) {
       };
     }
   } else {
-    // For non-Tromsø locations, use mock data
-    fallbackData = generateMockHourly(hours, location);
+    // For non-Tromsø locations, try real weather first
+    console.warn(`⚠️ Non-Tromsø location ${location}: trying real weather data`);
+    fallbackData = await generateRealWeatherHourly(hours, location, 3.67); // Use default KP
+
+    if (!fallbackData) {
+      console.error(`❌ Real weather failed for ${location}, using MOCK data`);
+      fallbackData = generateMockHourly(hours, location);
+    }
   }
 
   // Cache the fallback data with location-specific key for stability
