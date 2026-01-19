@@ -5,6 +5,7 @@
  */
 
 import axios from 'axios';
+import { fetchHourlyForecast } from '@/lib/fetchers/metno';
 
 interface NOAAConditions {
   kp: number;
@@ -117,21 +118,47 @@ export async function generateTromsoForecast(hours: number = 12): Promise<Hourly
   const baseDate = new Date();
   const maxHours = Math.min(Math.max(1, hours), 72); // Clamp between 1 and 72
 
+  // Tromsø coordinates
+  const TROMSO_LAT = 69.6489;
+  const TROMSO_LON = 18.9551;
+
+  // Try to fetch REAL weather data from Met.no
+  let metnoData: Awaited<ReturnType<typeof fetchHourlyForecast>> | null = null;
+  try {
+    metnoData = await fetchHourlyForecast(TROMSO_LAT, TROMSO_LON, Math.min(maxHours, 48));
+    console.log('✅ generateTromsoForecast: Using REAL Met.no weather data');
+  } catch (error) {
+    console.warn('⚠️ generateTromsoForecast: Met.no fetch failed, using fallback weather:', error);
+  }
+
   for (let i = 0; i < maxHours; i++) {
     const forecastTime = new Date(baseDate);
     forecastTime.setHours(forecastTime.getHours() + i);
 
-    // Simulate local weather variations (in production, use real weather API)
-    const cloudVariation = Math.sin(i / 3) * 20;
-    const cloudCoverage = Math.max(0, Math.min(100, 40 + cloudVariation));
+    // Use REAL weather data if available, otherwise fallback to mock
+    let cloudCoverage: number;
+    let temperature: number;
+    let windSpeed: number;
 
-    const tempVariation = Math.sin(i / 4) * 5;
-    const temperature = Math.round(-5 + tempVariation);
+    if (metnoData && metnoData[i]) {
+      // Use real Met.no data
+      cloudCoverage = metnoData[i].cloudCoverage;
+      temperature = metnoData[i].temperature;
+      windSpeed = 10; // Met.no instant doesn't include windSpeed, use default
+    } else {
+      // Fallback to mock data (only if Met.no failed)
+      const cloudVariation = Math.sin(i / 3) * 20;
+      cloudCoverage = Math.max(0, Math.min(100, 40 + cloudVariation));
+
+      const tempVariation = Math.sin(i / 4) * 5;
+      temperature = Math.round(-5 + tempVariation);
+      windSpeed = 10 + Math.random() * 10;
+    }
 
     const localWeather: LocalWeather = {
       cloudCoverage,
       temperature,
-      windSpeed: 10 + Math.random() * 10,
+      windSpeed,
     };
 
     // Calculate probability with NOAA data
@@ -148,7 +175,7 @@ export async function generateTromsoForecast(hours: number = 12): Promise<Hourly
       hour: forecastTime.getHours().toString().padStart(2, '0') + ':00',
       probability,
       cloudCoverage: Math.round(cloudCoverage),
-      temperature,
+      temperature: Math.round(temperature),
       kp: noaaConditions.kp,
       visibility,
     });
