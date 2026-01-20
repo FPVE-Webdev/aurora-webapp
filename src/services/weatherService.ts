@@ -10,6 +10,7 @@ interface MetNoForecast {
         instant: {
           details: {
             cloud_area_fraction: number;
+            fog_area_fraction?: number;
             air_temperature: number;
             wind_speed: number;
           };
@@ -52,6 +53,7 @@ class WeatherService {
 
   async getWeather(lat: number, lon: number): Promise<{
     cloudCoverage: number;
+    fogCoverage: number;
     temperature: number;
     windSpeed: number;
     precipitation: number;
@@ -72,7 +74,8 @@ class WeatherService {
       if (process.env.NODE_ENV === 'development') {
         console.log('✓ Weather fetched for', lat.toFixed(4), lon.toFixed(4), ':', {
           temperature: current.data.instant.details.air_temperature,
-          cloudCoverage: current.data.instant.details.cloud_area_fraction
+          cloudCoverage: current.data.instant.details.cloud_area_fraction,
+          fogCoverage: current.data.instant.details.fog_area_fraction
         });
       }
 
@@ -82,6 +85,7 @@ class WeatherService {
 
       return {
         cloudCoverage: current.data.instant.details.cloud_area_fraction ?? 30,
+        fogCoverage: current.data.instant.details.fog_area_fraction ?? 0,
         temperature: current.data.instant.details.air_temperature ?? -5,
         windSpeed: current.data.instant.details.wind_speed ?? 3,
         precipitation: current.data.next_1_hours?.details?.precipitation_amount ?? 0,
@@ -94,6 +98,7 @@ class WeatherService {
       // Return fallback data with error indication
       return {
         cloudCoverage: 30,
+        fogCoverage: 0,
         temperature: -5,
         windSpeed: 3,
         precipitation: 0,
@@ -106,6 +111,7 @@ class WeatherService {
   async getHourlyForecast(lat: number, lon: number, hours: number = 24): Promise<Array<{
     time: string;
     cloudCoverage: number;
+    fogCoverage: number;
     temperature: number;
     precipitation: number;
     symbolCode: string;
@@ -126,6 +132,7 @@ class WeatherService {
       return data.properties.timeseries.slice(0, hours).map(item => ({
         time: item.time,
         cloudCoverage: item.data.instant.details.cloud_area_fraction ?? 30,
+        fogCoverage: item.data.instant.details.fog_area_fraction ?? 0,
         temperature: item.data.instant.details.air_temperature ?? -5,
         precipitation: item.data.next_1_hours?.details?.precipitation_amount ?? 0,
         symbolCode: item.data.next_1_hours?.summary?.symbol_code ||

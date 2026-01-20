@@ -182,6 +182,7 @@ export async function GET(request: Request) {
             // KP removed - it's a global planetary index, not location-specific
             weather: {
               cloudCoverage: f.cloudCoverage,
+              fogCoverage: 0, // NOAA fallback doesn't provide fog data
               temperature: f.temperature,
               windSpeed: 10, // Default, not provided by NOAA forecast
               conditions: f.cloudCoverage < 30 ? 'clear' : f.cloudCoverage < 60 ? 'partly_cloudy' : 'cloudy'
@@ -214,6 +215,7 @@ export async function GET(request: Request) {
             // KP removed - it's a global planetary index, not location-specific
             weather: {
               cloudCoverage: f.cloudCoverage,
+              fogCoverage: 0, // Simple mock doesn't provide fog data
               temperature: f.temperature,
               windSpeed: 10,
               conditions: f.cloudCoverage < 30 ? 'clear' : f.cloudCoverage < 60 ? 'partly_cloudy' : 'cloudy'
@@ -287,6 +289,7 @@ function generateMockHourly(hours: number, location: string) {
       // KP removed - it's a global planetary index, not location-specific
       weather: {
         cloudCoverage: Math.floor(cloudCoverage),
+        fogCoverage: 0, // Mock data doesn't simulate fog
         temperature: Math.floor(seededRandom(hourSeed + 3) * 10) - 5,
         windSpeed: Math.floor(seededRandom(hourSeed + 4) * 15) + 5,
         conditions: cloudCoverage < 30 ? 'clear' : cloudCoverage < 60 ? 'partly_cloudy' : 'cloudy'
@@ -353,6 +356,7 @@ async function generateRealWeatherHourly(hours: number, location: string, global
       const probResult = calculateAuroraProbability({
         kpIndex: globalKp,
         cloudCoverage: metHour.cloudCoverage,
+        fogCoverage: metHour.fogCoverage,
         temperature: metHour.temperature,
         latitude: spot.latitude,
         longitude: spot.longitude,
@@ -365,6 +369,7 @@ async function generateRealWeatherHourly(hours: number, location: string, global
         probability: probResult.probability,
         weather: {
           cloudCoverage: Math.round(metHour.cloudCoverage),
+          fogCoverage: Math.round(metHour.fogCoverage),
           temperature: Math.round(metHour.temperature),
           windSpeed: 10, // Met.no doesn't provide windSpeed in timeseries instant, use default
           conditions: metHour.symbolCode || (metHour.cloudCoverage < 30 ? 'clear' : metHour.cloudCoverage < 60 ? 'partly_cloudy' : 'cloudy'),

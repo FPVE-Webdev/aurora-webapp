@@ -12,7 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { HourlyForecast as HourlyForecastType } from '@/types/aurora';
 import { getProbabilityLevel, AURORA_EMOJI_MAP } from '@/lib/constants/auroraStatus';
 import { cn } from '@/lib/utils';
-import { Cloud, Thermometer, MapPin } from 'lucide-react';
+import { Cloud, Thermometer, MapPin, CloudFog } from 'lucide-react';
 import { BestTimeWindow } from './BestTimeWindow';
 import type { SubscriptionTier } from '@/contexts/PremiumContext';
 import { getTierConfig } from '@/lib/features/liveTierConfig';
@@ -134,6 +134,14 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
                 <span>{Math.round(forecast.cloudCoverage)}%</span>
               </div>
 
+              {/* Fog Coverage - show if > 50% */}
+              {forecast.fogCoverage !== undefined && forecast.fogCoverage > 50 && (
+                <div className="flex items-center justify-center gap-1 text-[11px] text-amber-400/80 relative z-10 mb-1">
+                  <CloudFog className="w-3 h-3" />
+                  <span>{Math.round(forecast.fogCoverage)}%</span>
+                </div>
+              )}
+
               {/* Temperature */}
               <div className="flex items-center justify-center gap-1 text-[11px] text-white/60 relative z-10">
                 <Thermometer className="w-3 h-3" />
@@ -209,6 +217,14 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
                 <span>{Math.round(forecast.cloudCoverage)}%</span>
               </div>
 
+              {/* Fog Coverage - show if > 50% */}
+              {forecast.fogCoverage !== undefined && forecast.fogCoverage > 50 && (
+                <div className="flex items-center justify-center gap-1 text-xs text-amber-400/80 relative z-10 mb-1">
+                  <CloudFog className="w-3.5 h-3.5" />
+                  <span>{Math.round(forecast.fogCoverage)}%</span>
+                </div>
+              )}
+
               {/* Temperature */}
               <div className="flex items-center justify-center gap-1 text-xs text-white/60 relative z-10">
                 <Thermometer className="w-3.5 h-3.5" />
@@ -233,6 +249,7 @@ export const HourlyForecast = memo(HourlyForecastComponent, (prev, next) => {
     return forecast.hour === nextForecast.hour &&
            forecast.probability === nextForecast.probability &&
            forecast.cloudCoverage === nextForecast.cloudCoverage &&
+           forecast.fogCoverage === nextForecast.fogCoverage &&
            forecast.temperature === nextForecast.temperature;
   });
 });

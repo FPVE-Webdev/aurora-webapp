@@ -18,6 +18,7 @@ export interface AuroraData {
 
 export interface WeatherData {
   cloudCoverage: number;
+  fogCoverage?: number;
   temperature: number;
   windSpeed: number;
   precipitation: number;
@@ -32,6 +33,7 @@ export interface HourlyForecast {
   hour: string;
   probability: number;
   cloudCoverage: number;
+  fogCoverage?: number;
   temperature: number;
   kpIndex: number;
   symbolCode?: string;

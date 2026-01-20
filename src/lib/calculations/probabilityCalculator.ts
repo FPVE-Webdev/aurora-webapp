@@ -7,6 +7,7 @@ import { canSeeAurora, getNextAuroraTime, getBestAuroraTimeTonight } from './sun
 export interface AuroraInputs {
   kpIndex: number;           // 0-9 (NOAA KP Index)
   cloudCoverage: number;     // 0-100 (%)
+  fogCoverage?: number;      // 0-100 (%) - fog impacts visibility like clouds
   temperature: number;       // Celsius
   latitude: number;          // 60-70 for Norge
   longitude?: number;        // Required for daylight check
@@ -71,12 +72,15 @@ export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityRes
   // 1. KP-Index faktor (40% vekt)
   const kpScore = Math.min(100, (inputs.kpIndex / 9) * 100);
 
-  // 2. Sky/Cloud cover faktor (35% vekt) - færre skyer = høyere sannsynlighet
-  // Mer aggressiv straff for skyer siden det er avgjørende for å se nordlys
-  const cloudScore = inputs.cloudCoverage < 30 ? 100 :
-                     inputs.cloudCoverage < 50 ? 80 :
-                     inputs.cloudCoverage < 70 ? 40 :
-                     inputs.cloudCoverage < 90 ? 15 : 0;
+  // 2. Sky/Cloud + Fog cover faktor (35% vekt)
+  // Combine cloud and fog coverage - take worst case since both block aurora visibility
+  const totalObstruction = Math.max(inputs.cloudCoverage, inputs.fogCoverage ?? 0);
+
+  // Mer aggressiv straff for obstructions siden det er avgjørende for å se nordlys
+  const cloudScore = totalObstruction < 30 ? 100 :
+                     totalObstruction < 50 ? 80 :
+                     totalObstruction < 70 ? 40 :
+                     totalObstruction < 90 ? 15 : 0;
 
   // 3. Temperatur faktor (10% vekt) - kaldere = bedre (less atmospheric activity)
   const tempScore = inputs.temperature < -10 ? 100 :
@@ -101,20 +105,20 @@ export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityRes
     (latScore * 0.10) +
     (moonScore * 0.05);
 
-  // BLOCKING FACTOR: Skydekke blokkerer nordlys fullstendig
-  // Uavhengig av KP, breddegrad osv - umulig å se nordlys gjennom tette skyer
+  // BLOCKING FACTOR: Sky/tåke blokkerer nordlys fullstendig
+  // Uavhengig av KP, breddegrad osv - umulig å se nordlys gjennom tette skyer eller tåke
   let finalScore = weightedScore;
-  if (inputs.cloudCoverage >= 98) {
-    // Nesten 100% skydekke = ingen mulighet
+  if (totalObstruction >= 98) {
+    // Nesten 100% obstruksjon = ingen mulighet
     finalScore = 0;
-  } else if (inputs.cloudCoverage >= 95) {
-    // 95-97% skydekke = maksimalt 2% sjanse (ekstremt lite gap i skyer)
+  } else if (totalObstruction >= 95) {
+    // 95-97% obstruksjon = maksimalt 2% sjanse (ekstremt lite gap)
     finalScore = Math.min(finalScore, 2);
-  } else if (inputs.cloudCoverage >= 85) {
-    // 85-94% skydekke = maksimalt 5% sjanse (lite gap i skyer)
+  } else if (totalObstruction >= 85) {
+    // 85-94% obstruksjon = maksimalt 5% sjanse (lite gap)
     finalScore = Math.min(finalScore, 5);
-  } else if (inputs.cloudCoverage >= 70) {
-    // 70-84% skydekke = maksimalt 15% sjanse
+  } else if (totalObstruction >= 70) {
+    // 70-84% obstruksjon = maksimalt 15% sjanse
     finalScore = Math.min(finalScore, 15);
   }
 
