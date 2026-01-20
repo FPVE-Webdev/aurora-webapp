@@ -7,6 +7,7 @@ import { usePremium } from '@/contexts/PremiumContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import type { StripeProductKey } from '@/lib/stripe';
+import { SuggestedQuestions } from '@/components/chat/SuggestedQuestions';
 
 interface Message {
   id: string;
@@ -15,11 +16,6 @@ interface Message {
   timestamp: Date;
 }
 
-interface QuickReply {
-  id: string;
-  text: string;
-  emoji: string;
-}
 
 export function ChatWidget() {
   const { status, result, isLoading: statusLoading } = useMasterStatus();
@@ -51,37 +47,6 @@ export function ChatWidget() {
     if (result.status === 'WAIT') return t('statusWait');
     return 'NO';
   }, [result, t]);
-
-  const quickReplies = useMemo<QuickReply[]>(() => {
-    // Dynamic suggestions based on Master Status
-    if (result?.status === 'GO') {
-      return [
-        { id: 'where-now', text: 'Where should I go now?', emoji: '📍' },
-        { id: 'how-long', text: 'How long will it last?', emoji: '⏰' },
-        { id: 'what-kp', text: 'What is Kp index?', emoji: '📊' },
-      ];
-    } else if (result?.status === 'WAIT') {
-      return [
-        { id: 'when-improve', text: 'When will it improve?', emoji: '⏰' },
-        { id: 'best-spot', text: "What's the best viewing spot?", emoji: '📍' },
-        { id: 'what-kp', text: 'What is Kp index?', emoji: '📊' },
-      ];
-    } else if (result?.status === 'NO') {
-      return [
-        { id: 'any-chance', text: 'Any chance later tonight?', emoji: '🌟' },
-        { id: 'forecast', text: 'Show me the forecast', emoji: '📈' },
-        { id: 'how-app', text: 'How to use this app?', emoji: 'ℹ️' },
-      ];
-    }
-
-    // Default suggestions (shown before Master Status loads or on first open)
-    return [
-      { id: 'when-go', text: 'When should I go out tonight?', emoji: '🌙' },
-      { id: 'best-spot', text: "What's the best viewing spot?", emoji: '📍' },
-      { id: 'what-kp', text: 'What is Kp index?', emoji: '📊' },
-      { id: 'how-app', text: 'How to use this app?', emoji: 'ℹ️' },
-    ];
-  }, [result]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -699,22 +664,13 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
 
         {/* Input */}
         <form onSubmit={handleSendMessage} className="border-t border-white/10 bg-white/5">
-          {/* Quick Replies */}
-          {showQuickReplies && quickReplies.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-3 pb-2 border-b border-white/5">
-              {quickReplies.map((reply) => (
-                <button
-                  key={reply.id}
-                  type="button"
-                  onClick={() => sendQuickReply(reply.text)}
-                  className="px-3 py-1.5 text-xs bg-teal-500/20 hover:bg-teal-500/30
-                             rounded-full border border-teal-500/40 transition-colors
-                             text-white/90 font-medium flex items-center gap-1.5"
-                >
-                  <span>{reply.emoji}</span>
-                  <span>{reply.text}</span>
-                </button>
-              ))}
+          {/* Suggested Questions */}
+          {showQuickReplies && (
+            <div className="p-3 pb-2 border-b border-white/5">
+              <SuggestedQuestions
+                masterStatus={result?.status}
+                onSelect={(question) => sendQuickReply(question)}
+              />
             </div>
           )}
 

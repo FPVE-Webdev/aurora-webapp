@@ -4,6 +4,7 @@ import { CHASE_REGIONS } from '@/lib/constants/chaseRegions';
 import { calculateMasterStatus, calculateSunElevation } from '@/lib/calculations/masterStatus';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 import { scoreToKpIndex } from '@/lib/tromsoAIMapper';
+import { createClient } from '@supabase/supabase-js';
 
 type IncomingMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -18,8 +19,65 @@ type BestSpot = {
 const DEFAULT_LAT = 69.6492;
 const DEFAULT_LON = 18.9553;
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 function buildInternalUrl(path: string, req: Request) {
   return new URL(path, req.url).toString();
+}
+
+/**
+ * Simple language detection (heuristic-based)
+ */
+function detectLanguage(text: string): string {
+  const lowerText = text.toLowerCase();
+
+  // Norwegian keywords
+  if (
+    lowerText.includes('hvor') ||
+    lowerText.includes('hva') ||
+    lowerText.includes('når') ||
+    lowerText.includes('skal') ||
+    lowerText.includes('jeg') ||
+    lowerText.includes('nå')
+  ) {
+    return 'no';
+  }
+
+  // German keywords
+  if (
+    lowerText.includes('wo') ||
+    lowerText.includes('wann') ||
+    lowerText.includes('wie') ||
+    lowerText.includes('ist') ||
+    lowerText.includes('das')
+  ) {
+    return 'de';
+  }
+
+  // Default to English
+  return 'en';
+}
+
+/**
+ * Log user query anonymously for suggested questions
+ */
+async function logQuery(queryText: string, language: string, masterStatus: string, isPremium: boolean) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return;
+
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+    await supabase.from('chat_queries').insert({
+      query_text: queryText,
+      language,
+      master_status: masterStatus,
+      is_premium: isPremium,
+    });
+  } catch (error) {
+    // Silently fail - logging should not block chat
+    console.error('[chat/guide] Failed to log query:', error);
+  }
 }
 
 async function fetchJson<T>(path: string, req: Request): Promise<T | null> {
@@ -317,6 +375,21 @@ export async function POST(req: Request) {
     });
 
     const reply = completion.choices[0].message.content?.trim() || 'I\'m here, but didn\'t get a response. Try again.';
+
+    // Log the user's last query anonymously for suggested questions
+    const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
+    if (lastUserMessage && lastUserMessage.content) {
+      // Detect language from reply (simple heuristic)
+      const detectedLanguage = detectLanguage(lastUserMessage.content);
+
+      // Fire and forget - don't block response
+      logQuery(
+        lastUserMessage.content.trim(),
+        detectedLanguage,
+        master.status,
+        isPremium
+      ).catch((err) => console.error('[chat/guide] Log query failed:', err));
+    }
 
     return NextResponse.json({
       reply,
