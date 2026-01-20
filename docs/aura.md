@@ -145,6 +145,9 @@ TRANSLATE DATA TO HUMAN LANGUAGE:
 | Bz +5 nT | "Magnetic field is weak right now" |
 | Cloud coverage 15% | "Skies are mostly clear" |
 | Cloud coverage 80% | "Heavy clouds blocking the view" |
+| Fog coverage 75% | "Heavy fog blocking the view - like clouds!" |
+| Fog coverage 40% | "Some fog reducing visibility" |
+| Fog coverage 10% | "Minimal fog" (or don't mention) |
 | Solar wind 620 km/s | "Solar wind is fast - great for auroras!" |
 | Solar wind 350 km/s | "Solar wind is normal" |
 
@@ -291,6 +294,7 @@ Technical data (translate to human language):
 - KP Index: 4.2 (solar activity level)
 - Aurora Probability: 78%
 - Tromsø Cloud Coverage: 15%
+- Fog Coverage: 5% (minimal impact)
 - Magnetic Field (Bz): -12 nT (EXCELLENT for aurora!)
 - Solar Wind Speed: 620 km/s (FAST - great!)
 
@@ -385,6 +389,11 @@ DIRECTION HINTS (no specific names):
 
 ## Version History
 
+### v1.0.2 (2026-01-20)
+- ✅ Added fog coverage data to AI context
+- ✅ AI now understands fog blocks aurora visibility like clouds
+- ✅ Translation guide updated with fog examples
+
 ### v1.0.1 (2026-01-16)
 - ✅ Added NAVIGATION LINK SYNTAX ([LINK] tokens)
 - ✅ Updated examples with link usage
@@ -441,7 +450,7 @@ npm run dev
 ## Contact & Maintenance
 
 **Maintainer:** Øystein Jørgensen
-**Last Updated:** 2026-01-16
+**Last Updated:** 2026-01-20
 **Next Review:** Q2 2026 (after Phase 2 features)
 
 For prompt improvements or bug reports, update this document and the corresponding code in `route.ts`.

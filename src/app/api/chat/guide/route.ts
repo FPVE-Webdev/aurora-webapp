@@ -76,10 +76,12 @@ async function resolveForecast(req: Request) {
 function deriveMasterStatus(nowData: any, weather: any, lat: number, lon: number) {
   const kpIndex = typeof nowData?.kp === 'number' ? nowData.kp : scoreToKpIndex(nowData?.score || 50);
   const cloudCoverage = typeof weather?.cloudCoverage === 'number' ? weather.cloudCoverage : 50;
+  const fogCoverage = typeof weather?.fogCoverage === 'number' ? weather.fogCoverage : 0;
   const temperature = typeof weather?.temperature === 'number' ? weather.temperature : -5;
   const probability = calculateAuroraProbability({
     kpIndex,
     cloudCoverage,
+    fogCoverage,
     temperature,
     latitude: lat,
   }).probability;
@@ -142,6 +144,13 @@ When asked "Should I go out?" or "Is it worth it?", ALWAYS check Master Status F
 TRANSLATE DATA TO HUMAN LANGUAGE:
 ❌ NEVER SAY: "Bz is negative 10 nanotesla" or "KP index is 4.5"
 ✅ INSTEAD SAY: "Magnetic conditions are PERFECT for colorful displays!" or "Activity is moderate"
+
+FOG VISIBILITY:
+- Fog blocks aurora visibility like clouds do
+- If fog > 70%: Mention "Heavy fog blocking the view" or "Fog makes viewing impossible"
+- If fog 30-70%: Mention "Some fog reducing visibility"
+- If fog < 30%: No need to mention fog unless asked
+- Fog + clouds: Worst case scenario - explain that BOTH are blocking view
 
 TIME PLANNING:
 - If asked "what time?", refer to the forecast data and find the peak hour
@@ -228,6 +237,7 @@ export async function POST(req: Request) {
     const kp = typeof nowData?.kp === 'number' ? nowData.kp : 3.0;
     const probability = typeof nowData?.probability === 'number' ? nowData.probability : master.factors.probability;
     const cloud = typeof weather?.cloudCoverage === 'number' ? weather.cloudCoverage : master.factors.cloudCoverage;
+    const fog = typeof weather?.fogCoverage === 'number' ? weather.fogCoverage : 0;
     const bz = nowData?.extended_metrics?.bz_factor?.value;
     const solarWind = nowData?.extended_metrics?.solar_wind?.speed;
 
@@ -274,6 +284,7 @@ export async function POST(req: Request) {
       `- KP Index: ${kp.toFixed(1)} (solar activity level)`,
       `- Aurora Probability: ${Math.round(probability)}%`,
       `- Tromsø Cloud Coverage: ${Math.round(cloud)}%`,
+      fog > 0 ? `- Fog Coverage: ${Math.round(fog)}% ${fog > 70 ? '(BLOCKS VIEW - like clouds!)' : fog > 30 ? '(reduces visibility)' : '(minimal impact)'}` : null,
       bz ? `- Magnetic Field (Bz): ${bz} nT ${bz < -5 ? '(EXCELLENT for aurora!)' : bz < 0 ? '(good)' : '(weak)'}` : null,
       solarWind ? `- Solar Wind Speed: ${Math.round(solarWind)} km/s ${solarWind > 500 ? '(FAST - great!)' : '(normal)'}` : null,
       ``,
