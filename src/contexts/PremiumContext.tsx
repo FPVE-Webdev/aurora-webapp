@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { getEffectiveTier, isFreePeriodActive } from '@/lib/utils/featureFlags';
 
 export type SubscriptionTier = 'free' | 'premium_24h' | 'premium_7d' | 'enterprise';
 
@@ -16,6 +17,7 @@ interface PremiumContextType {
   expiresAt: number | null; // timestamp in ms
   isExpired: boolean;
   hoursRemaining: number | null;
+  isFreePeriod: boolean;
 
   // Actions
   setIsPremium: (value: boolean) => void;
@@ -31,11 +33,15 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   // New subscription tier system
-  const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>(() => {
+  const [actualTier, setActualTier] = useState<SubscriptionTier>(() => {
     if (typeof window === 'undefined') return 'free';
     const stored = localStorage.getItem('subscription_tier');
     return (stored as SubscriptionTier) || 'free';
   });
+
+  // Apply free period logic to get effective tier
+  const subscriptionTier = getEffectiveTier(actualTier) as SubscriptionTier;
+  const isFreePeriod = isFreePeriodActive();
 
   const [expiresAt, setExpiresAt] = useState<number | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -57,7 +63,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   const unlockFeatures = useCallback((tier: SubscriptionTier, durationHours: number) => {
     const expiryTimestamp = Date.now() + durationHours * 60 * 60 * 1000;
 
-    setSubscriptionTier(tier);
+    setActualTier(tier);
     setExpiresAt(expiryTimestamp);
 
     if (typeof window !== 'undefined') {
@@ -76,7 +82,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     try {
       // Check local expiry first
       if (expiresAt && Date.now() > expiresAt) {
-        setSubscriptionTier('free');
+        setActualTier('free');
         setExpiresAt(null);
         if (typeof window !== 'undefined') {
           localStorage.removeItem('subscription_tier');
@@ -103,13 +109,13 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
             if (data.isPremium && data.tier && data.expiresAt) {
               // Update from backend
               const backendExpiresAt = new Date(data.expiresAt).getTime();
-              setSubscriptionTier(data.tier);
+              setActualTier(data.tier);
               setExpiresAt(backendExpiresAt);
               localStorage.setItem('subscription_tier', data.tier);
               localStorage.setItem('subscription_expires_at', backendExpiresAt.toString());
             } else if (!data.isPremium && isPremium) {
               // Backend says not premium, clear local
-              setSubscriptionTier('free');
+              setActualTier('free');
               setExpiresAt(null);
               localStorage.removeItem('subscription_tier');
               localStorage.removeItem('subscription_expires_at');
@@ -126,7 +132,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [expiresAt]);
+  }, [expiresAt, isPremium]);
 
   // Initialize on mount and check expiry every minute
   useEffect(() => {
@@ -145,7 +151,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'subscription_tier' && e.newValue) {
-        setSubscriptionTier(e.newValue as SubscriptionTier);
+        setActualTier(e.newValue as SubscriptionTier);
       }
       if (e.key === 'subscription_expires_at' && e.newValue) {
         setExpiresAt(parseInt(e.newValue, 10));
@@ -164,7 +170,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
       // Default to 24h premium when using legacy method
       unlockFeatures('premium_24h', 24);
     } else {
-      setSubscriptionTier('free');
+      setActualTier('free');
       setExpiresAt(null);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('subscription_tier');
@@ -182,6 +188,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
         expiresAt,
         isExpired,
         hoursRemaining,
+        isFreePeriod,
         unlockFeatures,
 
         // Core actions

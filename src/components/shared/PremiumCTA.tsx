@@ -6,10 +6,11 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
 
 export function PremiumCTA() {
-  const { isPremium } = usePremium();
+  const { isPremium, isFreePeriod } = usePremium();
   const { t } = useLanguage();
 
-  if (isPremium) return null;
+  // Hide during free period or if user is premium
+  if (isPremium || isFreePeriod) return null;
 
   return (
     <div className="bg-gradient-to-br from-aurora-purple/20 via-aurora-cyan/10 to-aurora-green/5 border border-aurora-purple/30 rounded-2xl p-6">

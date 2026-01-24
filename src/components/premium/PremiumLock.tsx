@@ -6,6 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Lock, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StripeProductKey } from '@/lib/stripe';
+import { isFreePeriodActive } from '@/lib/utils/featureFlags';
 
 interface PremiumLockProps {
   children: ReactNode;
@@ -43,6 +44,11 @@ export function PremiumLock({
   const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Unlock during free period
+  if (isFreePeriodActive()) {
+    return <>{children}</>;
+  }
 
   // Show content if premium and not expired
   if (isPremium && !isExpired) {

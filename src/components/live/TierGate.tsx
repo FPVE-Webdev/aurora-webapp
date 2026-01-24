@@ -11,6 +11,7 @@ import type { LiveFeatures } from '@/lib/features/liveTierConfig';
 import { getUpgradeMessage } from '@/lib/features/liveTierConfig';
 import { trackTierGateView, trackTierGateDismiss, trackTierGateUpgrade } from '@/lib/analytics/tierEvents';
 import { useEffect } from 'react';
+import { isFreePeriodActive } from '@/lib/utils/featureFlags';
 
 export interface TierGateProps {
   readonly currentTier: SubscriptionTier;
@@ -34,6 +35,11 @@ export function TierGate({
   onUpgrade,
   className = '',
 }: TierGateProps) {
+  // During free period, unlock all features
+  if (isFreePeriodActive()) {
+    return <>{children}</>;
+  }
+
   const upgradeInfo = getUpgradeMessage(currentTier, feature);
   const isLocked = upgradeInfo.message !== '';
 

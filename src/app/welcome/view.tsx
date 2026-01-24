@@ -15,6 +15,7 @@ import Kart3VideoOverlay from './components/Kart3VideoOverlay';
 import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
 import { FunfactPanel } from '@/components/aurora/FunfactPanel';
 import { getRandomFunfacts } from '@/lib/funfactEngine';
+import { isFreePeriodActive } from '@/lib/utils/featureFlags';
 
 type Kart3WeatherData = {
   windSpeed: number;
@@ -189,9 +190,11 @@ export default function WelcomeView() {
               <FunfactPanel funfacts={getRandomFunfacts(3, 'en')} />
             </div>
 
-            <div className="mt-3 text-[11px] text-white/55">
-              Visual representation of live conditions. Not a prediction.
-            </div>
+            {!isFreePeriodActive() && (
+              <div className="mt-3 text-[11px] text-white/55">
+                Visual representation of live conditions. Not a prediction.
+              </div>
+            )}
             <div className="mt-3 space-y-2">
               {bestSpotError && (
                 <div className="text-xs text-rose-200 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">
