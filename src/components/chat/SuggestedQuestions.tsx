@@ -21,7 +21,7 @@ interface SuggestedQuestionsProps {
 }
 
 export function SuggestedQuestions({ masterStatus, onSelect, className = '' }: SuggestedQuestionsProps) {
-  const { currentLanguage } = useLanguage();
+  const { language } = useLanguage();
   const [suggestions, setSuggestions] = useState<SuggestedQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -29,7 +29,7 @@ export function SuggestedQuestions({ masterStatus, onSelect, className = '' }: S
     async function fetchSuggestions() {
       try {
         const params = new URLSearchParams({
-          lang: currentLanguage,
+          lang: language,
         });
 
         if (masterStatus) {
@@ -50,7 +50,7 @@ export function SuggestedQuestions({ masterStatus, onSelect, className = '' }: S
     }
 
     fetchSuggestions();
-  }, [currentLanguage, masterStatus]);
+  }, [language, masterStatus]);
 
   if (isLoading || suggestions.length === 0) {
     return null;
