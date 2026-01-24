@@ -70,10 +70,10 @@ async function verifyApiKey(apiKey: string): Promise<VerifiedKey | null> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Make Kart3 the landing experience. Keep the existing homepage accessible via `/home`.
+  // Redirect to welcome page for first-time users
   if (pathname === '/') {
     const url = request.nextUrl.clone();
-    url.pathname = '/kart3';
+    url.pathname = '/welcome';
     return NextResponse.redirect(url);
   }
 

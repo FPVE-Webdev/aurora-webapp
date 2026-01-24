@@ -174,15 +174,13 @@ export default function WelcomeView() {
 
             {/* Show me more button */}
             <div className="flex justify-center mb-4">
-              <button
-                onClick={() => {
-                  setHasSeenWelcome(true);
-                  router.push('/home');
-                }}
+              <Link
+                href="/home"
+                onClick={() => setHasSeenWelcome(true)}
                 className="inline-flex items-center justify-center rounded-xl bg-white text-black px-6 py-3 text-base font-semibold hover:bg-white/90 transition-colors"
               >
                 Show me more!
-              </button>
+              </Link>
             </div>
 
             {/* Fun Facts Bulletin */}
@@ -190,11 +188,6 @@ export default function WelcomeView() {
               <FunfactPanel funfacts={getRandomFunfacts(3, 'en')} />
             </div>
 
-            {!isFreePeriodActive() && (
-              <div className="mt-3 text-[11px] text-white/55">
-                Visual representation of live conditions. Not a prediction.
-              </div>
-            )}
             <div className="mt-3 space-y-2">
               {bestSpotError && (
                 <div className="text-xs text-rose-200 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">
@@ -242,13 +235,6 @@ export default function WelcomeView() {
                     >
                       {t('seeLiveMap')}
                     </Link>
-                    <button
-                      onClick={handleShare}
-                      disabled={isSharing}
-                      className="text-xs font-semibold px-3 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-60"
-                    >
-                      {isSharing ? t('creatingShare') : t('shareStatus')}
-                    </button>
                   </div>
                 </div>
               )}

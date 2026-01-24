@@ -24,7 +24,6 @@ import { MasterStatusCard } from '@/components/aurora/MasterStatusCard';
 import Kart3VideoOverlay from '@/app/kart3/components/Kart3VideoOverlay';
 import { shareStoryImage } from '@/lib/shareStory';
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
-import { SightingsWidget } from '@/components/retention/SightingsWidget';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HomePage() {
@@ -243,11 +242,6 @@ export default function HomePage() {
             <FunfactPanel funfacts={getRandomFunfacts(3, 'en')} />
           </div>
 
-          {/* Retention Features - Sightings */}
-          <div className="max-w-4xl mx-auto mb-8">
-            <SightingsWidget />
-          </div>
-
           {/* Premium CTA (only for free users) */}
           {!isPremium && (
             <div className="max-w-4xl mx-auto mb-8">
@@ -264,13 +258,6 @@ export default function HomePage() {
               <MapIcon className="w-5 h-5" />
               {t('seeLiveMap')}
             </Link>
-            <button
-              onClick={handleShare}
-              disabled={isSharing}
-              className="ml-3 inline-flex items-center gap-2 px-8 py-4 bg-white/90 text-black font-semibold rounded-lg transition-all shadow-lg hover:bg-white disabled:opacity-60"
-            >
-              {isSharing ? t('creatingImage') : t('shareStatus')}
-            </button>
           </div>
         </div>
       </div>

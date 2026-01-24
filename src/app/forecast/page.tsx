@@ -42,12 +42,10 @@ export default function ForecastPage() {
 
   // Calculate regional forecasts
   const regionalForecasts = useMemo(() => {
-    // Free users only see Troms region, premium users see all regions
-    const regions = isPremium
-      ? REGION_ORDER.map(id => REGIONS[id])
-      : [REGIONS['troms']]; // Only Troms for free users
+    // Only Troms for launch period
+    const regions = [REGIONS['troms']];
     return getAllRegionalForecasts(regions, spotForecasts);
-  }, [spotForecasts, isPremium]);
+  }, [spotForecasts]);
 
   // Handle URL parameter for spot selection
   useEffect(() => {
@@ -65,14 +63,6 @@ export default function ForecastPage() {
 
   // Handle region selection
   const handleSelectRegion = (regionId: string) => {
-    // Free users can only access Troms region
-    if (!isPremium && regionId !== 'troms') {
-      // Show premium gate for other regions
-      setSelectedRegionId(regionId);
-      setViewMode('premium-gate');
-      return;
-    }
-
     const region = REGIONS[regionId];
     if (region) {
       setSelectedRegionId(regionId);

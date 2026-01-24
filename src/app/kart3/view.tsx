@@ -220,13 +220,6 @@ export default function Kart3View() {
                     >
                       {t('seeLiveMap')}
                     </Link>
-                    <button
-                      onClick={handleShare}
-                      disabled={isSharing}
-                      className="text-xs font-semibold px-3 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-60"
-                    >
-                      {isSharing ? t('creatingShare') : t('shareStatus')}
-                    </button>
                   </div>
                 </div>
               )}

@@ -8,7 +8,7 @@ export default function Footer() {
   const pathname = usePathname();
 
   // Hide footer on immersive/map pages to avoid confusion and overlap
-  const hideFooter = pathname === '/live' || pathname === '/kart3';
+  const hideFooter = pathname === '/live';
 
   if (hideFooter) return null;
 
@@ -35,11 +35,6 @@ export default function Footer() {
                   Live Map
                 </Link>
               </li>
-              <li>
-                <Link href="/kart3" className="text-white/60 hover:text-primary text-xs transition-colors">
-                  Aurora Visualization
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -51,11 +46,6 @@ export default function Footer() {
                 <Link href="/about" className="text-white/60 hover:text-primary text-xs transition-colors">
                   About
                 </Link>
-              </li>
-              <li>
-                <a href="/sitemap.xml" className="text-white/60 hover:text-primary text-xs transition-colors">
-                  Sitemap
-                </a>
               </li>
             </ul>
           </div>
@@ -81,7 +71,16 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-3 text-sm">Aurora Tromsø</h3>
             <p className="text-white/60 text-xs leading-relaxed mb-4">
-              Real-time Northern Lights forecast for Tromsø, Norway. Know exactly when and where to see aurora borealis.
+              Real-time Northern Lights forecast for{' '}
+              <a
+                href="https://www.instagram.com/tromso.ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:text-primary/80 transition-colors font-medium"
+              >
+                Tromso.ai
+              </a>
+              , Norway. Know exactly when and where to see aurora borealis.
             </p>
             <div className="flex items-center gap-3">
               <a
@@ -94,7 +93,7 @@ export default function Footer() {
                 <Instagram className="w-5 h-5" />
               </a>
               <a
-                href="https://www.facebook.com/profile.php?id=61586643456809"
+                href="https://www.facebook.com/profile.php?id=61586347817859"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-white/60 hover:text-primary transition-colors"
@@ -106,9 +105,20 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/5 pt-6 text-center">
-          <p className="text-white/40 text-xs">
+        <div className="border-t border-white/5 pt-6 text-center space-y-2">
+          <p className="text-white/40 text-sm">
             © {new Date().getFullYear()} Nordlys Tromsø. All rights reserved.
+          </p>
+          <p className="text-white/50 text-xs">
+            Powered by{' '}
+            <a
+              href="https://fpvexperience.no"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:text-primary/80 transition-colors font-medium"
+            >
+              FPV Experience
+            </a>
           </p>
         </div>
       </div>
