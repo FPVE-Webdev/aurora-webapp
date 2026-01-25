@@ -5,6 +5,7 @@ import { MessageCircle, X, Send, Sparkles, Loader2, Trash2 } from 'lucide-react'
 import { useMasterStatus } from '@/contexts/MasterStatusContext';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuroraData } from '@/hooks/useAuroraData';
 import { cn } from '@/lib/utils';
 import type { StripeProductKey } from '@/lib/stripe';
 import { SuggestedQuestions } from '@/components/chat/SuggestedQuestions';
@@ -21,6 +22,7 @@ export function ChatWidget() {
   const { status, result, isLoading: statusLoading } = useMasterStatus();
   const { isPremium, subscriptionTier } = usePremium();
   const { t } = useLanguage();
+  const { selectedSpot } = useAuroraData();
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -407,6 +409,9 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
             .map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text }))
             .concat({ role: 'user', content: userMessage.text }),
           isPremium, // Send premium status for gating
+          spotId: selectedSpot.id,
+          lat: selectedSpot.latitude,
+          lon: selectedSpot.longitude,
         }),
       });
 

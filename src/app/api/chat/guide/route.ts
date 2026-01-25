@@ -131,6 +131,29 @@ async function resolveForecast(req: Request) {
   };
 }
 
+async function resolveMultiDayForecast(req: Request, days: number = 7) {
+  try {
+    const data = await fetchJson<any>(`/api/aurora/forecast?lang=en&days=${days}`, req);
+    if (!data || !data.forecasts) return null;
+
+    return {
+      days: data.forecasts.length,
+      forecasts: data.forecasts.map((f: any) => ({
+        date: f.date,
+        score: f.score,
+        level: f.level,
+        kp: f.kp,
+        weather: f.weather,
+        best_viewing_hours: f.best_viewing_hours,
+        confidence: f.confidence
+      }))
+    };
+  } catch (error) {
+    console.warn('[chat/guide] Failed to fetch multi-day forecast:', error);
+    return null;
+  }
+}
+
 function deriveMasterStatus(nowData: any, weather: any, lat: number, lon: number) {
   const kpIndex = typeof nowData?.kp === 'number' ? nowData.kp : scoreToKpIndex(nowData?.score || 50);
   const cloudCoverage = typeof weather?.cloudCoverage === 'number' ? weather.cloudCoverage : 50;
@@ -214,6 +237,20 @@ TIME PLANNING:
 - If asked "what time?", refer to the forecast data and find the peak hour
 - Example: "The strongest activity is expected between 22:00 and 01:00. Aim for that window."
 
+FUTURE PLANNING (Multi-day):
+- If asked "What about tomorrow/next week/in 3 days?", use the 7-day forecast data provided
+- Explain day quality with simple terms: "Excellent" (70+), "Good" (50-69), "Moderate" (30-49), "Poor" (<30)
+- ALWAYS mention two factors: magnetic activity (KP score) AND cloud conditions
+- Example: "Day 3 looks moderate (score 45) - good magnetic activity but 65% clouds may reduce visibility"
+- If a day is "Excellent" but cloudy, say: "Great activity expected, but weather might interfere"
+- If a day is "Poor" for activity, say: "Magnetic activity low that day, but worth checking back if forecast improves"
+- Never guarantee specific dates - always note: "These forecasts update daily and can change significantly"
+
+LOCATION CONTEXT:
+- You have access to the user's current location preference
+- Premium users can ask about specific named locations
+- Free users get general regional advice only
+
 EXPECTATION MANAGEMENT:
 - Explain: Camera sees more than the eye (especially greens)
 - Explain: Aurora comes in bursts, not constant like a billboard
@@ -273,15 +310,17 @@ export async function POST(req: Request) {
     const messages = (body?.messages || []) as IncomingMessage[];
     const lat = typeof body?.lat === 'number' ? body.lat : DEFAULT_LAT;
     const lon = typeof body?.lon === 'number' ? body.lon : DEFAULT_LON;
+    const spotId = body?.spotId || 'tromso';
 
     // Premium status from client
     const isPremium = body?.isPremium === true;
 
-    const [nowData, weather, bestSpot, forecast] = await Promise.all([
+    const [nowData, weather, bestSpot, forecast, multiDayForecast] = await Promise.all([
       resolveNow(req, lat, lon),
       resolveWeather(req, lat, lon),
       resolveBestSpot(req),
       resolveForecast(req),
+      resolveMultiDayForecast(req, 7),
     ]);
 
     const master = deriveMasterStatus(nowData, weather, lat, lon);
@@ -333,6 +372,22 @@ export async function POST(req: Request) {
           `🔒 UPGRADE to unlock exact GPS coordinates, spot names, and turn-by-turn routing.`,
         ];
 
+    const multiDayBlock = multiDayForecast && multiDayForecast.forecasts.length > 0
+      ? [
+          ``,
+          `=== 7-DAY FORECAST (FUTURE PLANNING) ===`,
+          ...multiDayForecast.forecasts.map((f: any, idx: number) =>
+            `Day ${idx + 1} (${f.date}): Score ${f.score}/100 (${f.level}), KP ${f.kp}, Clouds ${f.weather.cloudCoverage}%, Temp ${f.weather.temperature}°C, Best: ${f.best_viewing_hours?.slice(0, 3)?.join(', ') || 'N/A'}`
+          ),
+          ``,
+          `GUIDANCE FOR FUTURE QUESTIONS:`,
+          `- If asked "What about tomorrow?" or "Next week?", refer to this 7-day forecast`,
+          `- Explain that day quality depends on both KP activity AND cloud coverage`,
+          `- Higher scores (70+) = excellent, 50-69 = good, 30-49 = moderate, <30 = poor`,
+          `- Always mention: "Activity forecast changes daily - check back tomorrow for updates"`,
+        ]
+      : [];
+
     const contextBlock = [
       `=== CURRENT CONDITIONS (${timeString}) ===`,
       `Master Status: ${master.status}`,
@@ -350,6 +405,7 @@ export async function POST(req: Request) {
       forecast
         ? `Best window tonight: Around ${String(forecast.peakHour).padStart(2, '0')}:00 (${Math.round(forecast.peakProbability)}% probability peak)`
         : 'No specific peak identified - activity fairly constant',
+      ...multiDayBlock,
       ``,
       ...locationIntel,
     ]
@@ -398,6 +454,8 @@ export async function POST(req: Request) {
       kp,
       probability,
       cloudCoverage: cloud,
+      spotId,
+      forecastDays: multiDayForecast?.forecasts?.length || 0,
     });
   } catch (error) {
     console.error('[chat/guide] failed', error);
