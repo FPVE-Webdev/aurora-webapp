@@ -65,6 +65,7 @@ interface Props {
   kpIndex: number;
   animationHour?: number; // Current hour in animation (0-12)
   subscriptionTier: SubscriptionTier;
+  onCloudsReady?: () => void;
 }
 
 // Free tier preset spot IDs (city center only)
@@ -101,11 +102,13 @@ export default function AuroraMapFullscreen({
   onSelectSpot,
   kpIndex,
   animationHour = 0,
-  subscriptionTier
+  subscriptionTier,
+  onCloudsReady
 }: Props) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const cloudsReadyRef = useRef(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [showAnimation, setShowAnimation] = useState(false); // Default AV - bruker må aktivere manuelt
   const [hoveredMarker, setHoveredMarker] = useState<{
@@ -148,6 +151,7 @@ export default function AuroraMapFullscreen({
   // Initialize Mapbox map
   useEffect(() => {
     if (!mapContainerRef.current) return;
+    cloudsReadyRef.current = false;
 
     // Clean up existing map
     if (mapRef.current) {
@@ -345,6 +349,29 @@ export default function AuroraMapFullscreen({
         if (process.env.NODE_ENV === 'development') {
           console.log('✅ Weather layers preloaded for batches:', batches);
         }
+
+        const onSourceData = (event: mapboxgl.MapSourceDataEvent) => {
+          if (event?.sourceId === 'owm-clouds-0') {
+            handleCloudsReady();
+          }
+        };
+
+        const handleCloudsReady = () => {
+          if (cloudsReadyRef.current) return;
+          const sourceId = 'owm-clouds-0';
+          if (map.getSource(sourceId) && map.isSourceLoaded(sourceId)) {
+            cloudsReadyRef.current = true;
+            onCloudsReady?.();
+            map.off('sourcedata', onSourceData);
+            map.off('idle', handleCloudsReady);
+          }
+        };
+
+        map.on('sourcedata', onSourceData);
+        map.on('idle', handleCloudsReady);
+        handleCloudsReady();
+      } else {
+        onCloudsReady?.();
       }
 
       // Handle weather tile errors gracefully
@@ -517,9 +544,9 @@ export default function AuroraMapFullscreen({
           ? `<div style="display: flex; align-items: center; gap: 4px;"><span style="font-size: 14px;">📍</span><span>${displayProbability}%</span></div>`
           : `${displayProbability}%`;
 
-        // Hover: show tooltip
+        // Hover: show tooltip with glow effect (no transform to avoid affecting map 3D perspective)
         el.addEventListener('mouseenter', (e) => {
-          el.style.transform = isSelected ? 'scale(1.3)' : 'scale(1.15)';
+          el.style.boxShadow = '0 0 24px rgba(255, 255, 255, 0.8), 0 2px 12px rgba(0,0,0,0.5)';
           const rect = el.getBoundingClientRect();
           setHoveredMarker({
             name: forecast.spot.name,
@@ -531,7 +558,7 @@ export default function AuroraMapFullscreen({
         });
 
         el.addEventListener('mouseleave', () => {
-          el.style.transform = isSelected ? 'scale(1.2)' : 'scale(1)';
+          el.style.boxShadow = '0 2px 12px rgba(0,0,0,0.5)';
           setHoveredMarker(null);
         });
 
