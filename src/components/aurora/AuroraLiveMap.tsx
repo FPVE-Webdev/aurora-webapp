@@ -45,10 +45,13 @@ export function AuroraLiveMap() {
   } = useAuroraData();
 
   // Initialize state first
-  const [selectedSpotId, setSelectedSpotId] = useState(selectedSpot.id);
+  const [selectedSpotId, setSelectedSpotId] = useState(selectedSpot?.id || '');
 
   // Get hourly forecasts from selected spot for Site-AI decision
-  const selectedForecast = spotForecasts.find((sf) => sf.spot.id === selectedSpotId);
+  // Safe check: ensure spotForecasts is populated before searching
+  const selectedForecast = spotForecasts.length > 0 && selectedSpotId
+    ? spotForecasts.find((sf) => sf.spot.id === selectedSpotId)
+    : null;
   const hourlyForecasts = selectedForecast?.hourlyForecast || null;
 
   // Fetch Site-AI decision for /live guidance
