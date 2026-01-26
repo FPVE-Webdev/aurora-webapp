@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAppSettings } from '@/hooks/useAppSettings';
-import { getEffectiveTier, isFreePeriodActive } from '@/lib/utils/featureFlags';
+import { getEffectiveTier, isFreePeriodActive, isPromotionalPeriodActive } from '@/lib/utils/featureFlags';
 
 export type SubscriptionTier = 'free' | 'premium_24h' | 'premium_7d' | 'enterprise';
 
