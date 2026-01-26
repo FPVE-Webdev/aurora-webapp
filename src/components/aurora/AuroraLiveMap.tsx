@@ -7,11 +7,13 @@ import { Cloud, Thermometer, Wind, ChevronDown, Play, Pause, Loader2, ExternalLi
 import { cn } from '@/lib/utils';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useAuroraData } from '@/hooks/useAuroraData';
+import { useSiteAIDecision } from '@/hooks/useSiteAIDecision';
 import { TierGate } from '@/components/live/TierGate';
 import { hasFeature, filterSpotsByTier } from '@/lib/features/liveTierConfig';
 import { navigateToUpgrade } from '@/lib/utils/upgradeHandler';
 import { MapScrubber } from '@/components/map/MapScrubber';
 import { LiveLoadingSkeleton } from '@/components/aurora/LiveLoadingSkeleton';
+import { interpretSiteAIForLive } from '@/lib/liveAdapter';
 
 const debugLive =
   process.env.NODE_ENV === 'development' ||
@@ -32,7 +34,7 @@ const AuroraMapFullscreen = dynamic(
 
 export function AuroraLiveMap() {
   const { subscriptionTier } = usePremium();
-  
+
   // Use shared aurora data hook (same as /home, /forecast, /kart3)
   const {
     spotForecasts,
@@ -41,6 +43,19 @@ export function AuroraLiveMap() {
     selectedSpot,
     selectSpot
   } = useAuroraData();
+
+  // Get hourly forecasts from selected spot for Site-AI decision
+  const selectedForecast = spotForecasts.find((sf) => sf.spot.id === selectedSpotId);
+  const hourlyForecasts = selectedForecast?.hourlyForecast || null;
+
+  // Fetch Site-AI decision for /live guidance
+  // All decision logic flows from here (no independent thresholds in this component)
+  const { decision: siteAIDecision, isLoading: isSiteAILoading } = useSiteAIDecision(
+    hourlyForecasts,
+    currentKp,
+    'stable' // Default trend; could be enhanced with actual trend tracking
+  );
+  const liveAdapterOutput = siteAIDecision ? interpretSiteAIForLive(siteAIDecision) : null;
 
   const [selectedSpotId, setSelectedSpotId] = useState(selectedSpot.id);
   const [animationProgress, setAnimationProgress] = useState(0);
@@ -159,9 +174,6 @@ export function AuroraLiveMap() {
     };
   }, [isPlaying]);
 
-  const selectedForecast =
-    forecasts.find((f) => f.spot.id === selectedSpotId) || forecasts[0];
-
   const canUseAnimation = hasFeature(subscriptionTier, 'animation');
 
   // Filter spots based on tier (free users only see Tromsø area)
@@ -249,14 +261,8 @@ export function AuroraLiveMap() {
     return mapped;
   }, [selectedForecast]);
 
-  const getProbabilityLevel = (probability: number): 'excellent' | 'good' | 'moderate' | 'poor' => {
-    if (probability >= 50) return 'excellent';
-    if (probability >= 30) return 'good';
-    if (probability >= 15) return 'moderate';
-    return 'poor';
-  };
-
-  const level = selectedForecast ? getProbabilityLevel(selectedForecast.currentProbability) : 'poor';
+  // All decisions from Site-AI, no logic here
+  // liveAdapterOutput interprets SiteAIDecision for immediate actionability
 
   const getWeatherIcon = () => {
     if (!selectedForecast) return '☁️';
@@ -381,20 +387,20 @@ export function AuroraLiveMap() {
                 </span>
               </div>
 
-              {/* Probability chip */}
-              <div
-                className={cn(
-                  'w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-auto',
-                  level === 'excellent' && 'bg-gradient-to-br from-green-400 to-green-600',
-                  level === 'good' && 'bg-gradient-to-br from-purple-400 to-purple-600',
-                  level === 'moderate' && 'bg-gradient-to-br from-orange-400 to-orange-600',
-                  level === 'poor' && 'bg-gradient-to-br from-slate-400 to-slate-600'
-                )}
-              >
-                <span className="text-[14px] font-bold text-white">
-                  {selectedForecast.currentProbability}%
-                </span>
-              </div>
+              {/* Confidence chip from Site-AI decision */}
+              {liveAdapterOutput && (
+                <div
+                  className={cn(
+                    'w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-auto',
+                    liveAdapterOutput.adviceLevel === 'go' && 'bg-gradient-to-br from-green-400 to-green-600',
+                    liveAdapterOutput.adviceLevel === 'not_worth_it' && 'bg-gradient-to-br from-slate-400 to-slate-600'
+                  )}
+                >
+                  <span className="text-[14px] font-bold text-white">
+                    {Math.round(liveAdapterOutput.confidence)}%
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
