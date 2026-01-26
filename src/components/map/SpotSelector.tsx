@@ -71,7 +71,6 @@ export function SpotSelector({ selectedSpot, onSelectSpot }: SpotSelectorProps) 
 
   const handleSpotSelect = (spot: ObservationSpot) => {
     onSelectSpot(spot);
-    setSelectedRegion(null);
   };
 
   const handleBack = () => {

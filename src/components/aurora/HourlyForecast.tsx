@@ -12,8 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { HourlyForecast as HourlyForecastType } from '@/types/aurora';
 import { getProbabilityLevel, AURORA_EMOJI_MAP } from '@/lib/constants/auroraStatus';
 import { cn } from '@/lib/utils';
-import { Cloud, Thermometer, MapPin, CloudFog } from 'lucide-react';
-import { BestTimeWindow } from './BestTimeWindow';
+import { Cloud, Thermometer, CloudFog } from 'lucide-react';
 import type { SubscriptionTier } from '@/contexts/PremiumContext';
 import { getTierConfig } from '@/lib/features/liveTierConfig';
 import { getHourLabelWithDay } from '@/lib/utils/timeLabels';
@@ -54,22 +53,8 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
         <h3 className="text-base font-semibold text-white">
           {forecastLabel}
         </h3>
-        {locationName && (
-          <span className="flex items-center gap-1.5 text-xs text-primary font-medium">
-            <MapPin className="w-3.5 h-3.5" />
-            {locationName}
-          </span>
-        )}
       </div>
 
-      {/* Best Time Window Badge */}
-      {bestForecast && bestForecast.probability >= 30 && (
-        <BestTimeWindow
-          startHour={limitedForecasts[bestStartIndex]?.hour || bestForecast.hour}
-          endHour={limitedForecasts[bestEndIndex]?.hour || bestForecast.hour}
-          probability={bestForecast.probability}
-        />
-      )}
 
       {/* Desktop: 4 cards visible, Mobile: 2 cards visible */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:hidden">

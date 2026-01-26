@@ -22,7 +22,7 @@ import { validateForecastData, logValidationResults } from '@/lib/forecastValida
 
 export default function ForecastPage() {
   const { t } = useLanguage();
-  const [expandDetails, setExpandDetails] = useState(false);
+  const [expandDetails, setExpandDetails] = useState(true);
 
   const {
     spotForecasts,
@@ -177,6 +177,14 @@ export default function ForecastPage() {
             </div>
           )}
 
+          {/* Status Banner - Always visible between Weather Data and Decision Card */}
+          {siteAIDecision && (
+            <StatusBanner
+              state={siteAIDecision.state}
+              explanation={siteAIDecision.explanation}
+            />
+          )}
+
           {/* Quick Decision Card - PRIMARY FOCUS */}
           {siteAIDecision && (
             <QuickDecisionCard
@@ -189,14 +197,6 @@ export default function ForecastPage() {
           {/* Collapsible Detailed Forecast Section */}
           {expandDetails && (
             <div className="space-y-6 animate-fadeIn">
-              {/* Status Banner - Secondary explanation */}
-              {siteAIDecision && (
-                <StatusBanner
-                  state={siteAIDecision.state}
-                  explanation={siteAIDecision.explanation}
-                />
-              )}
-
               {/* Conditions Summary Row - using hour-0 weather from hourly forecast */}
               {currentForecast && currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 && (
                 <ConditionsSummaryRow
