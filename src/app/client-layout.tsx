@@ -17,7 +17,6 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Navigation } from '@/components/shared/Navigation';
 import Footer from '@/components/shared/Footer';
 import { ChatWidget } from '@/components/chat/ChatWidget';
-import { AuraRoot } from '../../aura/AuraRoot';
 import { UIGuideProvider } from '@/components/guide/UIGuideProvider';
 import { StructuredData } from '@/components/seo/StructuredData';
 import { useState } from 'react';
@@ -80,7 +79,6 @@ export default function ClientLayout({
                                   <StructuredData />
                                   <LayoutContent>{children}</LayoutContent>
                                   <ChatWidget />
-                                  <AuraRoot />
                                 </UIGuideProvider>
                                 <Toaster
                                   position="top-right"

@@ -702,16 +702,6 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
 
       {/* Aura FAB Toggle */}
       <div className="flex items-center gap-3 pointer-events-auto">
-        {/* Label hidden on mobile to reduce clutter */}
-        <div
-          className={cn(
-            "px-3 py-2 rounded-xl bg-black/60 border border-white/10 shadow-lg text-white/90 text-sm font-medium backdrop-blur-md hidden md:block transition-all duration-200",
-            isOpen && "opacity-0 translate-y-1 pointer-events-none"
-          )}
-        >
-          {t('chatWithAura')}
-        </div>
-
         <button
           ref={auraTriggerRef}
           onClick={() => {
@@ -730,22 +720,19 @@ Vurder ${detail.bestAlternative.name} – sjansen er ca ${Math.round(detail.best
           title={t('chatWithAura')}
           aria-label={t('chatWithAura')}
         >
-          <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-2 rounded-xl bg-black/75 border border-white/10 text-sm text-white/90 shadow-lg opacity-0 translate-x-2 transition-all duration-200 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0">
-            {t('chatWithAura')}
-          </div>
           <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
             <img
               src="/Aurahalo.png"
               alt="Aura"
               className={cn(
-                "w-full h-full object-contain transition-opacity duration-200 drop-shadow-[0_8px_24px_rgba(52,245,197,0.35)]",
+                "w-full h-full object-contain transition-opacity duration-200",
                 showAuraVideo ? "opacity-0" : "opacity-100"
               )}
             />
             <video
               ref={auraVideoRef}
               className={cn(
-                "absolute inset-0 w-full h-full object-contain transition-opacity duration-200 drop-shadow-[0_8px_24px_rgba(52,245,197,0.35)]",
+                "absolute inset-0 w-full h-full object-contain transition-opacity duration-200",
                 showAuraVideo ? "opacity-100" : "opacity-0"
               )}
               muted
