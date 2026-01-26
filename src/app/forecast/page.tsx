@@ -6,6 +6,7 @@ import { useSiteAIDecision } from '@/hooks/useSiteAIDecision';
 import { HourlyForecast } from '@/components/aurora/HourlyForecast';
 import { SpotSelector } from '@/components/map/SpotSelector';
 import { StatusBanner } from '@/components/forecast/StatusBanner';
+import { GuideLinks } from '@/components/forecast/GuideLinks';
 import { BestViewingWindowCard } from '@/components/forecast/BestViewingWindowCard';
 import { ConditionsSummaryRow } from '@/components/forecast/ConditionsSummaryRow';
 import { QuickDecisionCard } from '@/components/forecast/QuickDecisionCard';
@@ -152,21 +153,6 @@ export default function ForecastPage() {
                 onSelectSpot={selectSpot}
               />
 
-              {/* Location Info - Travel Time */}
-              {currentForecast.spot.travelTimeMinutes !== undefined && (
-                <div className="mt-3 pt-3 border-t border-white/10">
-                  <p className="text-xs text-white/60">
-                    📍 {currentForecast.spot.name} • {
-                      currentForecast.spot.travelTimeMinutes === 0
-                        ? 'Home'
-                        : currentForecast.spot.travelTimeMinutes < 60
-                        ? `${currentForecast.spot.travelTimeMinutes} min away`
-                        : `${Math.floor(currentForecast.spot.travelTimeMinutes / 60)}h ${currentForecast.spot.travelTimeMinutes % 60}m away`
-                    } from Tromsø
-                  </p>
-                </div>
-              )}
-
               {/* Weather Data Row - Under Spot Selector */}
               {currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-white/10">
@@ -198,6 +184,14 @@ export default function ForecastPage() {
             <StatusBanner
               state={siteAIDecision.state}
               explanation={siteAIDecision.explanation}
+            />
+          )}
+
+          {/* Guide Links - Context-aware tromso.ai guides */}
+          {currentForecast && (
+            <GuideLinks
+              spotId={currentForecast.spot.id}
+              spotName={currentForecast.spot.name}
             />
           )}
 

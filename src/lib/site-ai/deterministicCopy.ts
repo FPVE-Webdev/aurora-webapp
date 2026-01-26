@@ -43,17 +43,6 @@ function formatTimeForDisplay(isoTimestamp: string): string {
 }
 
 /**
- * Format travel time in minutes to readable string.
- */
-function formatTravelTimeForDisplay(minutes: number): string {
-  if (minutes === 0) return '(from Tromsø)';
-  if (minutes < 60) return `(${minutes} min away)`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `(${hours}h ${mins}m away)` : `(${hours}h away)`;
-}
-
-/**
  * Generate deterministic copy based on forecast state and conditions.
  *
  * Templates:
@@ -67,16 +56,13 @@ function formatTravelTimeForDisplay(minutes: number): string {
 export function generateExplanation(input: CopyInput): string {
   const bestTime = formatTimeForDisplay(input.bestWindowStart);
   const factorDescription = describeLimitingFactor(input.limitingFactor);
-  const travelInfo = input.travelTimeMinutes !== undefined
-    ? ` ${formatTravelTimeForDisplay(input.travelTimeMinutes)}`
-    : '';
 
   switch (input.state) {
     case 'excellent':
       // Template for excellent conditions
       return (
         `Strong aurora conditions expected. ` +
-        `Best viewing time: ${bestTime}${travelInfo}. ` +
+        `Best viewing time: ${bestTime}. ` +
         `Confidence: ${input.bestWindowADS}/100.`
       );
 
@@ -84,7 +70,7 @@ export function generateExplanation(input: CopyInput): string {
       // Template for possible conditions
       return (
         `Limited aurora potential detected. ` +
-        `Best window: ${bestTime}${travelInfo}. ` +
+        `Best window: ${bestTime}. ` +
         `Confidence: ${input.bestWindowADS}/100. ` +
         `Main limitation: ${factorDescription}.`
       );

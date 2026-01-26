@@ -35,15 +35,6 @@ const getSpotsByRegion = (regionId: string, spots: ObservationSpot[]): Observati
   return spots.filter(s => s.region === regionId);
 };
 
-// Format travel time from minutes to readable string
-const formatTravelTime = (minutes: number): string => {
-  if (minutes === 0) return 'Here';
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-};
-
 export function SpotSelector({ selectedSpot, onSelectSpot }: SpotSelectorProps) {
   const [selectedRegion, setSelectedRegion] = useState<string | null>('troms');
   const { subscriptionTier } = usePremium();
@@ -157,7 +148,7 @@ export function SpotSelector({ selectedSpot, onSelectSpot }: SpotSelectorProps) 
                 <button
                   onClick={() => handleSpotSelect(spot)}
                   className={cn(
-                    'px-3 py-2 text-sm font-medium transition-all text-white/90 w-full rounded-xl flex flex-col items-start gap-1',
+                    'px-3 py-2 text-sm font-medium transition-all text-white/90 w-full rounded-xl',
                     selectedSpot.id === spot.id
                       ? 'bg-primary text-white'
                       : 'bg-white/10 hover:bg-white/20'
@@ -166,12 +157,7 @@ export function SpotSelector({ selectedSpot, onSelectSpot }: SpotSelectorProps) 
                     boxShadow: auroraShadows.card,
                   }}
                 >
-                  <span>{spot.name}</span>
-                  {spot.travelTimeMinutes !== undefined && (
-                    <span className="text-xs opacity-70">
-                      {formatTravelTime(spot.travelTimeMinutes)} from Tromsø
-                    </span>
-                  )}
+                  {spot.name}
                 </button>
               </div>
             ))}
