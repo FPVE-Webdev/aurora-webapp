@@ -284,6 +284,7 @@ const translations: Record<Language, Record<string, string>> = {
     // BestTimeWindow
     bestViewingTime: 'Beste visningstid',
     excellent: 'Utmerket',
+    possible: 'Mulig',
     good: 'Godt',
     moderate: 'Moderat',
     low: 'Lavt',
@@ -567,6 +568,7 @@ const translations: Record<Language, Record<string, string>> = {
     // BestTimeWindow
     bestViewingTime: 'Best viewing time',
     excellent: 'Excellent',
+    possible: 'Possible',
     good: 'Good',
     moderate: 'Moderate',
     low: 'Low',
