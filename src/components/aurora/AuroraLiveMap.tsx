@@ -11,6 +11,7 @@ import { TierGate } from '@/components/live/TierGate';
 import { hasFeature, filterSpotsByTier } from '@/lib/features/liveTierConfig';
 import { navigateToUpgrade } from '@/lib/utils/upgradeHandler';
 import { MapScrubber } from '@/components/map/MapScrubber';
+import { LiveLoadingSkeleton } from '@/components/aurora/LiveLoadingSkeleton';
 
 const debugLive =
   process.env.NODE_ENV === 'development' ||
@@ -45,6 +46,7 @@ export function AuroraLiveMap() {
   const [animationProgress, setAnimationProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [cloudOverlayReady, setCloudOverlayReady] = useState(false);
 
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
@@ -273,16 +275,7 @@ export function AuroraLiveMap() {
     return `+${hours}t`;
   };
 
-  if (isLoading && forecasts.length === 0) {
-    return (
-      <div className="fixed inset-0 bg-arctic-900 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-          <p className="text-white/70">Laster nordlysdata...</p>
-        </div>
-      </div>
-    );
-  }
+  const showLoadingOverlay = (isLoading && forecasts.length === 0) || !cloudOverlayReady;
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-16 bg-arctic-900 overflow-hidden">
@@ -408,17 +401,18 @@ export function AuroraLiveMap() {
 
         {/* Map - full screen */}
         <div className="h-full w-full">
-          {forecasts.length > 0 && (
-            <AuroraMapFullscreen
-              forecasts={forecasts as any}
-              selectedSpotId={selectedSpotId}
-              onSelectSpot={setSelectedSpotId}
-              kpIndex={currentKp}
-              animationHour={animationProgress}
-              subscriptionTier={subscriptionTier}
-            />
-          )}
+          <AuroraMapFullscreen
+            forecasts={forecasts as any}
+            selectedSpotId={selectedSpotId}
+            onSelectSpot={setSelectedSpotId}
+            kpIndex={currentKp}
+            animationHour={animationProgress}
+            subscriptionTier={subscriptionTier}
+            onCloudsReady={() => setCloudOverlayReady(true)}
+          />
         </div>
+
+        {showLoadingOverlay && <LiveLoadingSkeleton />}
 
         {/* Timeline Scrubber with weather icons */}
         <div
