@@ -36,7 +36,7 @@ const getSpotsByRegion = (regionId: string, spots: ObservationSpot[]): Observati
 };
 
 export function SpotSelector({ selectedSpot, onSelectSpot }: SpotSelectorProps) {
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>('troms');
   const { subscriptionTier } = usePremium();
   const { t } = useLanguage();
 
