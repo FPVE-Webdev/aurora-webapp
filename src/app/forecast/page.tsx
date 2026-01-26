@@ -135,6 +135,14 @@ export default function ForecastPage() {
 
         {/* Content */}
         <div className="space-y-6">
+          {/* Best Viewing Window - PRIMARY HERO (Above Location Selector) */}
+          {siteAIDecision && siteAIDecision.bestWindow && (
+            <BestViewingWindowCard
+              bestWindow={siteAIDecision.bestWindow}
+              isHistorical={false}
+            />
+          )}
+
           {/* Location Selector - ALWAYS VISIBLE (Hero Element) */}
           {currentForecast && (
             <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-4">
