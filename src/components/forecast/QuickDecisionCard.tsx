@@ -10,7 +10,7 @@
 import { SiteAIDecision } from '@/types/siteAI';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isToday as isTodayFn } from 'date-fns';
 import { nb } from 'date-fns/locale';
 
 interface QuickDecisionCardProps {
@@ -68,6 +68,12 @@ export function QuickDecisionCard({
   const startTime = new Date(bestWindow.start);
   const endTime = new Date(bestWindow.end);
 
+  // Format day context: "I dag" (today) or day name (e.g., "Mandag")
+  const dayLabel = isTodayFn(startTime)
+    ? t('today') || 'I dag'
+    : format(startTime, 'EEEE', { locale: nb });
+  const dayDisplay = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
+
   return (
     <div
       className={`card-aurora relative overflow-hidden rounded-lg border-2 p-6 transition-all ${info.backgroundColor} ${info.borderColor}`}
@@ -113,6 +119,13 @@ export function QuickDecisionCard({
                 {format(endTime, 'HH:mm', { locale: nb })}
               </p>
             </div>
+          </div>
+
+          {/* Day context */}
+          <div className="mt-2 pt-2 border-t border-white/10">
+            <p className="text-xs text-white/60">
+              {dayDisplay}
+            </p>
           </div>
 
           {/* ADS Score and confidence */}

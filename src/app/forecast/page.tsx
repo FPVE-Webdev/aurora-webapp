@@ -17,7 +17,7 @@ import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getTierConfig } from '@/lib/features/liveTierConfig';
+import { FORECAST_TIER_CONFIG } from '@/lib/features/liveTierConfig';
 import { validateForecastData, logValidationResults } from '@/lib/forecastValidator';
 
 export default function ForecastPage() {
@@ -135,6 +135,40 @@ export default function ForecastPage() {
 
         {/* Content */}
         <div className="space-y-6">
+          {/* Location Selector - ALWAYS VISIBLE (Hero Element) */}
+          {currentForecast && (
+            <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-4">
+              <SpotSelector
+                selectedSpot={currentForecast.spot}
+                onSelectSpot={selectSpot}
+              />
+
+              {/* Weather Data Row - Under Spot Selector */}
+              {currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <div className="grid grid-cols-4 gap-3 text-center">
+                    <div>
+                      <p className="text-xs text-white/50">{t('kpIndex') || 'KP-indeks'}</p>
+                      <p className="text-lg font-semibold text-primary">{Math.round(currentKp)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-white/50">{t('cloudCover') || 'Sky'}</p>
+                      <p className="text-lg font-semibold text-primary">{Math.round(currentForecast.hourlyForecast[0].cloudCoverage)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-white/50">{t('temperature') || 'Temp'}</p>
+                      <p className="text-lg font-semibold text-primary">{Math.round(currentForecast.hourlyForecast[0].temperature)}°</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-white/50">{t('wind') || 'Vind'}</p>
+                      <p className="text-lg font-semibold text-primary">{Math.round(currentForecast.weather.windSpeed)} m/s</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Quick Decision Card - PRIMARY FOCUS */}
           {siteAIDecision && (
             <QuickDecisionCard
@@ -155,14 +189,6 @@ export default function ForecastPage() {
                 />
               )}
 
-              {/* Location Selector */}
-              {currentForecast && (
-                <SpotSelector
-                  selectedSpot={currentForecast.spot}
-                  onSelectSpot={selectSpot}
-                />
-              )}
-
               {/* Conditions Summary Row - using hour-0 weather from hourly forecast */}
               {currentForecast && currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 && (
                 <ConditionsSummaryRow
@@ -173,12 +199,13 @@ export default function ForecastPage() {
                 />
               )}
 
-              {/* 48-Hour Forecast */}
+              {/* Hourly Forecast - Limited to 24 hours for /forecast */}
               {currentForecast && currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 ? (
                 <HourlyForecast
                   forecasts={currentForecast.hourlyForecast}
                   locationName={currentForecast.spot.name}
                   subscriptionTier={subscriptionTier}
+                  maxHours={FORECAST_TIER_CONFIG[subscriptionTier].maxForecastHours}
                 />
               ) : (
                 <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-8 text-center">

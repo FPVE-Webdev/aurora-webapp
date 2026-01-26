@@ -156,6 +156,18 @@ export const TIER_CONFIGS: Readonly<Record<SubscriptionTier, TierConfig>> = {
 };
 
 /**
+ * Forecast Page Tier Configuration
+ * Used in /forecast page to limit forecast hours per tier
+ * Note: /live page uses TIER_CONFIGS for its forecast hour limits
+ */
+export const FORECAST_TIER_CONFIG: Readonly<Record<SubscriptionTier, { maxForecastHours: number }>> = {
+  free: { maxForecastHours: 6 },
+  premium_24h: { maxForecastHours: 24 }, // Limited to 24h in /forecast (despite 48h in /live)
+  premium_7d: { maxForecastHours: 24 }, // Limited to 24h in /forecast (despite 48h in /live)
+  enterprise: { maxForecastHours: 24 }, // Limited to 24h in /forecast (despite 72h in /live)
+};
+
+/**
  * Get tier configuration for current subscription
  */
 export function getTierConfig(tier: SubscriptionTier): TierConfig {

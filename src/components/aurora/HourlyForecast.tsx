@@ -22,14 +22,15 @@ interface HourlyForecastProps {
   forecasts: HourlyForecastType[];
   locationName?: string;
   subscriptionTier?: SubscriptionTier;
+  maxHours?: number; // Optional override for max hours
 }
 
-function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = 'free' }: HourlyForecastProps) {
+function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = 'free', maxHours: customMaxHours }: HourlyForecastProps) {
   const { t } = useLanguage();
 
-  // Get max hours based on subscription tier
+  // Get max hours: use custom value if provided, otherwise use tier config
   const tierConfig = getTierConfig(subscriptionTier);
-  const maxHours = tierConfig.map.maxForecastHours;
+  const maxHours = customMaxHours ?? tierConfig.map.maxForecastHours;
 
   // Limit forecasts based on tier
   const limitedForecasts = forecasts.slice(0, maxHours);
