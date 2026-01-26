@@ -8,12 +8,12 @@
 
 'use client';
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { HourlyForecast as HourlyForecastType } from '@/types/aurora';
 import { getProbabilityLevel, AURORA_EMOJI_MAP } from '@/lib/constants/auroraStatus';
 import { cn } from '@/lib/utils';
-import { Cloud, Thermometer, CloudFog } from 'lucide-react';
+import { Cloud, Thermometer, CloudFog, Eye, EyeOff } from 'lucide-react';
 import type { SubscriptionTier } from '@/contexts/PremiumContext';
 import { getTierConfig } from '@/lib/features/liveTierConfig';
 import { getHourLabelWithDay } from '@/lib/utils/timeLabels';
@@ -27,6 +27,7 @@ interface HourlyForecastProps {
 
 function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = 'free', maxHours: customMaxHours }: HourlyForecastProps) {
   const { t } = useLanguage();
+  const [showAllHours, setShowAllHours] = useState(false);
 
   // Get max hours: use custom value if provided, otherwise use tier config
   const tierConfig = getTierConfig(subscriptionTier);
@@ -38,15 +39,23 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
   // Filter to show only viable viewing hours (probability >= 30%)
   const viableForecasts = limitedForecasts.filter(f => f.probability >= 30);
 
-  const hours = viableForecasts.length;
-  const forecastLabel = hours <= 6 ? t('sixHourForecast') : t('hourForecast').replace('{hours}', hours.toString());
+  // Choose which forecasts to display based on toggle
+  const displayForecasts = showAllHours ? limitedForecasts : viableForecasts;
 
-  // Find the best time (highest probability) within viable forecasts
-  const bestTimeIndex = viableForecasts.reduce((bestIdx, forecast, idx, arr) =>
+  const hours = displayForecasts.length;
+  const viableCount = viableForecasts.length;
+  const totalCount = limitedForecasts.length;
+
+  const forecastLabel = showAllHours
+    ? t('hourForecast').replace('{hours}', totalCount.toString())
+    : hours <= 6 ? t('sixHourForecast') : t('hourForecast').replace('{hours}', hours.toString());
+
+  // Find the best time (highest probability) within display forecasts
+  const bestTimeIndex = displayForecasts.reduce((bestIdx, forecast, idx, arr) =>
     forecast.probability > arr[bestIdx].probability ? idx : bestIdx
   , 0);
 
-  const bestForecast = viableForecasts[bestTimeIndex];
+  const bestForecast = displayForecasts[bestTimeIndex];
 
   // Handle empty state when no viable hours
   if (viableForecasts.length === 0) {
@@ -67,14 +76,39 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
   return (
     <div className="card-aurora relative overflow-hidden bg-arctic-800/50 rounded-lg border border-white/5 p-4 sm:p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-white">
-          {forecastLabel}
-        </h3>
+        <div className="flex flex-col gap-1">
+          <h3 className="text-base font-semibold text-white">
+            {forecastLabel}
+          </h3>
+          {!showAllHours && (
+            <p className="text-xs text-white/50">
+              {viableCount} viable of {totalCount} hours
+            </p>
+          )}
+        </div>
+        {viableCount > 0 && viableCount < totalCount && (
+          <button
+            onClick={() => setShowAllHours(!showAllHours)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+          >
+            {showAllHours ? (
+              <>
+                <EyeOff className="w-4 h-4" />
+                Hide poor
+              </>
+            ) : (
+              <>
+                <Eye className="w-4 h-4" />
+                Show all
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* List View - Rows of forecast data */}
       <div className="space-y-2">
-        {viableForecasts.map((forecast, index) => {
+        {displayForecasts.map((forecast, index) => {
           const level = getProbabilityLevel(forecast.probability);
           const isBestTime = index === bestTimeIndex;
 
@@ -122,7 +156,7 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
                   </span>
                 )}
                 <p className="text-sm font-medium text-white">
-                  {getHourLabelWithDay(forecast, index, viableForecasts)}
+                  {getHourLabelWithDay(forecast, index, displayForecasts)}
                 </p>
               </div>
 
