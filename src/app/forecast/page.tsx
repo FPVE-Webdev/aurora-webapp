@@ -8,6 +8,8 @@ import { SpotSelector } from '@/components/map/SpotSelector';
 import { StatusBanner } from '@/components/forecast/StatusBanner';
 import { BestViewingWindowCard } from '@/components/forecast/BestViewingWindowCard';
 import { ConditionsSummaryRow } from '@/components/forecast/ConditionsSummaryRow';
+import { QuickDecisionCard } from '@/components/forecast/QuickDecisionCard';
+import { GeneratedLegend } from '@/components/forecast/GeneratedLegend';
 import { Loader2, ArrowLeft, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -16,9 +18,12 @@ import { nb } from 'date-fns/locale';
 import { usePremium } from '@/contexts/PremiumContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTierConfig } from '@/lib/features/liveTierConfig';
+import { validateForecastData, logValidationResults } from '@/lib/forecastValidator';
 
 export default function ForecastPage() {
   const { t } = useLanguage();
+  const [expandDetails, setExpandDetails] = useState(false);
+
   const {
     spotForecasts,
     selectedSpot,
@@ -55,12 +60,26 @@ export default function ForecastPage() {
     'stable'
   );
 
+  // Validate forecast data consistency
+  useEffect(() => {
+    if (currentForecast && siteAIDecision) {
+      const validation = validateForecastData(currentForecast, siteAIDecision);
+      logValidationResults(validation, 'forecast-page');
+    }
+  }, [currentForecast, siteAIDecision]);
+
+  // Consolidated loading and error states
   if (isLoading && spotForecasts.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-arctic-900">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-          <p className="text-white/70">{t('loadingForecasts')}</p>
+      <div className="min-h-screen bg-arctic-900">
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-gradient-to-b from-primary/20 to-transparent blur-3xl" />
+        </div>
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="text-center space-y-4">
+            <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
+            <p className="text-white/70">{t('loadingForecasts')}</p>
+          </div>
         </div>
       </div>
     );
@@ -68,14 +87,19 @@ export default function ForecastPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-arctic-900">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="text-red-400 text-5xl">⚠️</div>
-          <h2 className="text-xl font-semibold text-white">{t('couldNotLoadForecasts')}</h2>
-          <p className="text-white/60">{error}</p>
-          <Link href="/" className="text-primary hover:text-primary/80">
-            {t('backToHome')}
-          </Link>
+      <div className="min-h-screen bg-arctic-900">
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-gradient-to-b from-primary/20 to-transparent blur-3xl" />
+        </div>
+        <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+          <div className="text-center space-y-4 max-w-md">
+            <div className="text-red-400 text-5xl">⚠️</div>
+            <h2 className="text-xl font-semibold text-white">{t('couldNotLoadForecasts')}</h2>
+            <p className="text-white/60">{error}</p>
+            <Link href="/" className="text-primary hover:text-primary/80">
+              {t('backToHome')}
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -110,116 +134,72 @@ export default function ForecastPage() {
         </div>
 
         {/* Content */}
-        {isLoading && spotForecasts.length === 0 ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="text-center space-y-4">
-              <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-              <p className="text-white/70">{t('loadingForecasts')}</p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="text-center space-y-4 max-w-md mx-auto py-16">
-            <div className="text-red-400 text-5xl">⚠️</div>
-            <h2 className="text-xl font-semibold text-white">{t('couldNotLoadForecasts')}</h2>
-            <p className="text-white/60">{error}</p>
-            <Link href="/" className="text-primary hover:text-primary/80">
-              {t('backToHome')}
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Status Banner - Primary */}
-            {siteAIDecision && (
-              <StatusBanner
-                state={siteAIDecision.state}
-                explanation={siteAIDecision.explanation}
-              />
-            )}
+        <div className="space-y-6">
+          {/* Quick Decision Card - PRIMARY FOCUS */}
+          {siteAIDecision && (
+            <QuickDecisionCard
+              decision={siteAIDecision}
+              isExpanded={expandDetails}
+              onToggleExpand={() => setExpandDetails(!expandDetails)}
+            />
+          )}
 
-            {/* Location Selector */}
-            {currentForecast && (
-              <SpotSelector
-                selectedSpot={currentForecast.spot}
-                onSelectSpot={selectSpot}
-              />
-            )}
+          {/* Collapsible Detailed Forecast Section */}
+          {expandDetails && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Status Banner - Secondary explanation */}
+              {siteAIDecision && (
+                <StatusBanner
+                  state={siteAIDecision.state}
+                  explanation={siteAIDecision.explanation}
+                />
+              )}
 
-            {/* Best Viewing Window - Primary Card */}
-            {siteAIDecision && (
-              <BestViewingWindowCard
-                bestWindow={siteAIDecision.bestWindow}
-                isHistorical={false}
-              />
-            )}
+              {/* Location Selector */}
+              {currentForecast && (
+                <SpotSelector
+                  selectedSpot={currentForecast.spot}
+                  onSelectSpot={selectSpot}
+                />
+              )}
 
-            {/* Conditions Summary Row */}
-            {currentForecast && (
-              <ConditionsSummaryRow
-                kpIndex={currentKp}
-                cloudCover={currentForecast.weather.cloudCoverage}
-                temperature={currentForecast.weather.temperature}
-                windSpeed={currentForecast.weather.windSpeed}
-              />
-            )}
+              {/* Conditions Summary Row - using hour-0 weather from hourly forecast */}
+              {currentForecast && currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 && (
+                <ConditionsSummaryRow
+                  kpIndex={currentKp}
+                  cloudCover={currentForecast.hourlyForecast[0].cloudCoverage}
+                  temperature={currentForecast.hourlyForecast[0].temperature}
+                  windSpeed={currentForecast.weather.windSpeed}
+                />
+              )}
 
-            {/* 48-Hour Forecast */}
-            {currentForecast && currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 ? (
-              <HourlyForecast
-                forecasts={currentForecast.hourlyForecast}
-                locationName={currentForecast.spot.name}
-                subscriptionTier={subscriptionTier}
-              />
-            ) : (
-              <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-8 text-center">
-                <p className="text-white/60">{t('noHourlyForecast')}</p>
-              </div>
-            )}
-
-            {/* Legend */}
-            <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-4">
-              <h3 className="text-sm font-medium text-white/70 mb-4 uppercase tracking-wide">
-                {t('legend')}
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                <div className="space-y-2">
-                  <div className="w-full h-3 rounded bg-gradient-to-r from-green-400 to-green-600" />
-                  <div>
-                    <div className="text-white font-medium">{t('excellent70Plus')}</div>
-                    <div className="text-white/60 text-[11px]">{t('veryGoodConditions')}</div>
-                  </div>
+              {/* 48-Hour Forecast */}
+              {currentForecast && currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 ? (
+                <HourlyForecast
+                  forecasts={currentForecast.hourlyForecast}
+                  locationName={currentForecast.spot.name}
+                  subscriptionTier={subscriptionTier}
+                />
+              ) : (
+                <div className="card-aurora bg-arctic-800/50 rounded-lg border border-white/5 p-8 text-center">
+                  <p className="text-white/60">{t('noHourlyForecast')}</p>
                 </div>
-                <div className="space-y-2">
-                  <div className="w-full h-3 rounded bg-gradient-to-r from-emerald-400 to-emerald-600" />
-                  <div>
-                    <div className="text-white font-medium">{t('good50to69')}</div>
-                    <div className="text-white/60 text-[11px]">{t('goodOpportunities')}</div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="w-full h-3 rounded bg-gradient-to-r from-yellow-400 to-yellow-600" />
-                  <div>
-                    <div className="text-white font-medium">{t('moderate30to49')}</div>
-                    <div className="text-white/60 text-[11px]">{t('someChance')}</div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="w-full h-3 rounded bg-gradient-to-r from-slate-400 to-slate-600" />
-                  <div>
-                    <div className="text-white font-medium">{t('poor30Minus')}</div>
-                    <div className="text-white/60 text-[11px]">{t('littleChance')}</div>
-                  </div>
-                </div>
+              )}
+
+              {/* Generated Legend - Data-driven */}
+              {siteAIDecision && (
+                <GeneratedLegend windows={siteAIDecision.windows} />
+              )}
+
+              {/* Forecast Disclaimer */}
+              <div className="card-aurora bg-primary/5 rounded-lg border border-primary/20 p-4 text-xs text-white/70 text-center">
+                <p>
+                  🗓️ {t('forecastMode')} shows trends and planning insight. Live conditions may differ.
+                </p>
               </div>
             </div>
-
-            {/* Forecast Disclaimer */}
-            <div className="card-aurora bg-primary/5 rounded-lg border border-primary/20 p-4 text-xs text-white/70 text-center">
-              <p>
-                🗓️ {t('forecastMode')} shows trends and planning insight. Live conditions may differ.
-              </p>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
