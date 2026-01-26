@@ -2,8 +2,10 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAuroraData } from '@/hooks/useAuroraData';
+import { useSiteAIDecision } from '@/hooks/useSiteAIDecision';
 import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
 import { HourlyForecast } from '@/components/aurora/HourlyForecast';
+import { ForecastMessage } from '@/components/aurora/ForecastMessage';
 import { SpotSelector } from '@/components/map/SpotSelector';
 import { RegionalView } from '@/components/forecast/RegionalView';
 import { Loader2, ArrowLeft, Calendar, Lock } from 'lucide-react';
@@ -86,6 +88,13 @@ export default function ForecastPage() {
 
   // Get forecast for selected spot
   const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
+
+  // Fetch Site-AI decision for the current forecast
+  const { decision: siteAIDecision, isLoading: siteAILoading } = useSiteAIDecision(
+    currentForecast?.hourlyForecast,
+    Math.round(currentKp),
+    'stable' // Default to stable; could enhance with real KP trend data
+  );
 
   // Filter spots by selected region
   const visibleSpots = useMemo(() => {
@@ -282,7 +291,12 @@ export default function ForecastPage() {
             </div>
 
             {/* Right column: Hourly forecast */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Site-AI Decision Message */}
+              {siteAIDecision && (
+                <ForecastMessage decision={siteAIDecision} />
+              )}
+
               {currentForecast && currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 ? (
                 <HourlyForecast
                   forecasts={currentForecast.hourlyForecast}
