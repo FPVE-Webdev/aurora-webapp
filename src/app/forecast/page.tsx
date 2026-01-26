@@ -7,7 +7,6 @@ import { ProbabilityGauge } from '@/components/aurora/ProbabilityGauge';
 import { HourlyForecast } from '@/components/aurora/HourlyForecast';
 import { ForecastMessage } from '@/components/aurora/ForecastMessage';
 import { SpotSelector } from '@/components/map/SpotSelector';
-import { RegionalView } from '@/components/forecast/RegionalView';
 import { Loader2, ArrowLeft, Calendar, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -41,13 +40,6 @@ export default function ForecastPage() {
 
   // Check if user has premium access
   const { isPremium, subscriptionTier } = usePremium();
-
-  // Calculate regional forecasts
-  const regionalForecasts = useMemo(() => {
-    // Only Troms for launch period
-    const regions = [REGIONS['troms']];
-    return getAllRegionalForecasts(regions, spotForecasts);
-  }, [spotForecasts]);
 
   // Handle URL parameter for spot selection
   useEffect(() => {
@@ -185,13 +177,7 @@ export default function ForecastPage() {
         </div>
 
         {/* Content */}
-        {viewMode === 'regional' ? (
-          // Regional View (Free tier)
-          <RegionalView
-            regionalForecasts={regionalForecasts}
-            onSelectRegion={handleSelectRegion}
-          />
-        ) : viewMode === 'premium-gate' ? (
+        {viewMode === 'premium-gate' ? (
           // Premium Gate
           <div className="card-aurora bg-arctic-800/50 rounded-2xl border border-white/5 p-12 text-center max-w-2xl mx-auto">
             <div className="mb-6">
