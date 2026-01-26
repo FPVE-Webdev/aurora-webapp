@@ -5,6 +5,8 @@
  * Wraps the /api/aurora/forecast-decision endpoint.
  */
 
+'use client';
+
 import { useEffect, useState, useCallback } from 'react';
 import { SiteAIDecision, SiteAIInput } from '@/types/siteAI';
 import { HourlyForecast } from '@/types/aurora';

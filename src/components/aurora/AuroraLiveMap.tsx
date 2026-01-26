@@ -44,6 +44,9 @@ export function AuroraLiveMap() {
     selectSpot
   } = useAuroraData();
 
+  // Initialize state first
+  const [selectedSpotId, setSelectedSpotId] = useState(selectedSpot.id);
+
   // Get hourly forecasts from selected spot for Site-AI decision
   const selectedForecast = spotForecasts.find((sf) => sf.spot.id === selectedSpotId);
   const hourlyForecasts = selectedForecast?.hourlyForecast || null;
@@ -56,8 +59,6 @@ export function AuroraLiveMap() {
     'stable' // Default trend; could be enhanced with actual trend tracking
   );
   const liveAdapterOutput = siteAIDecision ? interpretSiteAIForLive(siteAIDecision) : null;
-
-  const [selectedSpotId, setSelectedSpotId] = useState(selectedSpot.id);
   const [animationProgress, setAnimationProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
