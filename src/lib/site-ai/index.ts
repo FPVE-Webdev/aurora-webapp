@@ -81,6 +81,7 @@ export function computeSiteAIDecision(input: SiteAIInput): SiteAIDecision {
     bestWindowStart: globalState.bestWindow.start,
     limitingFactor: globalState.bestWindow.limitingFactor,
     nextWindowStart: globalState.nextWindow?.start,
+    travelTimeMinutes: input.travelTimeMinutes,
   });
 
   // Assemble final decision

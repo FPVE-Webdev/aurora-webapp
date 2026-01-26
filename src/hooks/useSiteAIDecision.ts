@@ -24,12 +24,14 @@ interface UseSiteAIDecisionState {
  * @param hourlyForecasts - Array of hourly forecasts
  * @param globalKp - Current KP index (0-9)
  * @param kpTrend - KP trend direction
+ * @param travelTimeMinutes - Travel time from Tromsø in minutes (optional)
  * @returns Site-AI decision, loading state, and error
  */
 export function useSiteAIDecision(
   hourlyForecasts: HourlyForecast[] | null | undefined,
   globalKp: number,
-  kpTrend: 'increasing' | 'stable' | 'decreasing' = 'stable'
+  kpTrend: 'increasing' | 'stable' | 'decreasing' = 'stable',
+  travelTimeMinutes?: number
 ): UseSiteAIDecisionState {
   const [state, setState] = useState<UseSiteAIDecisionState>({
     decision: null,
@@ -57,6 +59,7 @@ export function useSiteAIDecision(
         })),
         globalKp,
         kpTrend,
+        travelTimeMinutes,
       };
 
       // Fetch Site-AI decision
@@ -78,7 +81,7 @@ export function useSiteAIDecision(
       console.error('Error fetching Site-AI decision:', errorMessage);
       setState({ decision: null, isLoading: false, error: errorMessage });
     }
-  }, [hourlyForecasts, globalKp, kpTrend]);
+  }, [hourlyForecasts, globalKp, kpTrend, travelTimeMinutes]);
 
   // Fetch decision when dependencies change
   useEffect(() => {

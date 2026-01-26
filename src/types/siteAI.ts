@@ -96,6 +96,8 @@ export interface SiteAIInput {
   globalKp: number;
   /** KP trend: 'increasing', 'stable', or 'decreasing' */
   kpTrend: 'increasing' | 'stable' | 'decreasing';
+  /** Travel time from Tromsø in minutes (optional, for explanation context) */
+  travelTimeMinutes?: number;
 }
 
 /**
