@@ -8,6 +8,8 @@
 'use client';
 
 import { memo } from 'react';
+import { format } from 'date-fns';
+import { nb } from 'date-fns/locale';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { HourlyForecast as HourlyForecastType } from '@/types/aurora';
 import { getProbabilityLevel, AURORA_EMOJI_MAP } from '@/lib/constants/auroraStatus';
@@ -22,6 +24,29 @@ interface HourlyForecastProps {
   locationName?: string;
   subscriptionTier?: SubscriptionTier;
 }
+
+/**
+ * Get display label for hour, showing date when day changes
+ * Shows "Nå" for first hour, date (e.g., "2 jan") when day changes, time otherwise
+ */
+const getHourLabel = (
+  forecast: HourlyForecastType,
+  index: number,
+  forecasts: HourlyForecastType[]
+): string => {
+  if (index === 0) return 'Nå';
+
+  const currentDate = new Date(forecast.time);
+  const prevDate = new Date(forecasts[index - 1].time);
+
+  // If date changed, show date only (e.g., "2 jan")
+  if (currentDate.getDate() !== prevDate.getDate()) {
+    return format(currentDate, 'd MMM', { locale: nb });
+  }
+
+  // Otherwise show time as usual
+  return forecast.hour;
+};
 
 function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = 'free' }: HourlyForecastProps) {
   const { t } = useLanguage();
@@ -109,7 +134,7 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
               )}
 
               <p className="text-xs text-white/60 mb-2 font-medium relative z-10">
-                {index === 0 ? 'Nå' : forecast.hour}
+                {getHourLabel(forecast, index, limitedForecasts)}
               </p>
 
               {/* Aurora Probability - Large and prominent */}
@@ -192,7 +217,7 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
               )}
 
               <p className="text-xs text-white/60 mb-2 font-medium relative z-10">
-                {index === 0 ? 'Nå' : forecast.hour}
+                {getHourLabel(forecast, index, limitedForecasts)}
               </p>
 
               {/* Aurora Probability - Large and prominent */}
