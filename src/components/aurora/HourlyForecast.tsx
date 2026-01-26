@@ -1,8 +1,9 @@
 /**
- * Hourly Forecast Component
+ * Hourly Forecast Component - List View
  *
- * Displays 12-hour aurora probability forecast with cloud cover and temperature
- * Shows color-coded probability levels (excellent/good/moderate/poor)
+ * Displays 24-hour aurora probability forecast in a clean list format
+ * Shows only viable viewing hours (probability >= 30%)
+ * Color-coded by probability level (excellent/good/moderate)
  */
 
 'use client';
@@ -33,19 +34,35 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
 
   // Limit forecasts based on tier
   const limitedForecasts = forecasts.slice(0, maxHours);
-  const hours = limitedForecasts.length;
+
+  // Filter to show only viable viewing hours (probability >= 30%)
+  const viableForecasts = limitedForecasts.filter(f => f.probability >= 30);
+
+  const hours = viableForecasts.length;
   const forecastLabel = hours <= 6 ? t('sixHourForecast') : t('hourForecast').replace('{hours}', hours.toString());
 
-  // Find the best time (highest probability) within limited forecasts
-  const bestTimeIndex = limitedForecasts.reduce((bestIdx, forecast, idx, arr) =>
+  // Find the best time (highest probability) within viable forecasts
+  const bestTimeIndex = viableForecasts.reduce((bestIdx, forecast, idx, arr) =>
     forecast.probability > arr[bestIdx].probability ? idx : bestIdx
   , 0);
 
-  const bestForecast = limitedForecasts[bestTimeIndex];
+  const bestForecast = viableForecasts[bestTimeIndex];
 
-  // Calculate best viewing window (3-hour window around best time)
-  const bestStartIndex = Math.max(0, bestTimeIndex - 1);
-  const bestEndIndex = Math.min(limitedForecasts.length - 1, bestTimeIndex + 1);
+  // Handle empty state when no viable hours
+  if (viableForecasts.length === 0) {
+    return (
+      <div className="card-aurora relative overflow-hidden bg-arctic-800/50 rounded-lg border border-white/5 p-4 sm:p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-semibold text-white">
+            {t('hourForecast').replace('{hours}', '24')}
+          </h3>
+        </div>
+        <div className="text-center text-white/60 py-8">
+          <p>{t('noHourlyForecast') || 'No viable viewing times forecast'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card-aurora relative overflow-hidden bg-arctic-800/50 rounded-lg border border-white/5 p-4 sm:p-6 space-y-4">
@@ -55,167 +72,85 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
         </h3>
       </div>
 
-
-      {/* Desktop: 4 cards visible, Mobile: 2 cards visible */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:hidden">
-        {limitedForecasts.slice(0, 12).map((forecast, index) => {
+      {/* List View - Rows of forecast data */}
+      <div className="space-y-2">
+        {viableForecasts.map((forecast, index) => {
           const level = getProbabilityLevel(forecast.probability);
           const isBestTime = index === bestTimeIndex;
 
           // Get color based on probability
+          const getBgColor = () => {
+            if (level === 'excellent') return 'bg-green-500/15';
+            if (level === 'good') return 'bg-emerald-500/15';
+            if (level === 'moderate') return 'bg-yellow-500/15';
+            return 'bg-white/5';
+          };
+
           const getBorderColor = () => {
-            if (level === 'excellent') return '#10b981'; // green-500
-            if (level === 'good') return '#14b8a6'; // teal-500
-            if (level === 'moderate') return '#f59e0b'; // amber-500
-            return '#6b7280'; // gray-500
+            if (level === 'excellent') return 'border-l-green-500';
+            if (level === 'good') return 'border-l-emerald-500';
+            if (level === 'moderate') return 'border-l-amber-500';
+            return 'border-l-white/30';
+          };
+
+          const getTextColor = () => {
+            if (level === 'excellent') return 'text-green-400';
+            if (level === 'good') return 'text-emerald-400';
+            if (level === 'moderate') return 'text-yellow-400';
+            return 'text-white/60';
           };
 
           return (
             <div
               key={forecast.hour}
               className={cn(
-                'rounded-lg p-3 text-center transition-all relative overflow-hidden',
-                'animate-slide-up hover:scale-105 duration-300 border-l-4',
-                isBestTime && 'ring-2 ring-yellow-400/60 shadow-lg shadow-yellow-400/20',
-                index === 0 && !isBestTime && 'ring-2 ring-primary/50',
-                level === 'excellent' && 'bg-green-500/20 border border-green-500/40',
-                level === 'good' && 'bg-emerald-500/20 border border-emerald-400/40',
-                level === 'moderate' && 'bg-yellow-500/20 border border-yellow-400/40',
-                level === 'poor' && 'bg-arctic-700 border border-white/10'
+                'flex items-center justify-between gap-4 p-3 rounded-lg transition-all border-l-4',
+                'animate-slide-up hover:bg-white/10',
+                getBgColor(),
+                getBorderColor(),
+                isBestTime && 'ring-1 ring-yellow-400/40'
               )}
               style={{
-                animationDelay: `${index * 0.05}s`,
-                borderLeftColor: getBorderColor()
+                animationDelay: `${index * 0.05}s`
               }}
             >
-              {/* Best Time Badge */}
-              {isBestTime && (
-                <div className="absolute -top-1 -right-1 bg-yellow-400 text-arctic-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
-                  ⭐ BEST
-                </div>
-              )}
-
-              <p className="text-xs text-white/60 mb-2 font-medium relative z-10">
-                {getHourLabelWithDay(forecast, index, limitedForecasts)}
-              </p>
-
-              {/* Aurora Probability - Large and prominent */}
-              <div className="mb-3">
-                <p className={cn(
-                  'text-2xl font-display font-black relative z-10',
-                  level === 'excellent' && 'text-green-400',
-                  level === 'good' && 'text-emerald-400',
-                  level === 'moderate' && 'text-yellow-400',
-                  level === 'poor' && 'text-white/60'
-                )}>
-                  {forecast.probability}%
+              {/* Time + Best Badge */}
+              <div className="flex items-center gap-3 min-w-[120px]">
+                {isBestTime && (
+                  <span className="flex-shrink-0 bg-yellow-400 text-arctic-900 text-[11px] font-bold px-2 py-1 rounded">
+                    ⭐ BEST
+                  </span>
+                )}
+                <p className="text-sm font-medium text-white">
+                  {getHourLabelWithDay(forecast, index, viableForecasts)}
                 </p>
-                <p className="text-[10px] text-white/50">
-                  {AURORA_EMOJI_MAP[level]}
+              </div>
+
+              {/* Probability */}
+              <div className="flex items-center justify-center min-w-[70px]">
+                <p className={cn('text-lg font-bold', getTextColor())}>
+                  {forecast.probability}%
                 </p>
               </div>
 
               {/* Cloud Coverage */}
-              <div className="flex items-center justify-center gap-1 text-[11px] text-white/60 relative z-10 mb-1">
-                <Cloud className="w-3 h-3" />
-                <span>{Math.round(forecast.cloudCoverage)}%</span>
+              <div className="flex items-center gap-1.5 min-w-[70px]">
+                <Cloud className="w-4 h-4 text-white/60 flex-shrink-0" />
+                <span className="text-sm text-white/70">{Math.round(forecast.cloudCoverage)}%</span>
               </div>
 
               {/* Fog Coverage - show if > 50% */}
               {forecast.fogCoverage !== undefined && forecast.fogCoverage > 50 && (
-                <div className="flex items-center justify-center gap-1 text-[11px] text-amber-400/80 relative z-10 mb-1">
-                  <CloudFog className="w-3 h-3" />
-                  <span>{Math.round(forecast.fogCoverage)}%</span>
+                <div className="flex items-center gap-1.5 min-w-[70px]">
+                  <CloudFog className="w-4 h-4 text-amber-400/70 flex-shrink-0" />
+                  <span className="text-sm text-amber-400/70">{Math.round(forecast.fogCoverage)}%</span>
                 </div>
               )}
 
               {/* Temperature */}
-              <div className="flex items-center justify-center gap-1 text-[11px] text-white/60 relative z-10">
-                <Thermometer className="w-3 h-3" />
-                <span>{Math.round(forecast.temperature)}°</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Horizontal scroll for larger screens */}
-      <div className="hidden sm:flex gap-3 overflow-x-auto pb-2 scrollbar-hide relative">
-        {limitedForecasts.map((forecast, index) => {
-          const level = getProbabilityLevel(forecast.probability);
-          const isBestTime = index === bestTimeIndex;
-
-          // Get color based on probability
-          const getBorderColor = () => {
-            if (level === 'excellent') return '#10b981'; // green-500
-            if (level === 'good') return '#14b8a6'; // teal-500
-            if (level === 'moderate') return '#f59e0b'; // amber-500
-            return '#6b7280'; // gray-500
-          };
-
-          return (
-            <div
-              key={forecast.hour}
-              className={cn(
-                'flex-shrink-0 w-24 rounded-lg p-4 text-center transition-all relative overflow-hidden border-l-4',
-                'animate-slide-up hover:scale-105 duration-300',
-                isBestTime && 'ring-2 ring-yellow-400/60 shadow-lg shadow-yellow-400/20',
-                index === 0 && !isBestTime && 'ring-2 ring-primary/50',
-                level === 'excellent' && 'bg-green-500/20 border border-green-500/40',
-                level === 'good' && 'bg-emerald-500/20 border border-emerald-400/40',
-                level === 'moderate' && 'bg-yellow-500/20 border border-yellow-400/40',
-                level === 'poor' && 'bg-arctic-700 border border-white/10'
-              )}
-              style={{
-                animationDelay: `${index * 0.05}s`,
-                borderLeftColor: getBorderColor()
-              }}
-            >
-              {/* Best Time Badge */}
-              {isBestTime && (
-                <div className="absolute -top-2 -right-2 bg-yellow-400 text-arctic-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
-                  ⭐ BEST
-                </div>
-              )}
-
-              <p className="text-xs text-white/60 mb-2 font-medium relative z-10">
-                {getHourLabelWithDay(forecast, index, limitedForecasts)}
-              </p>
-
-              {/* Aurora Probability - Large and prominent */}
-              <div className="mb-3">
-                <p className={cn(
-                  'text-3xl font-display font-black relative z-10',
-                  level === 'excellent' && 'text-green-400',
-                  level === 'good' && 'text-emerald-400',
-                  level === 'moderate' && 'text-yellow-400',
-                  level === 'poor' && 'text-white/60'
-                )}>
-                  {forecast.probability}%
-                </p>
-                <p className="text-sm mt-1">
-                  {AURORA_EMOJI_MAP[level]}
-                </p>
-              </div>
-
-              {/* Cloud Coverage */}
-              <div className="flex items-center justify-center gap-1 text-xs text-white/60 relative z-10 mb-1">
-                <Cloud className="w-3.5 h-3.5" />
-                <span>{Math.round(forecast.cloudCoverage)}%</span>
-              </div>
-
-              {/* Fog Coverage - show if > 50% */}
-              {forecast.fogCoverage !== undefined && forecast.fogCoverage > 50 && (
-                <div className="flex items-center justify-center gap-1 text-xs text-amber-400/80 relative z-10 mb-1">
-                  <CloudFog className="w-3.5 h-3.5" />
-                  <span>{Math.round(forecast.fogCoverage)}%</span>
-                </div>
-              )}
-
-              {/* Temperature */}
-              <div className="flex items-center justify-center gap-1 text-xs text-white/60 relative z-10">
-                <Thermometer className="w-3.5 h-3.5" />
-                <span>{Math.round(forecast.temperature)}°</span>
+              <div className="flex items-center gap-1.5 min-w-[70px]">
+                <Thermometer className="w-4 h-4 text-white/60 flex-shrink-0" />
+                <span className="text-sm text-white/70">{Math.round(forecast.temperature)}°</span>
               </div>
             </div>
           );
