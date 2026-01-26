@@ -53,11 +53,12 @@ export default function ForecastPage() {
   // Get forecast for selected spot
   const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
 
-  // Fetch Site-AI decision for the current forecast
+  // Fetch Site-AI decision for the current forecast (with travel time context)
   const { decision: siteAIDecision, isLoading: siteAILoading } = useSiteAIDecision(
     currentForecast?.hourlyForecast,
     Math.round(currentKp),
-    'stable'
+    'stable',
+    currentForecast?.spot.travelTimeMinutes
   );
 
   // Validate forecast data consistency
@@ -150,6 +151,21 @@ export default function ForecastPage() {
                 selectedSpot={currentForecast.spot}
                 onSelectSpot={selectSpot}
               />
+
+              {/* Location Info - Travel Time */}
+              {currentForecast.spot.travelTimeMinutes !== undefined && (
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <p className="text-xs text-white/60">
+                    📍 {currentForecast.spot.name} • {
+                      currentForecast.spot.travelTimeMinutes === 0
+                        ? 'Home'
+                        : currentForecast.spot.travelTimeMinutes < 60
+                        ? `${currentForecast.spot.travelTimeMinutes} min away`
+                        : `${Math.floor(currentForecast.spot.travelTimeMinutes / 60)}h ${currentForecast.spot.travelTimeMinutes % 60}m away`
+                    } from Tromsø
+                  </p>
+                </div>
+              )}
 
               {/* Weather Data Row - Under Spot Selector */}
               {currentForecast.hourlyForecast && currentForecast.hourlyForecast.length > 0 && (

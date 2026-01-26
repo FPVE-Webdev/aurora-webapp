@@ -7,6 +7,8 @@ export interface ObservationSpot {
   longitude: number;
   region: 'troms' | 'finnmark' | 'nordland' | 'nordic' | 'custom';
   tier: SpotTier; // Required tier to access this spot
+  travelTimeMinutes?: number; // Travel time from Tromsø in minutes
+  travelDistanceKm?: string; // Travel distance from Tromsø
 }
 
 export interface AuroraData {
