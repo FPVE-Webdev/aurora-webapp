@@ -32,7 +32,7 @@ export default function ForecastPage() {
     error
   } = useAuroraData();
 
-  const [viewMode, setViewMode] = useState<ViewMode>('regional');
+  const [viewMode, setViewMode] = useState<ViewMode>('spots');
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
