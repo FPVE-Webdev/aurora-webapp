@@ -285,6 +285,34 @@ export function AuroraLiveMap() {
     return `+${hours}t`;
   };
 
+  // Get weather data for current animation hour
+  const getWeatherForHour = (hourProgress: number) => {
+    if (!selectedForecast?.hourlyForecast || selectedForecast.hourlyForecast.length === 0) {
+      return selectedForecast?.weather || { cloudCoverage: 50, temperature: 0, windSpeed: 0, symbolCode: 'cloudy' };
+    }
+
+    const hourIndex = Math.floor(hourProgress);
+    const hourData = selectedForecast.hourlyForecast[hourIndex];
+
+    if (!hourData) {
+      return selectedForecast.weather;
+    }
+
+    // Extract weather from hourly data, handling nested structure
+    const hd: any = hourData;
+    return {
+      cloudCoverage: hd.cloudCoverage ?? hd.weather?.cloudCoverage ?? selectedForecast.weather.cloudCoverage ?? 50,
+      temperature: hd.temperature ?? hd.weather?.temperature ?? selectedForecast.weather.temperature ?? 0,
+      windSpeed: hd.windSpeed ?? hd.weather?.windSpeed ?? selectedForecast.weather.windSpeed ?? 0,
+      symbolCode: hd.symbolCode ?? hd.weather?.symbolCode ?? selectedForecast.weather.symbolCode ?? 'cloudy',
+    };
+  };
+
+  const animationWeather = useMemo(
+    () => getWeatherForHour(animationProgress),
+    [animationProgress, selectedForecast]
+  );
+
   const showLoadingOverlay = (isLoading && forecasts.length === 0) || !cloudOverlayReady;
 
   return (
@@ -375,19 +403,19 @@ export function AuroraLiveMap() {
               {/* Divider */}
               <div className="w-px h-5 bg-white/15" />
 
-              {/* Weather stats */}
+              {/* Weather stats - dynamically update based on animation progress */}
               <div className="flex items-center gap-2.5 text-[13px] text-white/70">
                 <span className="flex items-center gap-1">
                   <Cloud className="w-3.5 h-3.5" />
-                  <span className="font-medium text-[15px]">{Math.round(selectedForecast.weather.cloudCoverage)}%</span>
+                  <span className="font-medium text-[15px]">{Math.round(animationWeather.cloudCoverage)}%</span>
                 </span>
                 <span className="flex items-center gap-1">
                   <Thermometer className="w-3.5 h-3.5" />
-                  <span className="font-medium text-[15px]">{Math.round(selectedForecast.weather.temperature)}°C</span>
+                  <span className="font-medium text-[15px]">{Math.round(animationWeather.temperature)}°C</span>
                 </span>
                 <span className="flex items-center gap-1">
                   <Wind className="w-3.5 h-3.5" />
-                  <span className="font-medium text-[15px]">{Math.round(selectedForecast.weather.windSpeed)}</span>
+                  <span className="font-medium text-[15px]">{Math.round(animationWeather.windSpeed)}</span>
                 </span>
               </div>
 

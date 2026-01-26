@@ -747,28 +747,30 @@ export default function AuroraMapFullscreen({
           {!canUseWeatherLayers && <LockedBadge />}
         </button>
 
-        <div className="flex gap-2 pointer-events-none">
-          <button
-            onClick={() => {
-              if (!canUseWeatherLayers) {
-                trackLockedFeatureClick(subscriptionTier, 'overlay_toggle', 'toolbar');
-                return;
-              }
-              setShowOverlay(!showOverlay);
-            }}
-            disabled={!canUseWeatherLayers}
-            className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
-              !canUseWeatherLayers
-                ? 'bg-black/50 text-white/40 cursor-not-allowed'
-                : showOverlay
-                ? 'bg-gradient-to-br from-green-400 to-green-600 text-white'
-                : 'bg-black/50 text-white/70 hover:bg-black/70'
-            }`}
-          >
-            {showOverlay ? '🌌 Nordlysbelte på' : '🌌 Nordlysbelte av'}
-            {!canUseWeatherLayers && <LockedBadge />}
-          </button>
-        </div>
+        {subscriptionTier === 'enterprise' && (
+          <div className="flex gap-2 pointer-events-none">
+            <button
+              onClick={() => {
+                if (!canUseWeatherLayers) {
+                  trackLockedFeatureClick(subscriptionTier, 'overlay_toggle', 'toolbar');
+                  return;
+                }
+                setShowOverlay(!showOverlay);
+              }}
+              disabled={!canUseWeatherLayers}
+              className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
+                !canUseWeatherLayers
+                  ? 'bg-black/50 text-white/40 cursor-not-allowed'
+                  : showOverlay
+                  ? 'bg-gradient-to-br from-green-400 to-green-600 text-white'
+                  : 'bg-black/50 text-white/70 hover:bg-black/70'
+              }`}
+            >
+              {showOverlay ? '🌌 Nordlysbelte på' : '🌌 Nordlysbelte av'}
+              {!canUseWeatherLayers && <LockedBadge />}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Map info badge */}
