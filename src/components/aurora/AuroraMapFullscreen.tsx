@@ -726,29 +726,9 @@ export default function AuroraMapFullscreen({
 
       {/* Overlay + animation + weather toggles under top info bar */}
       <div className="absolute top-16 left-0 right-0 z-[1000] px-4 flex items-center justify-between pointer-events-none">
-        <button
-          onClick={() => {
-            if (!canUseWeatherLayers) {
-              trackLockedFeatureClick(subscriptionTier, 'animation_toggle', 'toolbar');
-              return;
-            }
-            setShowAnimation(!showAnimation);
-          }}
-          disabled={!canUseWeatherLayers}
-          className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
-            !canUseWeatherLayers
-              ? 'bg-black/50 text-white/40 cursor-not-allowed'
-              : showAnimation
-              ? 'bg-gradient-to-br from-emerald-400 to-cyan-600 text-white'
-              : 'bg-black/50 text-white/70 hover:bg-black/70'
-          }`}
-        >
-          {showAnimation ? '✨ Nordlys på' : '✨ Nordlys av'}
-          {!canUseWeatherLayers && <LockedBadge />}
-        </button>
-
-        {subscriptionTier === 'enterprise' && (
-          <div className="flex gap-2 pointer-events-none">
+        {/* Right side toggles */}
+        <div className="flex gap-2 pointer-events-none ml-auto">
+          {subscriptionTier === 'enterprise' && (
             <button
               onClick={() => {
                 if (!canUseWeatherLayers) {
@@ -769,8 +749,29 @@ export default function AuroraMapFullscreen({
               {showOverlay ? '🌌 Nordlysbelte på' : '🌌 Nordlysbelte av'}
               {!canUseWeatherLayers && <LockedBadge />}
             </button>
-          </div>
-        )}
+          )}
+
+          <button
+            onClick={() => {
+              if (!canUseWeatherLayers) {
+                trackLockedFeatureClick(subscriptionTier, 'animation_toggle', 'toolbar');
+                return;
+              }
+              setShowAnimation(!showAnimation);
+            }}
+            disabled={!canUseWeatherLayers}
+            className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all pointer-events-auto ${
+              !canUseWeatherLayers
+                ? 'bg-black/50 text-white/40 cursor-not-allowed'
+                : showAnimation
+                ? 'bg-gradient-to-br from-emerald-400 to-cyan-600 text-white'
+                : 'bg-black/50 text-white/70 hover:bg-black/70'
+            }`}
+          >
+            {showAnimation ? '✨ Nordlys på' : '✨ Nordlys av'}
+            {!canUseWeatherLayers && <LockedBadge />}
+          </button>
+        </div>
       </div>
 
       {/* Map info badge */}
