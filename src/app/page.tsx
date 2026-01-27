@@ -63,10 +63,10 @@ export default function HomePage() {
 
   // Fetch Site-AI decision for hourly forecast context
   // This is used for displaying consistent aurora confidence across all pages
+  // KP trend is auto-detected from hourly forecast data
   const { decision: siteAIDecision } = useSiteAIDecision(
     currentForecast?.hourlyForecast || null,
-    currentKp,
-    'stable'
+    currentKp
   );
 
   // For /home page: use Site-AI decision confidence (24-hour best window)

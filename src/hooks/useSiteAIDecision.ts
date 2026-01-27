@@ -7,9 +7,10 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { SiteAIDecision, SiteAIInput } from '@/types/siteAI';
 import { HourlyForecast, TwilightPhase } from '@/types/aurora';
+import { detectKpTrend } from '@/lib/kpTrendDetector';
 
 /**
  * Estimate solar elevation from twilight phase.
@@ -44,14 +45,14 @@ interface UseSiteAIDecisionState {
  *
  * @param hourlyForecasts - Array of hourly forecasts
  * @param globalKp - Current KP index (0-9)
- * @param kpTrend - KP trend direction
+ * @param kpTrend - KP trend direction (optional; auto-detected if not provided)
  * @param travelTimeMinutes - Travel time from Tromsø in minutes (optional)
  * @returns Site-AI decision, loading state, and error
  */
 export function useSiteAIDecision(
   hourlyForecasts: HourlyForecast[] | null | undefined,
   globalKp: number,
-  kpTrend: 'increasing' | 'stable' | 'decreasing' = 'stable',
+  kpTrend?: 'increasing' | 'stable' | 'decreasing',
   travelTimeMinutes?: number
 ): UseSiteAIDecisionState {
   const [state, setState] = useState<UseSiteAIDecisionState>({
@@ -70,6 +71,9 @@ export function useSiteAIDecision(
     setState({ decision: null, isLoading: true, error: null });
 
     try {
+      // Auto-detect KP trend if not explicitly provided
+      const detectedTrend = kpTrend || detectKpTrend(hourlyForecasts);
+
       // Convert HourlyForecast to SiteAIInput format
       const input: SiteAIInput = {
         hourlyForecasts: hourlyForecasts.map((forecast) => ({
@@ -83,7 +87,7 @@ export function useSiteAIDecision(
           kpIndex: forecast.kpIndex,
         })),
         globalKp,
-        kpTrend,
+        kpTrend: detectedTrend,
         travelTimeMinutes,
       };
 

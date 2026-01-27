@@ -56,10 +56,10 @@ export function AuroraLiveMap() {
 
   // Fetch Site-AI decision for /live guidance
   // All decision logic flows from here (no independent thresholds in this component)
+  // KP trend is auto-detected from hourly forecast data
   const { decision: siteAIDecision, isLoading: isSiteAILoading } = useSiteAIDecision(
     hourlyForecasts,
-    currentKp,
-    'stable' // Default trend; could be enhanced with actual trend tracking
+    currentKp
   );
   const liveAdapterOutput = siteAIDecision ? interpretSiteAIForLive(siteAIDecision) : null;
   const [animationProgress, setAnimationProgress] = useState(0);

@@ -55,10 +55,10 @@ export default function ForecastPage() {
   const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
 
   // Fetch Site-AI decision for the current forecast (identical to /live calculation)
+  // KP trend is auto-detected from hourly forecast data
   const { decision: siteAIDecision, isLoading: siteAILoading } = useSiteAIDecision(
     currentForecast?.hourlyForecast,
-    Math.round(currentKp),
-    'stable'
+    Math.round(currentKp)
   );
 
   // Validate forecast data consistency
