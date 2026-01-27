@@ -156,8 +156,8 @@ export function calculateMasterStatus(input: MasterStatusInput): MasterStatusRes
   // DEFAULT: NO - Low probability overall
   return {
     status: 'NO',
-    message: 'Unlikely now',
-    subtext: 'Low solar activity right now. Relax and try again later.',
+    message: 'Unlikely in Tromsø',
+    subtext: 'Aurora unlikely to be visible in Tromsø tonight. Relax and try again later.',
     confidence: Math.max(10, 100 - probability),
     factors,
   };

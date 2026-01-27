@@ -89,7 +89,7 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
           <p className="text-white/90 text-sm mb-3">
             {result.status === 'GO' && t('perfectNow')}
             {result.status === 'WAIT' && t('stayUpdated')}
-            {result.status === 'NO' && t('tooCloudyOrLowActivity')}
+            {result.status === 'NO' && 'Aurora unlikely to be visible in Tromsø tonight'}
           </p>
         ) : (
           <p className="text-white/90 text-sm mb-3">

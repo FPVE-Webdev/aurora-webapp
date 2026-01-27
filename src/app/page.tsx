@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuroraData } from '@/hooks/useAuroraData';
+import { useSiteAIDecision } from '@/hooks/useSiteAIDecision';
 import { clamp01 } from '@/lib/utils/mathUtils';
 import { AuroraStatusCard } from '@/components/aurora/AuroraStatusCard';
 import { useWelcome } from '@/contexts/WelcomeContext';
@@ -50,10 +51,10 @@ export default function HomePage() {
     }
   }, [hasSeenWelcome, router]);
 
-  // Enforce Lite Mode: Lock to Tromsø
+  // Enforce: /home always locked to Tromsø (regardless of premium status)
   useEffect(() => {
-    if (!isPremium && selectedSpot.id !== 'tromso') {
-      // Free users should only see Tromsø
+    if (selectedSpot.id !== 'tromso') {
+      // /home page always shows Tromsø only
       selectSpot({
            id: 'tromso',
            name: 'Tromsø',
@@ -63,13 +64,20 @@ export default function HomePage() {
            tier: 'free' as const,
       });
     }
-  }, [isPremium, selectedSpot, selectSpot]);
+  }, [selectedSpot, selectSpot]);
   const { settings } = useAppSettings();
   const [showIntro, setShowIntro] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
   // Get current spot forecast - moved before useMemo
   const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
+
+  // Fetch Site-AI decision for hourly forecast context
+  const { decision: siteAIDecision } = useSiteAIDecision(
+    currentForecast?.hourlyForecast || null,
+    currentKp,
+    'stable'
+  );
 
   const intensity01 = useMemo(() => {
     const kpPart = (currentKp || 3) / 9;
@@ -224,6 +232,7 @@ export default function HomePage() {
               <HourlyForecast
                 forecasts={isPremium ? currentForecast.hourlyForecast : currentForecast.hourlyForecast.slice(0, 4)}
                 locationName={currentForecast.spot.name}
+                siteAIDecision={siteAIDecision}
               />
             )}
           </div>

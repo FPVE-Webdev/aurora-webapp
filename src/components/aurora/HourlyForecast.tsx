@@ -11,9 +11,10 @@
 import { memo, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { HourlyForecast as HourlyForecastType } from '@/types/aurora';
+import { SiteAIDecision } from '@/types/siteAI';
 import { getProbabilityLevel, AURORA_EMOJI_MAP } from '@/lib/constants/auroraStatus';
 import { cn } from '@/lib/utils';
-import { Cloud, Thermometer, CloudFog, Eye, EyeOff } from 'lucide-react';
+import { Cloud, Thermometer, CloudFog, Eye, EyeOff, Zap } from 'lucide-react';
 import type { SubscriptionTier } from '@/contexts/PremiumContext';
 import { getTierConfig } from '@/lib/features/liveTierConfig';
 import { getHourLabelWithDay } from '@/lib/utils/timeLabels';
@@ -23,9 +24,10 @@ interface HourlyForecastProps {
   locationName?: string;
   subscriptionTier?: SubscriptionTier;
   maxHours?: number; // Optional override for max hours
+  siteAIDecision?: SiteAIDecision | null; // Site-AI forecast decision for context
 }
 
-function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = 'free', maxHours: customMaxHours }: HourlyForecastProps) {
+function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = 'free', maxHours: customMaxHours, siteAIDecision }: HourlyForecastProps) {
   const { t } = useLanguage();
   const [showAllHours, setShowAllHours] = useState(false);
 
@@ -75,6 +77,25 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
 
   return (
     <div className="card-aurora relative overflow-hidden bg-arctic-800/50 rounded-lg border border-white/5 p-4 sm:p-6 space-y-4">
+      {/* Site-AI Context Banner */}
+      {siteAIDecision?.bestWindow && (
+        <div className="bg-primary/10 border-l-4 border-primary rounded p-3 space-y-1">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-primary flex-shrink-0" />
+            <p className="text-xs font-semibold text-primary">
+              Best Viewing Window
+            </p>
+          </div>
+          <p className="text-xs text-white/80">
+            {new Date(siteAIDecision.bestWindow.start).toLocaleTimeString('no', { hour: '2-digit', minute: '2-digit' })}
+            {' '}–{' '}
+            {new Date(siteAIDecision.bestWindow.end).toLocaleTimeString('no', { hour: '2-digit', minute: '2-digit' })}
+            {' • Confidence: '}
+            <span className="font-semibold">{siteAIDecision.bestWindow.ads}/100</span>
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h3 className="text-base font-semibold text-white">
@@ -198,6 +219,7 @@ export const HourlyForecast = memo(HourlyForecastComponent, (prev, next) => {
   // Only re-render if forecasts content or location actually changed
   if (prev.locationName !== next.locationName) return false;
   if (prev.forecasts.length !== next.forecasts.length) return false;
+  if (prev.siteAIDecision?.bestWindow?.ads !== next.siteAIDecision?.bestWindow?.ads) return false;
 
   // Deep compare forecast data
   return prev.forecasts.every((forecast, idx) => {

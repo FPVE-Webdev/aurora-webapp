@@ -241,7 +241,7 @@ const translations: Record<Language, Record<string, string>> = {
     clearButLowActivity: 'Klart, men lav aktivitet',
     clearButLowActivityDesc: 'Klar himmel. Venter på at aktiviteten tar seg opp.',
     unlikelyNow: 'Lite sannsynlig',
-    unlikelyNowDesc: 'Lav solaktivitet akkurat nå. Slapp av og prøv igjen senere.',
+    unlikelyNowDesc: 'Nordlys lite sannsynlig i Tromsø i kveld. Slapp av og prøv igjen senere.',
 
     // PremiumLock
     preciseDrivingInstructions: 'Presise kjøreinstruksjoner',
@@ -525,7 +525,7 @@ const translations: Record<Language, Record<string, string>> = {
     clearButLowActivity: 'Clear, but low activity',
     clearButLowActivityDesc: 'Clear skies. Waiting for activity to pick up.',
     unlikelyNow: 'Unlikely now',
-    unlikelyNowDesc: 'Low solar activity right now. Relax and try again later.',
+    unlikelyNowDesc: 'Aurora unlikely to be visible in Tromsø tonight. Relax and try again later.',
 
     // PremiumLock
     preciseDrivingInstructions: 'Precise driving instructions',
