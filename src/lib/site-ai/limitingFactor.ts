@@ -25,32 +25,32 @@ interface LimitingFactorInput {
  * Determine the primary limiting factor for a forecast window.
  *
  * Decision hierarchy (first match wins):
- * 1. If cloudCover > 60% → cloud_cover (clouds are the main problem)
- * 2. Else if KP < 3 → low_kp (geomagnetic activity too weak)
- * 3. Else if darkness < 50 → too_bright (not dark enough)
+ * 1. If NOT dark enough (solarElevation > -6°) → too_bright (physically impossible to see aurora)
+ * 2. Else if cloudCover > 60% → cloud_cover (clouds block the view)
+ * 3. Else if KP < 3 → low_kp (geomagnetic activity too weak)
  * 4. Else → mixed_conditions (no single dominant factor)
  *
- * This hierarchy prioritizes cloud cover as the most easily perceived limiting factor,
- * then KP (cosmic trigger), then darkness (temporal), and finally mixed conditions.
+ * Note: Darkness is checked first because aurora is physically invisible when too bright,
+ * making all other factors irrelevant.
  *
  * @param input - Forecast window parameters
  * @returns The primary limiting factor preventing better viewing
  */
 export function detectLimitingFactor(input: LimitingFactorInput): LimitingFactor {
-  // Rule 1: Excessive cloud cover (> 60%) is always the primary limiting factor
+  // Rule 1: Insufficient darkness - highest priority (aurora is PHYSICALLY invisible)
+  // If solar elevation is above -6° (civil twilight), it's too bright
+  if (input.solarElevation > -6) {
+    return 'too_bright';
+  }
+
+  // Rule 2: Excessive cloud cover (> 60%)
   if (input.cloudCover > 60) {
     return 'cloud_cover';
   }
 
-  // Rule 2: Weak geomagnetic activity (KP < 3)
+  // Rule 3: Weak geomagnetic activity (KP < 3)
   if (input.kpIndex < 3) {
     return 'low_kp';
-  }
-
-  // Rule 3: Insufficient darkness (darkness factor < 50)
-  const darkness = solarElevationToDarkness(input.solarElevation);
-  if (darkness < 50) {
-    return 'too_bright';
   }
 
   // Rule 4: No single dominant factor

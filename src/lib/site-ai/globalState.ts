@@ -43,17 +43,20 @@ export function computeGlobalState(
     throw new Error('Cannot compute global state with no forecast windows');
   }
 
-  // Find the best (maximum ADS) window
-  let bestWindow = windows[0];
-  for (const window of windows) {
-    if (window.ads > bestWindow.ads) {
-      bestWindow = window;
-    }
-  }
+  // Find the best (maximum ADS) window, considering only windows dark enough for aurora
+  // If no windows are dark enough, use the best overall window but mark as unlikely
+  const darkWindows = windows.filter(w => w.isDarkEnough);
+  let bestWindow = darkWindows.length > 0
+    ? darkWindows.reduce((max, current) => current.ads > max.ads ? current : max)
+    : windows.reduce((max, current) => current.ads > max.ads ? current : max);
 
-  // Determine global state based on best window's ADS
+  // Determine global state based on best window's ADS and darkness
   let state: GlobalForecastState;
-  if (bestWindow.ads >= 70) {
+
+  // If the best window isn't dark enough, state is always 'unlikely' regardless of ADS
+  if (!bestWindow.isDarkEnough) {
+    state = 'unlikely';
+  } else if (bestWindow.ads >= 70) {
     state = 'excellent';
   } else if (bestWindow.ads >= 30) {
     state = 'possible';

@@ -15,6 +15,8 @@ export interface SiteAIWindow {
   ads: number;
   /** Classification based on ADS value */
   classification: 'excellent' | 'good' | 'moderate' | 'poor';
+  /** Whether it's dark enough to observe aurora (solarElevation ≤ -6°) */
+  isDarkEnough: boolean;
 }
 
 /**

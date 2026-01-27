@@ -14,6 +14,7 @@ import { computeGlobalState } from './globalState';
 import { detectLimitingFactor } from './limitingFactor';
 import { generateUIDirectives } from './uiDirectives';
 import { generateExplanation } from './deterministicCopy';
+import { isDarkEnoughForAurora } from './darknessGate';
 
 /**
  * Compute the complete Site-AI decision for a forecast.
@@ -48,6 +49,7 @@ export function computeSiteAIDecision(input: SiteAIInput): SiteAIDecision {
       time: forecast.time,
       ads: ads.score,
       classification: ads.classification,
+      isDarkEnough: isDarkEnoughForAurora(forecast.solarElevation),
     };
   });
 
