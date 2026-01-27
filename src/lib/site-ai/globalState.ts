@@ -56,12 +56,32 @@ export function computeGlobalState(
   // If the best window isn't dark enough, state is always 'unlikely' regardless of ADS
   if (!bestWindow.isDarkEnough) {
     state = 'unlikely';
-  } else if (bestWindow.ads >= 70) {
-    state = 'excellent';
-  } else if (bestWindow.ads >= 30) {
-    state = 'possible';
   } else {
-    state = 'unlikely';
+    // Best window is dark enough - check if it's in the future
+    const bestWindowTime = new Date(bestWindow.time);
+    const now = new Date();
+    const minutesUntilBestWindow = (bestWindowTime.getTime() - now.getTime()) / (1000 * 60);
+
+    // If best window is more than 30 minutes in the future, cap state at 'possible'
+    // This prevents "GO OUT NOW" when best time isn't until tonight
+    if (minutesUntilBestWindow > 30) {
+      if (bestWindow.ads >= 70) {
+        state = 'possible'; // Excellent conditions but not until later
+      } else if (bestWindow.ads >= 30) {
+        state = 'possible';
+      } else {
+        state = 'unlikely';
+      }
+    } else {
+      // Best window is now (within 30 minutes) - show actual state
+      if (bestWindow.ads >= 70) {
+        state = 'excellent';
+      } else if (bestWindow.ads >= 30) {
+        state = 'possible';
+      } else {
+        state = 'unlikely';
+      }
+    }
   }
 
   // Build the best window output with limiting factor
