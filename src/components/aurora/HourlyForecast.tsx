@@ -29,7 +29,7 @@ interface HourlyForecastProps {
 
 function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = 'free', maxHours: customMaxHours, siteAIDecision }: HourlyForecastProps) {
   const { t } = useLanguage();
-  const [showAllHours, setShowAllHours] = useState(false);
+  const [showViableOnly, setShowViableOnly] = useState(false);
 
   // Get max hours: use custom value if provided, otherwise use tier config
   const tierConfig = getTierConfig(subscriptionTier);
@@ -42,25 +42,19 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
   const viableForecasts = limitedForecasts.filter(f => f.probability >= 30);
 
   // Choose which forecasts to display based on toggle
-  const displayForecasts = showAllHours ? limitedForecasts : viableForecasts;
+  // DEFAULT: Show all hours. TOGGLE: Show only viable hours
+  const displayForecasts = showViableOnly ? viableForecasts : limitedForecasts;
 
   const hours = displayForecasts.length;
   const viableCount = viableForecasts.length;
   const totalCount = limitedForecasts.length;
 
-  const forecastLabel = showAllHours
-    ? t('hourForecast').replace('{hours}', totalCount.toString())
-    : hours <= 6 ? t('sixHourForecast') : t('hourForecast').replace('{hours}', hours.toString());
+  const forecastLabel = showViableOnly
+    ? viableCount <= 6 ? t('sixHourForecast') : t('hourForecast').replace('{hours}', viableCount.toString())
+    : t('hourForecast').replace('{hours}', totalCount.toString());
 
-  // Find the best time (highest probability) within display forecasts
-  const bestTimeIndex = displayForecasts.reduce((bestIdx, forecast, idx, arr) =>
-    forecast.probability > arr[bestIdx].probability ? idx : bestIdx
-  , 0);
-
-  const bestForecast = displayForecasts[bestTimeIndex];
-
-  // Handle empty state when no viable hours
-  if (viableForecasts.length === 0) {
+  // Handle empty state when no forecasts at all
+  if (limitedForecasts.length === 0) {
     return (
       <div className="card-aurora relative overflow-hidden bg-arctic-800/50 rounded-lg border border-white/5 p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between">
@@ -69,11 +63,16 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
           </h3>
         </div>
         <div className="text-center text-white/60 py-8">
-          <p>{t('noHourlyForecast') || 'No viable viewing times forecast'}</p>
+          <p>{t('noHourlyForecast') || 'No hourly forecast data available'}</p>
         </div>
       </div>
     );
   }
+
+  // Find the best time (highest probability) within display forecasts
+  const bestTimeIndex = displayForecasts.reduce((bestIdx, forecast, idx, arr) =>
+    forecast.probability > arr[bestIdx].probability ? idx : bestIdx
+  , 0);
 
   return (
     <div className="card-aurora relative overflow-hidden bg-arctic-800/50 rounded-lg border border-white/5 p-4 sm:p-6 space-y-4">
@@ -101,7 +100,7 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
           <h3 className="text-base font-semibold text-white">
             {forecastLabel}
           </h3>
-          {!showAllHours && (
+          {showViableOnly && viableCount < totalCount && (
             <p className="text-xs text-white/50">
               {viableCount} viable of {totalCount} hours
             </p>
@@ -109,18 +108,18 @@ function HourlyForecastComponent({ forecasts, locationName, subscriptionTier = '
         </div>
         {viableCount > 0 && viableCount < totalCount && (
           <button
-            onClick={() => setShowAllHours(!showAllHours)}
+            onClick={() => setShowViableOnly(!showViableOnly)}
             className="flex items-center gap-1.5 px-3 py-2 text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
           >
-            {showAllHours ? (
-              <>
-                <EyeOff className="w-4 h-4" />
-                Hide poor
-              </>
-            ) : (
+            {showViableOnly ? (
               <>
                 <Eye className="w-4 h-4" />
                 Show all
+              </>
+            ) : (
+              <>
+                <EyeOff className="w-4 h-4" />
+                Hide poor
               </>
             )}
           </button>
