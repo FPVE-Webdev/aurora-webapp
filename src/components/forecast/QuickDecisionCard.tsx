@@ -133,7 +133,7 @@ export function QuickDecisionCard({
             <div>
               <p className="text-xs text-white/50">Confidence (ADS)</p>
               <p className={`text-2xl font-bold ${info.accentColor}`}>
-                {Math.round(bestWindow.ads)}%
+                {Math.round(bestWindow.probabilityFromForecast ?? bestWindow.ads)}%
               </p>
             </div>
 

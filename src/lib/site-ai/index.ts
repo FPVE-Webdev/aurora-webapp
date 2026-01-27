@@ -68,8 +68,8 @@ export function computeSiteAIDecision(input: SiteAIInput): SiteAIDecision {
     solarElevation: bestForecast.solarElevation,
   });
 
-  // Step 4: Compute global state
-  const globalState = computeGlobalState(windows, limitingFactor);
+  // Step 4: Compute global state (pass hourly forecasts for probability data)
+  const globalState = computeGlobalState(windows, limitingFactor, input.hourlyForecasts);
 
   // Step 5: Generate UI directives
   const uiDirectives = generateUIDirectives(windows);

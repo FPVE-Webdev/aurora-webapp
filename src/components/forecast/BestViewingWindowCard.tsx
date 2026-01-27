@@ -102,7 +102,7 @@ export function BestViewingWindowCard({
               {t('bestViewingTime')}
             </h3>
             <p className={cn('text-xs', config.color)}>
-              {config.label} • {bestWindow.ads}% ADS
+              {config.label} • {Math.round(bestWindow.probabilityFromForecast ?? bestWindow.ads)}% ADS
             </p>
           </div>
           {isUpcoming && (
@@ -127,7 +127,7 @@ export function BestViewingWindowCard({
           <div className="flex items-center justify-between text-xs">
             <span className="text-white/60">Quality</span>
             <span className={cn('font-semibold', config.color)}>
-              {bestWindow.ads}%
+              {Math.round(bestWindow.probabilityFromForecast ?? bestWindow.ads)}%
             </span>
           </div>
           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -136,7 +136,7 @@ export function BestViewingWindowCard({
                 'h-full transition-all duration-500',
                 config.color.replace('text-', 'bg-')
               )}
-              style={{ width: `${bestWindow.ads}%` }}
+              style={{ width: `${Math.round(bestWindow.probabilityFromForecast ?? bestWindow.ads)}%` }}
             />
           </div>
         </div>

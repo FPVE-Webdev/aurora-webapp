@@ -7,7 +7,7 @@
  * This drives the highest-level UI decision about whether it's worth going out.
  */
 
-import { SiteAIWindow, SiteAIBestWindow, SiteAINextWindow } from '@/types/siteAI';
+import { SiteAIWindow, SiteAIBestWindow, SiteAINextWindow, SiteAIForecastWindow } from '@/types/siteAI';
 import { classifyADS } from './auroraDecisionScore';
 
 export type GlobalForecastState = 'excellent' | 'possible' | 'unlikely';
@@ -31,11 +31,13 @@ interface GlobalStateOutput {
  *
  * @param windows - Array of forecast windows with ADS scores
  * @param limitingFactorForBest - The limiting factor for the best window
+ * @param hourlyForecasts - Optional hourly forecasts with probability data
  * @returns Global state, best window, and optionally next window
  */
 export function computeGlobalState(
   windows: SiteAIWindow[],
-  limitingFactorForBest: 'cloud_cover' | 'low_kp' | 'too_bright' | 'mixed_conditions'
+  limitingFactorForBest: 'cloud_cover' | 'low_kp' | 'too_bright' | 'mixed_conditions',
+  hourlyForecasts?: SiteAIForecastWindow[]
 ): GlobalStateOutput {
   if (windows.length === 0) {
     throw new Error('Cannot compute global state with no forecast windows');
@@ -60,11 +62,14 @@ export function computeGlobalState(
   }
 
   // Build the best window output with limiting factor
+  // Include probability from forecast if available
+  const bestForecastForWindow = hourlyForecasts?.find(f => f.time === bestWindow.time);
   const bestWindowOutput: SiteAIBestWindow = {
     start: bestWindow.time,
     // End time is 1 hour after start (standard forecast window duration)
     end: new Date(new Date(bestWindow.time).getTime() + 60 * 60 * 1000).toISOString(),
     ads: bestWindow.ads,
+    probabilityFromForecast: bestForecastForWindow?.probability,
     classification: bestWindow.classification,
     limitingFactor: limitingFactorForBest,
   };

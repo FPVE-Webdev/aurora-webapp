@@ -27,6 +27,8 @@ export interface SiteAIBestWindow {
   end: string;
   /** Aurora Decision Score (0-100) */
   ads: number;
+  /** Aurora viewing probability from hourly forecast data (0-100) */
+  probabilityFromForecast?: number;
   /** Classification of this window */
   classification: 'excellent' | 'good' | 'moderate' | 'poor';
   /** Primary limiting factor preventing better viewing conditions */
@@ -112,4 +114,6 @@ export interface SiteAIForecastWindow {
   solarElevation: number;
   /** KP index for this specific window (0-9) */
   kpIndex: number;
+  /** Aurora viewing probability from hourly forecast (0-100) */
+  probability?: number;
 }

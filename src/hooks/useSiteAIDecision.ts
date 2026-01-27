@@ -85,6 +85,8 @@ export function useSiteAIDecision(
               ? forecast.solarElevation
               : estimateSolarElevationFromTwilightPhase(forecast.twilightPhase),
           kpIndex: forecast.kpIndex,
+          // Include probability from hourly forecast for UI display
+          probability: forecast.probability,
         })),
         globalKp,
         kpTrend: detectedTrend,
