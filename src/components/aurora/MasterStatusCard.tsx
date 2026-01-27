@@ -35,7 +35,7 @@ export function MasterStatusCard({
     return 'NO';
   };
 
-  const displayResult = overrideState && overrideConfidence !== undefined
+  const displayResult = overrideState !== undefined && overrideConfidence !== undefined
     ? {
         status: getStatusFromState(overrideState),
         message: overrideState === 'excellent' ? t('goOutAndSee2') : overrideState === 'possible' ? t('waitABit') : t('unlikely'),
