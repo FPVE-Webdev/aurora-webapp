@@ -67,11 +67,15 @@ export function mapTromsøForecastToSpotForecast(
       const hourDate = new Date(apiHour.time);
       const timeOfDay = hourDate.getHours();
 
+      // Extract weather for THIS hour (not hour 0)
+      // Use this hour's weather object, falling back to per-hour fields in apiHour
+      const hourWeather = apiHour.weather ?? apiHour;
+
       // Calculate probability using System A for consistency across all pages
       const calculatedProb = calculateAuroraProbability({
         kpIndex: kpIndex, // Always use global KP
-        cloudCoverage: apiHour.weather?.cloudCoverage ?? apiHour.cloudCoverage ?? 50,
-        temperature: apiHour.weather?.temperature ?? apiHour.temperature ?? 0,
+        cloudCoverage: hourWeather?.cloudCoverage ?? 50,
+        temperature: hourWeather?.temperature ?? 0,
         latitude: spot.latitude,
         longitude: spot.longitude,
         date: hourDate
@@ -83,11 +87,11 @@ export function mapTromsøForecastToSpotForecast(
           ? `${apiHour.hour.toString().padStart(2, '0')}:00`
           : apiHour.hour,
         probability: calculatedProb.probability, // Use System A calculation
-        cloudCoverage: Math.round(apiHour.weather?.cloudCoverage ?? apiHour.cloudCoverage ?? 50),
-        temperature: Math.round(apiHour.weather?.temperature ?? apiHour.temperature ?? 0),
+        cloudCoverage: Math.round(hourWeather?.cloudCoverage ?? 50),
+        temperature: Math.round(hourWeather?.temperature ?? 0),
         kpIndex: kpIndex, // Always use global KP
-        symbolCode: apiHour.weather?.symbolCode ??
-                   ((apiHour.weather?.cloudCoverage ?? 50) > 50 ? 'cloudy' : 'clearsky_night'),
+        symbolCode: hourWeather?.symbolCode ??
+                   ((hourWeather?.cloudCoverage ?? 50) > 50 ? 'cloudy' : 'clearsky_night'),
         twilightPhase: (timeOfDay >= 21 || timeOfDay <= 6) ? 'night' : 'day',
         canSeeAurora: calculatedProb.canView // Use System A daylight check
       };
