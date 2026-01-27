@@ -54,12 +54,11 @@ export default function ForecastPage() {
   // Get forecast for selected spot
   const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
 
-  // Fetch Site-AI decision for the current forecast (with travel time context)
+  // Fetch Site-AI decision for the current forecast (identical to /live calculation)
   const { decision: siteAIDecision, isLoading: siteAILoading } = useSiteAIDecision(
     currentForecast?.hourlyForecast,
     Math.round(currentKp),
-    'stable',
-    currentForecast?.spot.travelTimeMinutes
+    'stable'
   );
 
   // Validate forecast data consistency
