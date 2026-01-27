@@ -9,7 +9,28 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { SiteAIDecision, SiteAIInput } from '@/types/siteAI';
-import { HourlyForecast } from '@/types/aurora';
+import { HourlyForecast, TwilightPhase } from '@/types/aurora';
+
+/**
+ * Estimate solar elevation from twilight phase.
+ * Used as fallback when solarElevation is not directly available.
+ */
+function estimateSolarElevationFromTwilightPhase(twilightPhase?: TwilightPhase): number {
+  switch (twilightPhase) {
+    case 'day':
+      return 10; // Sun is up and bright
+    case 'civil':
+      return -3; // Civil twilight: sun is -6 to 0 degrees (use midpoint)
+    case 'nautical':
+      return -9; // Nautical twilight: sun is -12 to -6 degrees (use midpoint)
+    case 'astronomical':
+      return -15; // Astronomical twilight: sun is -18 to -12 degrees (use midpoint)
+    case 'night':
+      return -20; // Well below horizon
+    default:
+      return 0; // Unknown/fallback: assume twilight
+  }
+}
 
 interface UseSiteAIDecisionState {
   decision: SiteAIDecision | null;
@@ -54,7 +75,11 @@ export function useSiteAIDecision(
         hourlyForecasts: hourlyForecasts.map((forecast) => ({
           time: forecast.time,
           cloudCover: forecast.cloudCoverage,
-          solarElevation: 0, // TODO: Extract from forecast data if available
+          // Use actual solarElevation if available, otherwise estimate from twilightPhase
+          solarElevation:
+            forecast.solarElevation !== undefined
+              ? forecast.solarElevation
+              : estimateSolarElevationFromTwilightPhase(forecast.twilightPhase),
           kpIndex: forecast.kpIndex,
         })),
         globalKp,

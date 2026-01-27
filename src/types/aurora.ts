@@ -41,6 +41,7 @@ export interface HourlyForecast {
   symbolCode?: string;
   twilightPhase?: TwilightPhase;
   canSeeAurora?: boolean;
+  solarElevation?: number; // Solar elevation angle in degrees (for Site-AI ADS calculation)
 }
 
 export interface SpotForecast {
