@@ -11,16 +11,46 @@ import { ChevronDown, RefreshCw, Info } from 'lucide-react';
 interface MasterStatusCardProps {
   className?: string;
   showDetails?: boolean;
+  // Optional overrides for Site-AI decision values
+  overrideConfidence?: number; // 0-100 confidence percentage
+  overrideState?: 'excellent' | 'possible' | 'unlikely'; // Aurora state
 }
 
-export function MasterStatusCard({ className, showDetails = false }: MasterStatusCardProps) {
+export function MasterStatusCard({
+  className,
+  showDetails = false,
+  overrideConfidence,
+  overrideState
+}: MasterStatusCardProps) {
   const { result, isLoading, refresh, lastUpdated } = useMasterStatus();
   const { userMode } = useRetention();
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(showDetails);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  if (!result) {
+  // Use overrides if provided (for Site-AI decision), otherwise use masterStatus result
+  const getStatusFromState = (state: 'excellent' | 'possible' | 'unlikely'): 'GO' | 'WAIT' | 'NO' => {
+    if (state === 'excellent') return 'GO';
+    if (state === 'possible') return 'WAIT';
+    return 'NO';
+  };
+
+  const displayResult = overrideState && overrideConfidence !== undefined
+    ? {
+        status: getStatusFromState(overrideState),
+        message: overrideState === 'excellent' ? t('goOutAndSee2') : overrideState === 'possible' ? t('waitABit') : t('unlikely'),
+        subtext: `Aurora confidence: ${overrideConfidence}%`,
+        confidence: overrideConfidence,
+        factors: {
+          kpIndex: 0,
+          probability: overrideConfidence,
+          isDark: true,
+          cloudCoverage: 0
+        }
+      }
+    : result;
+
+  if (!displayResult) {
     return (
       <div className={cn("w-full p-6 rounded-2xl bg-slate-800/50 animate-pulse", className)}>
         <div className="h-12 bg-slate-700 rounded-lg w-1/3 mx-auto" />
@@ -28,7 +58,7 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
     );
   }
 
-  const colors = getStatusColor(result.status);
+  const colors = getStatusColor(displayResult.status);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -36,7 +66,7 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  const statusEmoji = result.status === 'GO' ? '🌌' : result.status === 'WAIT' ? '⏳' : '😴';
+  const statusEmoji = displayResult.status === 'GO' ? '🌌' : displayResult.status === 'WAIT' ? '⏳' : '😴';
 
   return (
     <div
@@ -44,7 +74,7 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
         "w-full rounded-2xl overflow-hidden transition-all duration-300",
         `bg-gradient-to-r ${colors.gradient}`,
         "shadow-lg",
-        result.status === 'GO' && "animate-pulse-slow",
+        displayResult.status === 'GO' && "animate-pulse-slow",
         className
       )}
     >
@@ -57,14 +87,14 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
             <div>
               <h2 className={cn(
                 "text-3xl font-bold tracking-tight",
-                result.status === 'GO' && "drop-shadow-lg"
+                displayResult.status === 'GO' && "drop-shadow-lg"
               )}>
-                {result.status === 'GO' ? t('goOutAndSee2') :
-                 result.status === 'WAIT' ? t('waitABit') :
+                {displayResult.status === 'GO' ? t('goOutAndSee2') :
+                 displayResult.status === 'WAIT' ? t('waitABit') :
                  t('unlikely')}
               </h2>
               <p className="text-white/80 text-sm font-medium">
-                {result.message}
+                {displayResult.message}
               </p>
             </div>
           </div>
@@ -87,13 +117,13 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
         {/* Subtext - Tourist vs Geek Mode */}
         {userMode === 'tourist' ? (
           <p className="text-white/90 text-sm mb-3">
-            {result.status === 'GO' && t('perfectNow')}
-            {result.status === 'WAIT' && t('stayUpdated')}
-            {result.status === 'NO' && 'Aurora unlikely to be visible in Tromsø tonight'}
+            {displayResult.status === 'GO' && t('perfectNow')}
+            {displayResult.status === 'WAIT' && t('stayUpdated')}
+            {displayResult.status === 'NO' && 'Aurora unlikely to be visible in Tromsø tonight'}
           </p>
         ) : (
           <p className="text-white/90 text-sm mb-3">
-            {result.subtext}
+            {displayResult.subtext}
           </p>
         )}
 
@@ -123,12 +153,12 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
                 <div className="text-sm text-white/60">Solar Activity</div>
-                <div className="text-2xl font-bold">KP {result.factors.kpIndex.toFixed(1)}</div>
+                <div className="text-2xl font-bold">KP {displayResult.factors.kpIndex.toFixed(1)}</div>
               </div>
 
               <div className="mt-2 sm:mt-0">
                 <div className="text-sm text-white/60">Viewing Chance</div>
-                <div className="text-4xl font-bold">{result.factors.probability}%</div>
+                <div className="text-4xl font-bold">{displayResult.factors.probability}%</div>
               </div>
             </div>
 
@@ -136,13 +166,13 @@ export function MasterStatusCard({ className, showDetails = false }: MasterStatu
               <div>
                 <p className="text-white/50 text-[10px] uppercase tracking-wide">{t('dark')}</p>
                 <p className="text-white font-semibold">
-                  {result.factors.isDark ? '✓' : '✗'}
+                  {displayResult.factors.isDark ? '✓' : '✗'}
                 </p>
               </div>
               <div>
                 <p className="text-white/50 text-[10px] uppercase tracking-wide">{t('clouds')}</p>
                 <p className="text-white font-semibold">
-                  {result.factors.cloudCoverage}%
+                  {displayResult.factors.cloudCoverage}%
                 </p>
               </div>
             </div>

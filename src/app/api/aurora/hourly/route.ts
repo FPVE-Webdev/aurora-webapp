@@ -10,6 +10,7 @@ import { weatherService } from '@/services/weatherService';
 import { OBSERVATION_SPOTS } from '@/lib/constants';
 import { calculateAuroraProbability } from '@/lib/calculations/probabilityCalculator';
 import * as Sentry from '@sentry/nextjs';
+import SunCalc from 'suncalc';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yoooexmshwfpsrhzisgu.supabase.co';
 const SUPABASE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/aurora/hourly`;
@@ -23,6 +24,17 @@ if (!API_KEY) {
 
 // Cache per location - Map with cacheKey as key
 const cacheMap = new Map<string, { data: any; timestamp: number; hours: number }>();
+
+/**
+ * Calculate precise solar elevation (in degrees) for a given date and location
+ */
+function calculateSolarElevation(date: Date, latitude: number, longitude: number): number {
+  const sunPosition = SunCalc.getPosition(date, latitude, longitude);
+  // Convert from radians to degrees
+  const elevationDegrees = (sunPosition.altitude * 180) / Math.PI;
+  // Round to 1 decimal place
+  return Math.round(elevationDegrees * 10) / 10;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -165,6 +177,11 @@ export async function GET(request: Request) {
       console.warn(`⚠️ Using NOAA fallback for ${location} (Supabase unavailable)`);
 
       // Convert to hourly API format
+      // Get Tromsø coordinates for solar elevation
+      const tromsoSpot = OBSERVATION_SPOTS.find(s => s.id === 'tromso');
+      const tromsøLat = tromsoSpot?.latitude || 69.6492;
+      const tromsøLon = tromsoSpot?.longitude || 18.9553;
+
       fallbackData = {
         status: 'success',
         location,
@@ -179,6 +196,7 @@ export async function GET(request: Request) {
             time: forecastDate.toISOString(),
             hour: parseInt(hour),
             probability: f.probability,
+            solarElevation: calculateSolarElevation(forecastDate, tromsøLat, tromsøLon),
             // KP removed - it's a global planetary index, not location-specific
             weather: {
               cloudCoverage: f.cloudCoverage,
@@ -198,6 +216,12 @@ export async function GET(request: Request) {
       // Fallback to simple forecast
       console.warn(`⚠️ Using SIMPLE MOCK fallback for ${location} (NOAA failed)`);
       const simpleForecast = generateSimpleForecast(hours);
+
+      // Get spot coordinates for solar elevation
+      const spot = OBSERVATION_SPOTS.find(s => s.id === location);
+      const lat = spot?.latitude || 69.6492; // Default to Tromsø
+      const lon = spot?.longitude || 18.9553;
+
       fallbackData = {
         status: 'success',
         location,
@@ -212,6 +236,7 @@ export async function GET(request: Request) {
             time: forecastDate.toISOString(),
             hour: parseInt(hour),
             probability: f.probability,
+            solarElevation: calculateSolarElevation(forecastDate, lat, lon),
             // KP removed - it's a global planetary index, not location-specific
             weather: {
               cloudCoverage: f.cloudCoverage,
@@ -266,6 +291,11 @@ function generateMockHourly(hours: number, location: string) {
   const todaySeed = timeSeed(baseDate) + locationSeed;
   const baseKp = 5 + seededRandom(todaySeed) * 2; // Consistent 5-7 for today per location
 
+  // Get spot coordinates for solar elevation calculation
+  const spot = OBSERVATION_SPOTS.find(s => s.id === location);
+  const latitude = spot?.latitude || 69.6492; // Default to Tromsø
+  const longitude = spot?.longitude || 18.9553;
+
   for (let i = 0; i < hours; i++) {
     const date = new Date(baseDate);
     date.setHours(date.getHours() + i);
@@ -286,6 +316,7 @@ function generateMockHourly(hours: number, location: string) {
       time: date.toISOString(),
       hour: date.getHours(),
       probability,
+      solarElevation: calculateSolarElevation(date, latitude, longitude),
       // KP removed - it's a global planetary index, not location-specific
       weather: {
         cloudCoverage: Math.floor(cloudCoverage),
@@ -367,6 +398,7 @@ async function generateRealWeatherHourly(hours: number, location: string, global
         time: metHour.time,
         hour: date.getHours(),
         probability: probResult.probability,
+        solarElevation: calculateSolarElevation(date, spot.latitude, spot.longitude),
         weather: {
           cloudCoverage: Math.round(metHour.cloudCoverage),
           fogCoverage: Math.round(metHour.fogCoverage),

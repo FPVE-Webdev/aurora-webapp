@@ -62,11 +62,20 @@ export default function HomePage() {
   const currentForecast = spotForecasts.find(f => f.spot.id === selectedSpot.id) || spotForecasts[0];
 
   // Fetch Site-AI decision for hourly forecast context
+  // This is used for displaying consistent aurora confidence across all pages
   const { decision: siteAIDecision } = useSiteAIDecision(
     currentForecast?.hourlyForecast || null,
     currentKp,
     'stable'
   );
+
+  // For /home page: use Site-AI decision confidence (24-hour best window)
+  // This ensures /home, /forecast, and /live all show identical values
+  const auroraConfidence = siteAIDecision?.bestWindow?.ads
+    ? Math.round(siteAIDecision.bestWindow.ads)
+    : 0;
+
+  const auroraState = siteAIDecision?.state || 'unlikely';
 
   const intensity01 = useMemo(() => {
     const kpPart = (currentKp || 3) / 9;
@@ -148,8 +157,12 @@ export default function HomePage() {
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Master Status - THE Decision */}
+          {/* Use Site-AI decision for consistent data across all pages */}
           <div className="mb-8">
-            <MasterStatusCard />
+            <MasterStatusCard
+              overrideConfidence={auroraConfidence}
+              overrideState={auroraState}
+            />
           </div>
 
           {/* Header */}
