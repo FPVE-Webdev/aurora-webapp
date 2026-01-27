@@ -292,11 +292,11 @@ export function useAuroraData() {
           currentProbability: Math.round(
             (globalKp / 9) * 100 * (1 - (sf.weather?.cloudCoverage ?? 50) / 150)
           ),
-          // Update hourly forecast KP values
+          // Update hourly forecast KP values (preserve existing if not yet loaded)
           hourlyForecast: sf.hourlyForecast?.map(hf => ({
             ...hf,
             kpIndex: globalKp
-          })) ?? []
+          })) ?? sf.hourlyForecast
         }));
 
         return {
