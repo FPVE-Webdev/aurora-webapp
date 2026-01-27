@@ -14,15 +14,15 @@ export function Navigation() {
   const { userMode, setUserMode } = useRetention();
 
   const navItems = [
-    { href: '/', label: t('home'), icon: Home, guideId: 'nav-home' },
+    { href: '/home', label: t('home'), icon: Home, guideId: 'nav-home' },
     { href: '/live', label: t('liveMap'), icon: MapIcon, guideId: 'nav-live' },
     { href: '/forecast', label: t('forecast'), icon: Calendar, guideId: 'nav-forecast' },
     { href: '/settings', label: t('settings'), icon: Settings, guideId: 'nav-settings' },
   ];
 
   const isActive = (path: string) => {
-    if (path === '/') {
-      return pathname === '/';
+    if (path === '/home') {
+      return pathname === '/home' || pathname === '/';
     }
     return pathname.startsWith(path);
   };
@@ -32,7 +32,7 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo/Brand */}
-          <Link href="/" className="flex items-center gap-2 text-white font-display font-bold text-xl">
+          <Link href="/home" className="flex items-center gap-2 text-white font-display font-bold text-xl">
             <span>{t('nordlysTromso')}</span>
           </Link>
 

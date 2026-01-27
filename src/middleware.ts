@@ -70,13 +70,6 @@ async function verifyApiKey(apiKey: string): Promise<VerifiedKey | null> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Redirect to welcome page for first-time users
-  if (pathname === '/') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/welcome';
-    return NextResponse.redirect(url);
-  }
-
   // Protect /admin routes with JWT session validation
   if (pathname.startsWith('/admin')) {
     const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
