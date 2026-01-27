@@ -234,17 +234,16 @@ FOG VISIBILITY:
 - Fog + clouds: Worst case scenario - explain that BOTH are blocking view
 
 TIME PLANNING:
-- If asked "what time?", refer to the forecast data and find the peak hour
+- If asked "what time?", refer to the forecast data and find the peak hour for TODAY/TONIGHT
 - Example: "The strongest activity is expected between 22:00 and 01:00. Aim for that window."
 
-FUTURE PLANNING (Multi-day):
-- If asked "What about tomorrow/next week/in 3 days?", use the 7-day forecast data provided
-- Explain day quality with simple terms: "Excellent" (70+), "Good" (50-69), "Moderate" (30-49), "Poor" (<30)
-- ALWAYS mention two factors: magnetic activity (KP score) AND cloud conditions
-- Example: "Day 3 looks moderate (score 45) - good magnetic activity but 65% clouds may reduce visibility"
-- If a day is "Excellent" but cloudy, say: "Great activity expected, but weather might interfere"
-- If a day is "Poor" for activity, say: "Magnetic activity low that day, but worth checking back if forecast improves"
-- Never guarantee specific dates - always note: "These forecasts update daily and can change significantly"
+FORECAST CONSTRAINT (24-hour ONLY):
+- ALL recommendations MUST be for the next 24 hours (today/tonight) ONLY
+- If asked "What about tomorrow/next week/in 3 days?", respond ONLY:
+  "Forecasts are most accurate for the next 24 hours. Check back tomorrow for updated predictions as conditions change."
+- Do NOT reference multi-day forecasts
+- Do NOT suggest specific aurora activity beyond today
+- Emphasis: Current forecast is for immediate hours only
 
 LOCATION CONTEXT:
 - You have access to the user's current location preference
@@ -315,12 +314,11 @@ export async function POST(req: Request) {
     // Premium status from client
     const isPremium = body?.isPremium === true;
 
-    const [nowData, weather, bestSpot, forecast, multiDayForecast] = await Promise.all([
+    const [nowData, weather, bestSpot, forecast] = await Promise.all([
       resolveNow(req, lat, lon),
       resolveWeather(req, lat, lon),
       resolveBestSpot(req),
       resolveForecast(req),
-      resolveMultiDayForecast(req, 7),
     ]);
 
     const master = deriveMasterStatus(nowData, weather, lat, lon);
@@ -372,21 +370,8 @@ export async function POST(req: Request) {
           `🔒 UPGRADE to unlock exact GPS coordinates, spot names, and turn-by-turn routing.`,
         ];
 
-    const multiDayBlock = multiDayForecast && multiDayForecast.forecasts.length > 0
-      ? [
-          ``,
-          `=== 7-DAY FORECAST (FUTURE PLANNING) ===`,
-          ...multiDayForecast.forecasts.map((f: any, idx: number) =>
-            `Day ${idx + 1} (${f.date}): Score ${f.score}/100 (${f.level}), KP ${f.kp}, Clouds ${f.weather.cloudCoverage}%, Temp ${f.weather.temperature}°C, Best: ${f.best_viewing_hours?.slice(0, 3)?.join(', ') || 'N/A'}`
-          ),
-          ``,
-          `GUIDANCE FOR FUTURE QUESTIONS:`,
-          `- If asked "What about tomorrow?" or "Next week?", refer to this 7-day forecast`,
-          `- Explain that day quality depends on both KP activity AND cloud coverage`,
-          `- Higher scores (70+) = excellent, 50-69 = good, 30-49 = moderate, <30 = poor`,
-          `- Always mention: "Activity forecast changes daily - check back tomorrow for updates"`,
-        ]
-      : [];
+    // REMOVED: 7-day forecast block - constrained to 24h only
+    const multiDayBlock: string[] = [];
 
     const contextBlock = [
       `=== CURRENT CONDITIONS (${timeString}) ===`,
@@ -455,7 +440,6 @@ export async function POST(req: Request) {
       probability,
       cloudCoverage: cloud,
       spotId,
-      forecastDays: multiDayForecast?.forecasts?.length || 0,
     });
   } catch (error) {
     console.error('[chat/guide] failed', error);
