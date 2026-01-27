@@ -3,6 +3,7 @@
  */
 
 import { canSeeAurora, getNextAuroraTime, getBestAuroraTimeTonight } from './sunCalculations';
+import { solarElevationToDarkness } from '../site-ai/darkness';
 
 export interface AuroraInputs {
   kpIndex: number;           // 0-9 (NOAA KP Index)
@@ -97,13 +98,32 @@ export function calculateAuroraProbability(inputs: AuroraInputs): ProbabilityRes
     ? (1 - Math.abs(inputs.moonPhase - 0.5) * 2) * 100
     : 50;
 
+  // 6. Darkness factor - modulates probability based on solar elevation
+  // Even if dark enough to see aurora, the darker it is, the higher the probability
+  // This makes 21:00 (very dark) show higher probability than 16:00 (just dark enough)
+  let darknessFactor = 1.0; // Default: no modulation
+  if (inputs.date && inputs.latitude !== undefined && inputs.longitude !== undefined) {
+    // Calculate solar elevation for darkness modulation
+    const sunCalc = require('suncalc');
+    const sunPos = sunCalc.getPosition(inputs.date, inputs.latitude, inputs.longitude);
+    const solarElevation = sunPos.altitude * (180 / Math.PI); // Convert to degrees
+
+    // Convert solar elevation to darkness factor (0-100)
+    const darknessFactor100 = solarElevationToDarkness(solarElevation);
+
+    // Convert to 0.3-1.0 range (minimum 30% of base probability even at twilight boundary)
+    // This ensures 16:00 (darkness~12) gets ~0.36x base probability
+    // And 21:00 (darkness~100) gets 1.0x base probability
+    darknessFactor = 0.3 + (darknessFactor100 / 100) * 0.7;
+  }
+
   // Vektet gjennomsnitt (oppdatert: skyer viktigere)
   const weightedScore =
-    (kpScore * 0.40) +
+    ((kpScore * 0.40) +
     (cloudScore * 0.35) +
     (tempScore * 0.10) +
     (latScore * 0.10) +
-    (moonScore * 0.05);
+    (moonScore * 0.05)) * darknessFactor;
 
   // BLOCKING FACTOR: Sky/tåke blokkerer nordlys fullstendig
   // Uavhengig av KP, breddegrad osv - umulig å se nordlys gjennom tette skyer eller tåke
