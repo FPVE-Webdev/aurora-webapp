@@ -181,6 +181,101 @@ export async function GET(request: NextRequest) {
 }
 
 /**
+ * Chat analytics - chatbot usage and popular questions
+ */
+async function getChatAnalytics(supabase: any, start: string, end: string) {
+  try {
+    // Get chat queries for the period
+    const { data: queries, error: queriesError } = await supabase
+      .from('chat_queries')
+      .select('query_text, language, master_status, is_premium, created_at')
+      .gte('created_at', `${start}T00:00:00Z`)
+      .lte('created_at', `${end}T23:59:59Z`)
+      .order('created_at', { ascending: false });
+
+    if (queriesError) {
+      console.error('Chat queries error:', queriesError);
+      return {
+        totalQueries: 0,
+        uniqueQuestions: 0,
+        premiumUsage: 0,
+        languageDistribution: {},
+        statusDistribution: {},
+        topQuestions: [],
+      };
+    }
+
+    const queryList = queries || [];
+    const totalQueries = queryList.length;
+
+    // Count unique questions
+    const uniqueQuestionsSet = new Set(queryList.map((q: any) => q.query_text?.toLowerCase().trim()));
+    const uniqueQuestions = uniqueQuestionsSet.size;
+
+    // Count premium usage
+    const premiumUsage = queryList.filter((q: any) => q.is_premium === true).length;
+
+    // Language distribution
+    const languageMap = new Map<string, number>();
+    queryList.forEach((q: any) => {
+      const lang = q.language || 'unknown';
+      languageMap.set(lang, (languageMap.get(lang) || 0) + 1);
+    });
+
+    const languageDistribution: Record<string, number> = {};
+    languageMap.forEach((count, lang) => {
+      languageDistribution[lang] = count;
+    });
+
+    // Master status distribution
+    const statusMap = new Map<string, number>();
+    queryList.forEach((q: any) => {
+      const status = q.master_status || 'unknown';
+      statusMap.set(status, (statusMap.get(status) || 0) + 1);
+    });
+
+    const statusDistribution: Record<string, number> = {};
+    statusMap.forEach((count, status) => {
+      statusDistribution[status] = count;
+    });
+
+    // Top questions
+    const questionFrequency = new Map<string, number>();
+    queryList.forEach((q: any) => {
+      const text = q.query_text?.toLowerCase().trim() || '';
+      if (text) {
+        questionFrequency.set(text, (questionFrequency.get(text) || 0) + 1);
+      }
+    });
+
+    const topQuestions = Array.from(questionFrequency.entries())
+      .map(([text, count]) => ({ text, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return {
+      totalQueries,
+      uniqueQuestions,
+      premiumUsage,
+      premiumPercentage: totalQueries > 0 ? ((premiumUsage / totalQueries) * 100).toFixed(2) : 0,
+      languageDistribution,
+      statusDistribution,
+      topQuestions,
+    };
+  } catch (error) {
+    console.error('[Analytics] Chat analytics error:', error);
+    return {
+      totalQueries: 0,
+      uniqueQuestions: 0,
+      premiumUsage: 0,
+      languageDistribution: {},
+      statusDistribution: {},
+      topQuestions: [],
+    };
+  }
+}
+
+/**
  * Admin overview - aggregated statistics across all organizations
  */
 async function getAdminOverview(supabase: any, startDate?: string | null, endDate?: string | null) {
@@ -284,6 +379,9 @@ async function getAdminOverview(supabase: any, startDate?: string | null, endDat
 
     topEndpoints.sort((a: { endpoint: string; count: number }, b: { endpoint: string; count: number }) => b.count - a.count);
 
+    // Get chat analytics
+    const chatAnalytics = await getChatAnalytics(supabase, start, end);
+
     return NextResponse.json({
       period: { start, end },
       summary: {
@@ -309,6 +407,7 @@ async function getAdminOverview(supabase: any, startDate?: string | null, endDat
       },
       topEndpoints: topEndpoints.slice(0, 5),
       dailyTrends: dailyData || [],
+      chat: chatAnalytics,
     });
   } catch (error) {
     console.error('[API] Error in admin overview:', error);

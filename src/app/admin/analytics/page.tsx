@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart3, TrendingUp, Activity, Clock, Loader2, Users, DollarSign, Zap } from 'lucide-react';
+import { BarChart3, TrendingUp, Activity, Clock, Loader2, Users, DollarSign, Zap, MessageCircle, Sparkles, Globe } from 'lucide-react';
 
 interface AdminAnalyticsData {
   period: { start: string; end: string };
@@ -27,6 +27,15 @@ interface AdminAnalyticsData {
     count: number;
   }>;
   dailyTrends: Array<any>;
+  chat?: {
+    totalQueries: number;
+    uniqueQuestions: number;
+    premiumUsage: number;
+    premiumPercentage: string | number;
+    languageDistribution: Record<string, number>;
+    statusDistribution: Record<string, number>;
+    topQuestions: Array<{ text: string; count: number }>;
+  };
 }
 
 export default function AnalyticsPage() {
@@ -260,6 +269,154 @@ export default function AnalyticsPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Chat Analytics */}
+          {analytics && analytics.chat && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-semibold text-white mb-4">Chatbot Analytics</h2>
+              </div>
+
+              {/* Chat KPIs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Total Queries */}
+                <div className="bg-arctic-800 border border-white/10 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-blue-500/10 rounded-lg">
+                      <MessageCircle className="w-6 h-6 text-blue-400" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-white/60 text-sm">Total Queries</p>
+                    <p className="text-3xl font-bold text-white">
+                      {analytics.chat.totalQueries.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Unique Questions */}
+                <div className="bg-arctic-800 border border-white/10 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-purple-500/10 rounded-lg">
+                      <Sparkles className="w-6 h-6 text-purple-400" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-white/60 text-sm">Unique Questions</p>
+                    <p className="text-3xl font-bold text-white">{analytics.chat.uniqueQuestions}</p>
+                  </div>
+                </div>
+
+                {/* Premium Usage */}
+                <div className="bg-arctic-800 border border-white/10 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-yellow-500/10 rounded-lg">
+                      <Zap className="w-6 h-6 text-yellow-400" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-white/60 text-sm">Premium Usage</p>
+                    <p className="text-3xl font-bold text-white">{analytics.chat.premiumUsage}</p>
+                    <p className="text-white/50 text-xs">{analytics.chat.premiumPercentage}% of queries</p>
+                  </div>
+                </div>
+
+                {/* Language Distribution */}
+                <div className="bg-arctic-800 border border-white/10 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-green-500/10 rounded-lg">
+                      <Globe className="w-6 h-6 text-green-400" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-white/60 text-sm">Languages</p>
+                    <p className="text-3xl font-bold text-white">
+                      {Object.keys(analytics.chat.languageDistribution).length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Language & Status Distribution */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Language Distribution */}
+                <div className="bg-arctic-800 border border-white/10 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Language Distribution</h3>
+                  <div className="space-y-3">
+                    {Object.entries(analytics.chat.languageDistribution).map(([lang, count]) => (
+                      <div key={lang} className="flex items-center justify-between">
+                        <span className="text-white/70 capitalize">{lang}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-white font-semibold">{count}</span>
+                          <div className="w-24 bg-arctic-900 rounded-full h-2">
+                            <div
+                              className="bg-primary h-2 rounded-full"
+                              style={{
+                                width: `${(count / (analytics.chat!.totalQueries || 1)) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Status Distribution */}
+                <div className="bg-arctic-800 border border-white/10 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Aurora Status Distribution</h3>
+                  <div className="space-y-3">
+                    {Object.entries(analytics.chat.statusDistribution).map(([status, count]) => (
+                      <div key={status} className="flex items-center justify-between">
+                        <span className="text-white/70 font-mono">{status}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-white font-semibold">{count}</span>
+                          <div className="w-24 bg-arctic-900 rounded-full h-2">
+                            <div
+                              className="bg-primary h-2 rounded-full"
+                              style={{
+                                width: `${(count / (analytics.chat!.totalQueries || 1)) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Top Questions */}
+              {analytics.chat.topQuestions && analytics.chat.topQuestions.length > 0 && (
+                <div className="bg-arctic-800 border border-white/10 rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-white mb-4">Top Chat Questions</h2>
+                  <div className="space-y-3">
+                    {analytics.chat.topQuestions.map((question, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <span className="text-white/40 font-mono text-sm">#{index + 1}</span>
+                          <p className="text-white/80 text-sm truncate">{question.text}</p>
+                        </div>
+                        <div className="flex items-center gap-4 ml-4">
+                          <span className="text-white/60 text-sm whitespace-nowrap">
+                            {question.count} {question.count === 1 ? 'query' : 'queries'}
+                          </span>
+                          <div className="w-20 bg-arctic-900 rounded-full h-2">
+                            <div
+                              className="bg-primary h-2 rounded-full"
+                              style={{
+                                width: `${(question.count / (analytics.chat!.topQuestions?.[0]?.count || 1)) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>
