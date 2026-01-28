@@ -33,6 +33,48 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('end_date');
     const granularity = searchParams.get('granularity') || 'day';
     const isAdmin = searchParams.get('admin') === 'true';
+    const isLive = searchParams.get('live') === 'true';
+    const limit = parseInt(searchParams.get('limit') || '30', 10);
+    const since = parseInt(searchParams.get('since') || '0', 10);
+
+    // Live queries endpoint - returns recent chat queries for real-time feed
+    if (isLive) {
+      const adminSession = await getAdminSession();
+      if (!adminSession?.authenticated) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+
+      // Fetch recent chat queries
+      let query = supabase
+        .from('chat_queries')
+        .select('id, query_text, language, master_status, is_premium, created_at')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      // Filter by timestamp if provided
+      if (since > 0) {
+        const sinceDate = new Date(since).toISOString();
+        query = query.gte('created_at', sinceDate);
+      }
+
+      const { data: queries, error } = await query;
+
+      if (error) {
+        console.error('[API] Live queries error:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch live queries', details: error.message },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        queries: queries || [],
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     // Admin mode - requires authentication
     if (isAdmin) {

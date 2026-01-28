@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart3, TrendingUp, Activity, Clock, Loader2, Users, DollarSign, Zap, MessageCircle, Sparkles, Globe } from 'lucide-react';
+import { BarChart3, Activity, Clock, Loader2, Users, Zap, MessageCircle, Sparkles, Globe } from 'lucide-react';
+import { useRealtimeChatQueries } from '@/hooks/useRealtimeChatQueries';
+import { useRealtimeMetrics } from '@/hooks/useRealtimeMetrics';
+import { LiveStatistics } from '@/components/admin/LiveStatistics';
+import { LiveQueryFeed } from '@/components/admin/LiveQueryFeed';
+import { MetricsTimeline } from '@/components/admin/MetricsTimeline';
 
 interface AdminAnalyticsData {
   period: { start: string; end: string };
@@ -26,7 +31,11 @@ interface AdminAnalyticsData {
     endpoint: string;
     count: number;
   }>;
-  dailyTrends: Array<any>;
+  dailyTrends: Array<{
+    date: string;
+    total_requests: number;
+    [key: string]: string | number;
+  }>;
   chat?: {
     totalQueries: number;
     uniqueQuestions: number;
@@ -42,6 +51,10 @@ export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AdminAnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Live data hooks
+  const { queries, isLoading: liveQueryLoading, isConnected } = useRealtimeChatQueries({ limit: 30 });
+  const { metrics, timeline } = useRealtimeMetrics({ queries, enabled: true });
 
   useEffect(() => {
     async function fetchAnalytics() {
@@ -105,6 +118,39 @@ export default function AnalyticsPage() {
           </div>
         </div>
       )}
+
+      {/* Live Section */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-white">Live Activity</h2>
+
+        {/* Live Statistics */}
+        {metrics && (
+          <LiveStatistics
+            activeUsers={metrics.activeUsers}
+            queriesPerMinute={metrics.queriesPerMinute}
+            premiumPercentage={metrics.premiumPercentage}
+            isLoading={liveQueryLoading}
+            isConnected={isConnected}
+          />
+        )}
+
+        {/* Live Feed & Timeline Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Query Feed */}
+          <LiveQueryFeed
+            queries={queries}
+            isLoading={liveQueryLoading}
+            isConnected={isConnected}
+            maxQueries={30}
+          />
+
+          {/* Metrics Timeline */}
+          <MetricsTimeline
+            data={timeline}
+            isLoading={liveQueryLoading}
+          />
+        </div>
+      </div>
 
       {analytics && (
         <>
