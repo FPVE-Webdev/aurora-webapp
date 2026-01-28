@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MapIcon, Calendar, Settings, Menu, X, Brain, Zap } from 'lucide-react';
+import { Home, MapIcon, Calendar, Settings, Menu, X, Brain, Zap, Instagram, Facebook } from 'lucide-react';
 import { useRetention } from '@/contexts/RetentionContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -38,6 +38,30 @@ export function Navigation() {
 
           {/* Live Viewers & Mode Toggle - Desktop */}
           <div className="hidden md:flex items-center gap-4">
+            {/* Social Links */}
+            <div className="flex items-center gap-2 pl-4 border-l border-white/10">
+              <a
+                href="https://www.instagram.com/tromso.ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                title="Follow on Instagram"
+                aria-label="Follow on Instagram"
+              >
+                <Instagram className="w-4 h-4" />
+              </a>
+              <a
+                href="https://www.facebook.com/profile.php?id=61586347817859"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                title="Follow on Facebook"
+                aria-label="Follow on Facebook"
+              >
+                <Facebook className="w-4 h-4" />
+              </a>
+            </div>
+
             {/* Tourist/Geek Mode Toggle */}
             <button
               onClick={() => setUserMode(userMode === 'tourist' ? 'geek' : 'tourist')}
@@ -95,6 +119,30 @@ export function Navigation() {
         {/* Mobile Navigation */}
         {isOpen && (
           <div className="md:hidden py-4 space-y-2 border-t border-white/10">
+            {/* Mobile Social Links */}
+            <div className="px-4 pb-2 flex items-center gap-2">
+              <a
+                href="https://www.instagram.com/tromso.ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+                title="Follow on Instagram"
+              >
+                <Instagram className="w-4 h-4" />
+                <span className="text-sm">Instagram</span>
+              </a>
+              <a
+                href="https://www.facebook.com/profile.php?id=61586347817859"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+                title="Follow on Facebook"
+              >
+                <Facebook className="w-4 h-4" />
+                <span className="text-sm">Facebook</span>
+              </a>
+            </div>
+
             {/* Mobile Live Stats & Mode */}
             <div className="px-4 pb-2 space-y-2">
               <button
